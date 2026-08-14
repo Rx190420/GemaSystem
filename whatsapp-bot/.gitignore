@@ -1,0 +1,12 @@
+node_modules
+
+# whatsapp-web.js session data — this is a live, authenticated WhatsApp session
+# per gym (Puppeteer/Chromium profile under a real logged-in account). Treat it
+# like a credential, not a cache: anyone with this folder can act as that
+# WhatsApp number without ever scanning a QR code again. Never commit it.
+.wwebjs_auth/
+.wwebjs_cache/
+
+# Logs
+*.log
+npm-debug.log*

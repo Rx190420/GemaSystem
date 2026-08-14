@@ -1,0 +1,21 @@
+/node_modules
+/public/hot
+/public/storage
+/storage/*.key
+/vendor
+.env
+.env.backup
+.phpunit.result.cache
+docker-compose.override.yml
+Homestead.json
+Homestead.yaml
+npm-debug.log
+yarn-error.log
+/.idea
+/.vscode
+
+# Composer's own binary — a redistributable tool, not project code. Get it
+# from https://getcomposer.org/download/ if you don't already have it globally.
+composer.phar
+
+

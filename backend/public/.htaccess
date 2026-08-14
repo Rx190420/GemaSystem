@@ -1,0 +1,38 @@
+<IfModule mod_rewrite.c>
+    <IfModule mod_negotiation.c>
+        Options -MultiViews -Indexes
+    </IfModule>
+
+    RewriteEngine On
+
+    # Disable WebDAV so mod_dav doesn't intercept OPTIONS before PHP
+    <IfModule mod_dav.c>
+        Dav off
+    </IfModule>
+
+    # Forward OPTIONS to PHP for Laravel CORS middleware
+    RewriteCond %{REQUEST_METHOD} OPTIONS
+    RewriteRule ^ index.php [L]
+
+    # Handle Authorization Header
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    # Redirect Trailing Slashes If Not A Folder...
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_URI} (.+)/$
+    RewriteRule ^ %1 [L,R=301]
+
+    # Send Requests To Front Controller...
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ index.php [L]
+</IfModule>
+
+# Fallback CORS headers — setifempty ensures no duplicates when PHP already set them
+<IfModule mod_headers.c>
+    Header setifempty Access-Control-Allow-Origin "http://localhost:5173"
+    Header setifempty Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+    Header setifempty Access-Control-Allow-Headers "Content-Type, Authorization, Accept, X-Requested-With"
+    Header setifempty Access-Control-Max-Age "86400"
+</IfModule>

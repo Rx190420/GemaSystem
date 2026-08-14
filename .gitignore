@@ -1,0 +1,17 @@
+# This is a monorepo (backend/frontend/whatsapp-bot each with their own stack
+# and their own .gitignore) — this root file only catches things that can show
+# up anywhere regardless of subproject: OS cruft, editor state, and local-only
+# tool config that shouldn't be shared between contributors.
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# Claude Code — local-only permissions/settings, not shared team config
+.claude/settings.local.json
