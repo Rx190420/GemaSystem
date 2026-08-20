@@ -1,6 +1,3 @@
-@php
-  $LOGO = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjQ0MyA1MyA1NTQgNzA1Ij48cGF0aCBmaWxsPSIjZmZmIiBkPSJNNTg2LjY5MTQwNiA2MTYuMTcxODc1TDQ0OS4xNzE4NzUgNjE2LjE3MTg3NUM0NDUuODAwNzgxIDYxNi4xNzE4NzUgNDQzLjA3MDMxMiA2MTMuNDM3NSA0NDMuMDcwMzEyIDYxMC4wNjY0MDZMNDQzLjA3MDMxMiAyOTQuNTcwMzEyQzQ0My4wNzAzMTIgMTYxLjc4OTA2MiA1NjAuMTcxODc1IDUzLjc2MTcxOSA3MDQuMTEzMjgxIDUzLjc2MTcxOUw4NTIuNDkyMTg4IDUzLjc2MTcxOUM4NTUuODU1NDY5IDUzLjc2MTcxOSA4NTguNTg1OTM4IDU2LjQ5NjA5NCA4NTguNTg1OTM4IDU5Ljg2NzE4OEw4NTguNTg1OTM4IDE4NS43NzczNDRDODU4LjU4NTkzOCAxODkuMTQ0NTMxIDg1NS44NTU0NjkgMTkxLjg3ODkwNiA4NTIuNDkyMTg4IDE5MS44Nzg5MDZMNzA0LjExMzI4MSAxOTEuODc4OTA2QzY0Mi43MjY1NjIgMTkxLjg3ODkwNiA1OTIuNzg5MDYyIDIzNy45NDUzMTIgNTkyLjc4OTA2MiAyOTQuNTcwMzEyTDU5Mi43ODkwNjIgNjEwLjA2NjQwNkM1OTIuNzg5MDYyIDYxMy40Mzc1IDU5MC4wNTg1OTQgNjE2LjE3MTg3NSA1ODYuNjkxNDA2IDYxNi4xNzE4NzUiLz48cGF0aCBmaWxsPSIjZmZmIiBkPSJNNzM1Ljg3NSA3NTAuMDExNzE5TDczNS44NzUgNjI0LjAxOTUzMUM3MzUuODc1IDYyMC43NDYwOTQgNzM4LjQ2MDkzOCA2MTguMDkzNzUgNzQxLjczODI4MSA2MTcuOTMzNTk0QzgwMC40MDYyNSA2MTUuMTEzMjgxIDg0Ny4yMDMxMjUgNTcwLjE5NTMxMiA4NDcuMjAzMTI1IDUxNS4zNzg5MDZMODQ3LjIwMzEyNSA0NjkuOTE0MDYyQzg0Ny4yMDMxMjUgNDY2LjU0Njg3NSA4NDQuNDY0ODQ0IDQ2My44MTI1IDg0MS4xMDE1NjIgNDYzLjgxMjVMNzQxLjk4MDQ2OSA0NjMuODEyNUM3MzguNjEzMjgxIDQ2My44MTI1IDczNS44NzUgNDYxLjA4MjAzMSA3MzUuODc1IDQ1Ny43MTA5MzhMNzM1Ljg3NSAzMzEuODAwNzgxQzczNS44NzUgMzI4LjQyOTY4OCA3MzguNjEzMjgxIDMyNS43MDMxMjUgNzQxLjk4MDQ2OSAzMjUuNzAzMTI1TDk5MC44MTY0MDYgMzI1LjcwMzEyNUM5OTQuMTg3NSAzMjUuNzAzMTI1IDk5Ni45MjE4NzUgMzI4LjQyOTY4OCA5OTYuOTIxODc1IDMzMS44MDA3ODFMOTk2LjkyMTg3NSA1MTUuMzc4OTA2Qzk5Ni45MjE4NzUgNjQ2LjIzNDM3NSA4ODMuMTg3NSA3NTMuMDQ2ODc1IDc0Mi4xMjEwOTQgNzU2LjEyMTA5NEM3MzguNjk5MjE5IDc1Ni4xOTUzMTIgNzM1Ljg3NSA3NTMuNDM3NSA3MzUuODc1IDc1MC4wMTE3MTkiLz48L3N2Zz4=';
-@endphp
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -46,6 +43,23 @@
     .pill-vip     { background:#fffbeb; color:#d97706; border:1px solid #fde68a; }
     .pill-green   { background:#f0fdf4; color:#16a34a; border:1px solid #bbf7d0; }
     .pill-red     { background:#fef2f2; color:#dc2626; border:1px solid #fecaca; }
+    .pill-icon    { width:12px; height:12px; vertical-align:-2px; margin-right:1px; }
+    /* ── Icon badge (hero icon at the top of every email) ──
+       line-height + vertical-align:middle centers the icon even in clients
+       that ignore flexbox; inline-flex centers it properly everywhere else. */
+    .hero { text-align:center; margin-bottom:22px; }
+    .icon-badge {
+      width:56px; height:56px; line-height:56px; text-align:center; border-radius:50%;
+      margin:0 auto 16px; display:inline-flex; align-items:center; justify-content:center;
+    }
+    .icon-badge img { display:inline-block; vertical-align:middle; }
+    .icon-badge-green  { background:#f0fdf4; }
+    .icon-badge-red    { background:#fef2f2; }
+    .icon-badge-amber  { background:#fffbeb; }
+    .icon-badge-indigo { background:#eef2ff; }
+    .icon-badge-purple { background:#faf5ff; }
+    .icon-badge-gray   { background:#f4f4f5; }
+    .hero .h1 { margin-bottom:0; }
     /* ── Misc ── */
     hr { border:none; border-top:1px solid #f4f4f5; margin:20px 0; }
     .btn { display:block; background:#09090b; color:#fff!important; text-decoration:none; padding:13px 20px; border-radius:6px; font-size:14px; font-weight:600; text-align:center; margin-bottom:20px; }

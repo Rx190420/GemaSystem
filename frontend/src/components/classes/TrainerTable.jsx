@@ -6,6 +6,9 @@ import api from '../../api/axios'
 import ConfirmModal from '../ConfirmModal'
 import TrainerModal from './TrainerModal'
 import { avatarColor } from '../../utils/avatarColor'
+import useSort from '../../hooks/useSort'
+import SortableTh from '../SortableTh'
+import Pagination from '../Pagination'
 
 export default function TrainerTable() {
   const qc = useQueryClient()
@@ -13,6 +16,11 @@ export default function TrainerTable() {
   const [statusFilter, setStatusFilter] = useState('')
   const [modal, setModal]               = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
+  const [page, setPage]                 = useState(1)
+  const [pageSize, setPageSize]         = useState(12)
+  const [sort, onSort]                  = useSort('first_name', 'asc')
+  const handleSort = key => { onSort(key); setPage(1) }
+  const handlePageSize = n => { setPageSize(n); setPage(1) }
 
   const { data: trainers = [], isLoading } = useQuery({
     queryKey: ['trainers-all'],
@@ -43,6 +51,18 @@ export default function TrainerTable() {
     return matchSearch && matchStatus
   })
 
+  // All trainer data is already loaded client-side (no server pagination for
+  // this list) — sort and page the array in place instead of round-tripping.
+  const sorted = [...filtered].sort((a, b) => {
+    if (!sort.by) return 0
+    const av = a[sort.by] ?? ''
+    const bv = b[sort.by] ?? ''
+    const cmp = String(av).localeCompare(String(bv), 'es')
+    return sort.dir === 'asc' ? cmp : -cmp
+  })
+  const lastPage = Math.max(1, Math.ceil(sorted.length / pageSize))
+  const paged = sorted.slice((page - 1) * pageSize, page * pageSize)
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -60,7 +80,7 @@ export default function TrainerTable() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={e => { setSearch(e.target.value); setPage(1) }}
             placeholder="Buscar por nombre o especialidad…"
             className="input pl-9"
           />
@@ -69,7 +89,7 @@ export default function TrainerTable() {
           {[{ id: '', label: 'Todos' }, { id: 'active', label: 'Activos' }, { id: 'inactive', label: 'Inactivos' }].map(f => (
             <button
               key={f.id}
-              onClick={() => setStatusFilter(f.id)}
+              onClick={() => { setStatusFilter(f.id); setPage(1) }}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all
                 ${statusFilter === f.id ? 'bg-white shadow text-gray-900' : 'text-gray-400 hover:text-gray-600'}`}
             >
@@ -94,16 +114,16 @@ export default function TrainerTable() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-100 text-left text-xs text-gray-400 uppercase tracking-wide">
-                    <th className="px-4 py-3 font-medium">Nombre</th>
-                    <th className="px-4 py-3 font-medium">Especialidad</th>
+                    <SortableTh sortKey="first_name" sort={sort} onSort={handleSort} className="px-4 py-3 font-medium">Nombre</SortableTh>
+                    <SortableTh sortKey="specialty" sort={sort} onSort={handleSort} className="px-4 py-3 font-medium">Especialidad</SortableTh>
                     <th className="px-4 py-3 font-medium">Contacto</th>
                     <th className="px-4 py-3 font-medium">Clases</th>
-                    <th className="px-4 py-3 font-medium">Estado</th>
+                    <SortableTh sortKey="status" sort={sort} onSort={handleSort} className="px-4 py-3 font-medium">Estado</SortableTh>
                     <th className="px-4 py-3 font-medium text-right">Acciones</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {filtered.map(t => (
+                  {paged.map(t => (
                     <tr key={t.id} className="hover:bg-gray-50/60">
                       <td className="px-4 py-3 align-top w-full max-w-0">
                         <div className="flex items-center gap-2.5 min-w-0">
@@ -147,7 +167,7 @@ export default function TrainerTable() {
 
             {/* Mobile — stacked cards, no horizontal scroll */}
             <div className="lg:hidden divide-y divide-gray-50">
-              {filtered.map(t => (
+              {paged.map(t => (
                 <div key={t.id} className="p-4">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2.5 min-w-0">
@@ -185,6 +205,8 @@ export default function TrainerTable() {
                 </div>
               ))}
             </div>
+
+            <Pagination page={page} lastPage={lastPage} total={sorted.length} onPageChange={setPage} itemLabel="entrenadores" pageSize={pageSize} onPageSizeChange={handlePageSize} />
           </>
         )}
       </div>

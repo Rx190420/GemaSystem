@@ -7,16 +7,20 @@
 @endsection
 
 @section('content')
-  <p class="eyebrow">Sigue entrenando</p>
-  <h1 class="h1">¡Te invitamos a renovar tu membresía!</h1>
+  <div class="hero">
+    <div class="icon-badge icon-badge-green">
+      <img src="{{ $ICON_DUMBBELL }}" width="26" height="26" alt="" style="display:inline-block;">
+    </div>
+    <p class="eyebrow">Sigue entrenando</p>
+    <h1 class="h1">Te invitamos a renovar tu membresía</h1>
+  </div>
   <p class="lead">
     Hola, <strong>{{ $member->first_name }}</strong>. No dejes que el progreso se detenga —
     renueva tu membresía{{ $gymName ? " en <strong>{$gymName}</strong>" : '' }} y sigue alcanzando tus metas.
   </p>
 
-  <div style="text-align:center;padding:24px 20px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;margin-bottom:20px;">
-    <div style="font-size:40px;line-height:1;margin-bottom:10px;">🏋️</div>
-    <div style="font-size:16px;font-weight:700;color:#15803d;">¡Tu cuerpo te lo agradecerá!</div>
+  <div style="text-align:center;padding:18px 20px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;margin-bottom:20px;">
+    <div style="font-size:16px;font-weight:700;color:#15803d;">Tu cuerpo te lo agradecerá</div>
   </div>
 
   <div class="box">

@@ -13,12 +13,11 @@ import toast from 'react-hot-toast'
 import useLockBodyScroll from '../hooks/useLockBodyScroll'
 import api from '../api/axios'
 import ActivityGraph from '../components/ActivityGraph'
+import MembershipTypeBadge from '../components/MembershipTypeBadge'
 
 // ── constants ─────────────────────────────────────────────────
 const STATUS_BADGE = { active: 'badge-green', inactive: 'badge-gray', suspended: 'badge-red' }
 const STATUS_LABEL = { active: 'Activo', inactive: 'Inactivo', suspended: 'Suspendido' }
-const TYPE_BADGE   = { basic: 'badge-blue', premium: 'badge-purple', vip: 'badge-yellow' }
-const TYPE_LABEL   = { basic: 'Básica', premium: 'Premium', vip: 'VIP' }
 const VISIT_LABEL  = { training: 'Visita', class: 'Clase', consultation: 'Consulta', other: 'Otro' }
 const VISIT_COLOR  = { training: 'badge-indigo', class: 'badge-purple', consultation: 'badge-blue', other: 'badge-gray' }
 const PAY_LABEL    = { cash: 'Efectivo', card: 'Tarjeta', transfer: 'Transferencia' }
@@ -591,9 +590,7 @@ export default function MemberDetail() {
                   {PLAN_LABEL[member.activeMembership.type]}
                 </span>
               ) : (
-                <span className={TYPE_BADGE[member.membership_type] ?? 'badge-gray'}>
-                  {TYPE_LABEL[member.membership_type]}
-                </span>
+                <MembershipTypeBadge type={member.membership_type} />
               )}
             </div>
 

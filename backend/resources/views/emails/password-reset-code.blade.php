@@ -7,8 +7,13 @@
 @endsection
 
 @section('content')
-  <p class="eyebrow">Verificación</p>
-  <h1 class="h1">{{ $isChange ? 'Confirma tu cambio de contraseña' : 'Recupera tu contraseña' }}</h1>
+  <div class="hero">
+    <div class="icon-badge icon-badge-indigo">
+      <img src="{{ $ICON_SHIELD }}" width="26" height="26" alt="" style="display:inline-block;">
+    </div>
+    <p class="eyebrow">Verificación</p>
+    <h1 class="h1">{{ $isChange ? 'Confirma tu cambio de contraseña' : 'Recupera tu contraseña' }}</h1>
+  </div>
   <p class="lead">
     @if($isChange)
       Recibimos una solicitud para <strong>cambiar la contraseña</strong> de tu cuenta. Usa el siguiente código para confirmar que eres tú.

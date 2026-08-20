@@ -7,8 +7,13 @@
 @endsection
 
 @section('content')
-  <p class="eyebrow">Soporte técnico</p>
-  <h1 class="h1">Tu ticket está en proceso</h1>
+  <div class="hero">
+    <div class="icon-badge icon-badge-indigo">
+      <img src="{{ $ICON_HEADSET }}" width="26" height="26" alt="" style="display:inline-block;">
+    </div>
+    <p class="eyebrow">Soporte técnico</p>
+    <h1 class="h1">Tu ticket está en proceso</h1>
+  </div>
   <p class="lead">Hemos recibido tu solicitud de soporte y nuestro equipo ya está trabajando en ella. Te notificaremos cuando haya actualizaciones.</p>
 
   <div class="box">

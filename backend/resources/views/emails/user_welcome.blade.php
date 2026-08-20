@@ -7,8 +7,13 @@
 @endsection
 
 @section('content')
-  <p class="eyebrow">Cuenta creada</p>
-  <h1 class="h1">Tu cuenta está lista</h1>
+  <div class="hero">
+    <div class="icon-badge icon-badge-indigo">
+      <img src="{{ $ICON_USER_CHECK }}" width="26" height="26" alt="" style="display:inline-block;">
+    </div>
+    <p class="eyebrow">Cuenta creada</p>
+    <h1 class="h1">Tu cuenta está lista</h1>
+  </div>
   <p class="lead">Se ha creado tu cuenta en GemaSystem. A continuación encontrarás tus credenciales de acceso. Guárdalas en un lugar seguro.</p>
 
   <div class="box">

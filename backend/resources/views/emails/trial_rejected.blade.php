@@ -7,8 +7,13 @@
 @endsection
 
 @section('content')
-  <p class="eyebrow">Solicitud de prueba</p>
-  <h1 class="h1">No pudimos aprobar tu solicitud</h1>
+  <div class="hero">
+    <div class="icon-badge icon-badge-gray">
+      <img src="{{ $ICON_INFO }}" width="26" height="26" alt="" style="display:inline-block;">
+    </div>
+    <p class="eyebrow">Solicitud de prueba</p>
+    <h1 class="h1">No pudimos aprobar tu solicitud</h1>
+  </div>
   <p class="lead">Hemos revisado la solicitud de acceso para <strong>{{ $gymName }}</strong> y en este momento no podemos aprobarla.</p>
 
   @if(!empty($reason))

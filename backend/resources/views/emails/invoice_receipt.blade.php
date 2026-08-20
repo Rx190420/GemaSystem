@@ -7,8 +7,13 @@
 @endsection
 
 @section('content')
-  <p class="eyebrow">Facturación</p>
-  <h1 class="h1">Pago procesado correctamente</h1>
+  <div class="hero">
+    <div class="icon-badge icon-badge-green">
+      <img src="{{ $ICON_RECEIPT }}" width="26" height="26" alt="" style="display:inline-block;">
+    </div>
+    <p class="eyebrow">Facturación</p>
+    <h1 class="h1">Pago procesado correctamente</h1>
+  </div>
   <p class="lead">Tu suscripción al plan <strong>{{ $planLabel }}</strong> para <strong>{{ $gymName }}</strong> ha sido procesada exitosamente.</p>
 
   {{-- Monto --}}
@@ -17,8 +22,9 @@
     <div style="font-size:44px;font-weight:900;color:#09090b;line-height:1;">
       <span style="font-size:22px;vertical-align:super;color:#16a34a;">$</span>{{ $amount }}<span style="font-size:16px;color:#16a34a;margin-left:4px;">{{ $currency }}</span>
     </div>
-    <div style="margin-top:12px;display:inline-flex;align-items:center;gap:6px;background:#dcfce7;border:1px solid #bbf7d0;border-radius:4px;padding:3px 10px;font-size:11px;font-weight:700;color:#16a34a;text-transform:uppercase;letter-spacing:.8px;">
-      ✓ Pago confirmado
+    <div style="margin-top:12px;display:inline-flex;align-items:center;justify-content:center;gap:5px;background:#dcfce7;border:1px solid #bbf7d0;border-radius:4px;padding:4px 10px;font-size:11px;font-weight:700;color:#16a34a;text-transform:uppercase;letter-spacing:.8px;">
+      <img src="{{ $ICON_CHECK }}" width="12" height="12" alt="" class="pill-icon" style="margin-right:0;">
+      Pago confirmado
     </div>
   </div>
 

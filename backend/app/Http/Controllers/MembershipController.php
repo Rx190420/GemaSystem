@@ -64,7 +64,8 @@ class MembershipController extends Controller
             });
         }
 
-        $memberships = $query->orderByDesc('created_at')->paginate($request->get('per_page', 20));
+        $this->applySort($query, $request, ['type', 'end_date', 'amount', 'status', 'created_at'], 'created_at', 'desc');
+        $memberships = $query->paginate($request->get('per_page', 12));
 
         return response()->json($memberships);
     }

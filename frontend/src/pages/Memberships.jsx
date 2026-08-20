@@ -7,7 +7,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
 import {
-  Plus, Search, X, CreditCard, Loader2, ChevronLeft, ChevronRight,
+  Plus, Search, X, CreditCard, Loader2,
   CheckCircle, XCircle, Clock, BarChart2, TrendingUp, Activity, Users,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -18,6 +18,9 @@ import ExportMenu from '../components/ExportMenu'
 import { exportToExcel, exportToPDF } from '../utils/exportUtils'
 import { useSettingsStore } from '../store/settingsStore'
 import useLockBodyScroll from '../hooks/useLockBodyScroll'
+import useSort from '../hooks/useSort'
+import SortableTh from '../components/SortableTh'
+import Pagination from '../components/Pagination'
 
 const MONTH_NAMES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
 
@@ -395,17 +398,22 @@ export default function Memberships() {
   const { systemSettings } = useSettingsStore()
   const [showModal, setShowModal]       = useState(false)
   const [page, setPage]                 = useState(1)
+  const [pageSize, setPageSize]         = useState(12)
   const [statusFilter, setStatus]       = useState('')
   const [search, setSearch]             = useState('')
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [trendType, setTrendType]       = useState('bar')
   const [typeView, setTypeView]         = useState('pie')
   const [exporting, setExporting]       = useState(false)
+  const [sort, onSort]                  = useSort('created_at', 'desc')
+  const handleSort = key => { onSort(key); setPage(1) }
+  const handlePageSize = n => { setPageSize(n); setPage(1) }
 
   const params = {
-    page, per_page: 20,
+    page, per_page: pageSize,
     ...(statusFilter && { status: statusFilter }),
     ...(search.trim() && { search: search.trim() }),
+    sort_by: sort.by, sort_dir: sort.dir,
   }
 
   const { data, isLoading } = useQuery({
@@ -652,11 +660,11 @@ export default function Memberships() {
                 <thead>
                   <tr className="bg-gray-50 border-b-2 border-gray-100">
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Miembro</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Tipo</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Período</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Monto</th>
+                    <SortableTh sortKey="type" sort={sort} onSort={handleSort} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Tipo</SortableTh>
+                    <SortableTh sortKey="end_date" sort={sort} onSort={handleSort} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Período</SortableTh>
+                    <SortableTh sortKey="amount" sort={sort} onSort={handleSort} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Monto</SortableTh>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Pago</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Estado</th>
+                    <SortableTh sortKey="status" sort={sort} onSort={handleSort} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Estado</SortableTh>
                     <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Acciones</th>
                   </tr>
                 </thead>
@@ -747,14 +755,8 @@ export default function Memberships() {
               ))}
             </div>
 
-            {pagination && pagination.last > 1 && (
-              <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 bg-gray-50/50">
-                <p className="text-xs text-gray-500">Página {pagination.current} de {pagination.last} · {pagination.total} registros</p>
-                <div className="flex gap-2">
-                  <button onClick={() => setPage(p => p-1)} disabled={page <= 1} className="btn-secondary py-1.5 px-3 disabled:opacity-40"><ChevronLeft className="w-4 h-4" /></button>
-                  <button onClick={() => setPage(p => p+1)} disabled={page >= pagination.last} className="btn-secondary py-1.5 px-3 disabled:opacity-40"><ChevronRight className="w-4 h-4" /></button>
-                </div>
-              </div>
+            {pagination && (
+              <Pagination page={pagination.current} lastPage={pagination.last} total={pagination.total} onPageChange={setPage} itemLabel="registros" pageSize={pageSize} onPageSizeChange={handlePageSize} />
             )}
           </>
         )}

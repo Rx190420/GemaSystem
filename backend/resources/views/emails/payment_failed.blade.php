@@ -7,8 +7,13 @@
 @endsection
 
 @section('content')
-  <p class="eyebrow">Facturación</p>
-  <h1 class="h1">No pudimos procesar tu pago</h1>
+  <div class="hero">
+    <div class="icon-badge icon-badge-red">
+      <img src="{{ $ICON_ALERT }}" width="26" height="26" alt="" style="display:inline-block;">
+    </div>
+    <p class="eyebrow">Facturación</p>
+    <h1 class="h1">No pudimos procesar tu pago</h1>
+  </div>
   <p class="lead">Hubo un problema al cobrar tu suscripción al plan <strong>{{ $planLabel }}</strong>. Por favor actualiza tu método de pago para evitar la suspensión del servicio.</p>
 
   <div class="box" style="background:#fef2f2;border-color:#fecaca;">

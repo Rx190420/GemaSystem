@@ -19,8 +19,11 @@ class ClassController extends Controller
 
     public function store(Request $request)
     {
+        $this->normalizeScheduleDays($request);
+
         $data = $request->validate([
             'name'        => 'required|string|max:150',
+            'color'       => 'nullable|string|max:7|regex:/^#[0-9A-Fa-f]{6}$/',
             'description' => 'nullable|string',
             'trainer_id'  => ['required', $this->existsInGym('trainers')],
             'capacity'    => 'integer|min:1|max:500',
@@ -72,8 +75,11 @@ class ClassController extends Controller
 
     public function update(Request $request, GymClass $class)
     {
+        $this->normalizeScheduleDays($request);
+
         $data = $request->validate([
             'name'        => 'sometimes|string|max:150',
+            'color'       => 'sometimes|nullable|string|max:7|regex:/^#[0-9A-Fa-f]{6}$/',
             'description' => 'sometimes|nullable|string',
             'trainer_id'  => ['sometimes', 'required', $this->existsInGym('trainers')],
             'capacity'    => 'sometimes|integer|min:1',
@@ -139,5 +145,25 @@ class ClassController extends Controller
     {
         $class->delete();
         return response()->json(['message' => 'Clase eliminada correctamente.']);
+    }
+
+    /**
+     * Normalizes `schedules.*.day_of_week` casing (e.g. "monday", "MONDAY")
+     * to "Monday" before validation, so a mismatched source (a stale seeder,
+     * a direct DB edit, an older DB enum) can't trip the strict `in:` rule.
+     */
+    private function normalizeScheduleDays(Request $request): void
+    {
+        $schedules = $request->input('schedules');
+        if (!is_array($schedules)) return;
+
+        $request->merge([
+            'schedules' => collect($schedules)->map(function ($schedule) {
+                if (is_array($schedule) && is_string($schedule['day_of_week'] ?? null)) {
+                    $schedule['day_of_week'] = ucfirst(strtolower($schedule['day_of_week']));
+                }
+                return $schedule;
+            })->all(),
+        ]);
     }
 }

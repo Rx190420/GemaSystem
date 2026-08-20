@@ -3,12 +3,13 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm, useFieldArray } from 'react-hook-form'
 import {
   X, Calendar, Loader2, ChevronDown, ChevronUp, PlusCircle,
-  UserPlus, Users, UserCheck,
+  UserPlus, Users, UserCheck, Check,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import api from '../../api/axios'
 import MemberPicker from './MemberPicker'
 import useLockBodyScroll from '../../hooks/useLockBodyScroll'
+import { CLASS_COLOR_PRESETS } from '../../utils/classColors'
 
 const DAYS    = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
 const DAYS_ES = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo']
@@ -75,6 +76,7 @@ export default function ClassModal({ gymClass, onClose }) {
   const { register, handleSubmit, control, watch, setValue, formState: { errors, isSubmitting } } = useForm({
     defaultValues: {
       name:        gymClass?.name        ?? '',
+      color:       gymClass?.color       ?? CLASS_COLOR_PRESETS[0],
       description: gymClass?.description ?? '',
       trainer_id:  gymClass?.trainer_id  ?? '',
       capacity:    gymClass?.capacity    ?? 20,
@@ -89,6 +91,7 @@ export default function ClassModal({ gymClass, onClose }) {
   })
 
   const type = watch('type')
+  const color = watch('color')
   const completedCount = (gymClass?.sessions ?? []).filter(s => s.status === 'completed').length
 
   useEffect(() => {
@@ -206,6 +209,29 @@ export default function ClassModal({ gymClass, onClose }) {
                 <option value="intermediate">Intermedio</option>
                 <option value="advanced">Avanzado</option>
               </select>
+            </div>
+          </div>
+
+          {/* Color identificador — se usa en la Agenda para distinguir esta clase de las demás */}
+          <div>
+            <label className="label">Color identificador</label>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {CLASS_COLOR_PRESETS.map(c => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setValue('color', c)}
+                  title={c}
+                  className="w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center transition-transform"
+                  style={{
+                    background: c,
+                    transform: color === c ? 'scale(1.15)' : 'scale(1)',
+                    boxShadow: color === c ? `0 0 0 2px white, 0 0 0 3.5px ${c}` : 'none',
+                  }}
+                >
+                  {color === c && <Check className="w-3 h-3 text-white" />}
+                </button>
+              ))}
             </div>
           </div>
 

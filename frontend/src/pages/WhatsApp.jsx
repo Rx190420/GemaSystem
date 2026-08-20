@@ -7,6 +7,9 @@ import {
 import toast from 'react-hot-toast'
 import api from '../api/axios'
 import useLockBodyScroll from '../hooks/useLockBodyScroll'
+import useSort from '../hooks/useSort'
+import SortableTh from '../components/SortableTh'
+import Pagination from '../components/Pagination'
 
 function LogDetailModal({ log, onClose }) {
   useLockBodyScroll()
@@ -44,6 +47,11 @@ export default function WhatsAppPage() {
   const [detailLog, setDetailLog] = useState(null)
   const [startedAt, setStartedAt] = useState(null)
   const [autoReconnecting, setAutoReconnecting] = useState(false)
+  const [logsPage, setLogsPage] = useState(1)
+  const [logsPageSize, setLogsPageSize] = useState(12)
+  const [logsSort, onLogsSort] = useSort('sent_at', 'desc')
+  const handleLogsSort = key => { onLogsSort(key); setLogsPage(1) }
+  const handleLogsPageSize = n => { setLogsPageSize(n); setLogsPage(1) }
   const autoInitDone = useRef(false)
 
   const { data: status, isLoading, isError, refetch } = useQuery({
@@ -55,14 +63,15 @@ export default function WhatsAppPage() {
   })
 
   const { data: logsData, isLoading: logsLoading } = useQuery({
-    queryKey: ['whatsapp-logs'],
-    queryFn: () => api.get('/whatsapp/logs').then(r => r.data),
+    queryKey: ['whatsapp-logs', logsPage, logsPageSize, logsSort],
+    queryFn: () => api.get('/whatsapp/logs', { params: { page: logsPage, per_page: logsPageSize, sort_by: logsSort.by, sort_dir: logsSort.dir } }).then(r => r.data),
     refetchInterval: 30_000,
     refetchIntervalInBackground: true,
     retry: 1,
   })
 
   const logs = logsData?.data ?? []
+  const logsPagination = logsData ? { current: logsData.current_page, last: logsData.last_page, total: logsData.total } : null
 
   // Track when we entered the "starting" state so we can show a timeout
   useEffect(() => {
@@ -370,9 +379,9 @@ export default function WhatsAppPage() {
             <table className="w-full text-sm hidden sm:table">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Destinatario</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Tipo</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 hidden md:table-cell">Fecha</th>
+                  <SortableTh sortKey="recipient_name" sort={logsSort} onSort={handleLogsSort} className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Destinatario</SortableTh>
+                  <SortableTh sortKey="message_type" sort={logsSort} onSort={handleLogsSort} className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Tipo</SortableTh>
+                  <SortableTh sortKey="sent_at" sort={logsSort} onSort={handleLogsSort} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 hidden md:table-cell">Fecha</SortableTh>
                   <th className="px-4 py-3 w-20"></th>
                 </tr>
               </thead>
@@ -437,6 +446,10 @@ export default function WhatsAppPage() {
                 </div>
               ))}
             </div>
+
+            {logsPagination && (
+              <Pagination page={logsPagination.current} lastPage={logsPagination.last} total={logsPagination.total} onPageChange={setLogsPage} itemLabel="mensajes" pageSize={logsPageSize} onPageSizeChange={handleLogsPageSize} />
+            )}
           </div>
         )}
       </div>

@@ -112,7 +112,8 @@ class ProductSaleController extends Controller
             $query->where('date', '<=', $to);
         }
 
-        $sales = $query->orderByDesc('date')->orderByDesc('created_at')->paginate($request->get('per_page', 25));
+        $this->applySort($query, $request, ['date', 'quantity', 'total_amount', 'profit', 'payment_method'], 'date', 'desc');
+        $sales = $query->orderByDesc('created_at')->paginate($request->get('per_page', 12));
 
         return response()->json($sales);
     }

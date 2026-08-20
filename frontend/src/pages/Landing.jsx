@@ -11,6 +11,7 @@ import {
   Scan, Star, Gift, MessageSquare, Clock,
   Building2, User, Phone, Send, AlertTriangle,
   Bot, MonitorSmartphone, Store, Terminal, Mail, CheckCircle2, KeyRound, LogIn,
+  MessageCircle, ScanLine,
 } from 'lucide-react'
 
 import { useAuthStore } from '../store/authStore'
@@ -1091,7 +1092,8 @@ export default function Landing() {
   }, [location.pathname])
   const [navOpen, setNavOpen]         = useState(false)
   const [roadmapOpen, setRoadmapOpen] = useState(false)
-  const [novaOpen, setNovaOpen]       = useState('import')
+  const [emailOpen, setEmailOpen]     = useState('welcome')
+  const [waOpen, setWaOpen]           = useState('connect')
   const navigate                  = useNavigate()
 
   const [trialDone, setTrialDone]       = useState(false)
@@ -1252,7 +1254,8 @@ export default function Landing() {
               <div className="mt-4 space-y-2">
                 {[
                   { label: 'Características', href: '#características' },
-                  { label: 'Nova IA',          href: '#nova' },
+                  { label: 'Correos automáticos', href: '#correos' },
+                  { label: 'WhatsApp',         href: '#whatsapp' },
                   { label: 'Precios',          href: '#precios' },
                   { label: 'Prueba gratis',    href: '#prueba-gratis' },
                   { label: 'Reseñas',          href: '#reseñas' },
@@ -1430,28 +1433,27 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* ── Nova AI Section ── */}
-        <section id="nova" className="relative z-10 py-28 overflow-hidden">
+        {/* ── Correos automáticos Section ── */}
+        <section id="correos" className="relative z-10 py-28 overflow-hidden">
           {/* Glow background */}
           <div className="absolute inset-0 pointer-events-none">
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[400px] rounded-full opacity-10"
-              style={{ background: 'radial-gradient(ellipse,#F59E0B,transparent 70%)', filter: 'blur(80px)' }} />
+              style={{ background: 'radial-gradient(ellipse,#6366F1,transparent 70%)', filter: 'blur(80px)' }} />
           </div>
 
           <div className="relative max-w-6xl mx-auto px-6">
 
             {/* Header */}
             <div className="text-center mb-20">
-              <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 text-amber-300 text-xs font-bold mb-6">
-                <Zap className="w-3.5 h-3.5 fill-amber-300" /> Asistente IA integrado · Nuevo
+              <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-300 text-xs font-bold mb-6">
+                <Mail className="w-3.5 h-3.5" /> Notificaciones automáticas · Correo electrónico
               </div>
               <h2 className="text-[clamp(2rem,6vw,3rem)] font-extrabold text-white leading-tight">
-                Conoce a{' '}
-                <span className="bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">Nova</span>
-                , tu asistente IA
+                Correos que se envían{' '}
+                <span className="bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">solos</span>
               </h2>
               <p className="text-slate-400 mt-5 text-lg max-w-2xl mx-auto leading-relaxed">
-                La inteligencia artificial de GemaSystem que te da respuestas instantáneas, importa datos masivos y analiza tu negocio — todo desde el sistema.
+                GemaSystem le escribe a tus socios en el momento exacto — bienvenida, recordatorios de vencimiento, recibos de pago y más — sin que tengas que redactar ni enviar nada tú mismo.
               </p>
             </div>
 
@@ -1460,74 +1462,50 @@ export default function Landing() {
 
               {/* Left — preview card */}
               <div className="relative">
-                {/* Nova card mockup */}
+                {/* Inbox mockup */}
                 <div className="rounded-2xl overflow-hidden shadow-2xl border border-white/8"
-                  style={{ boxShadow: '0 0 0 1px rgba(245,158,11,0.12), 0 32px 80px rgba(0,0,0,0.6)' }}>
+                  style={{ boxShadow: '0 0 0 1px rgba(99,102,241,0.12), 0 32px 80px rgba(0,0,0,0.6)' }}>
                   {/* Dark panel header */}
                   <div className="flex items-center gap-3 px-5 py-4" style={{ background: '#0D1526' }}>
                     <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-                      style={{ background: 'linear-gradient(135deg,#F59E0B,#EF4444)', boxShadow: '0 4px 12px rgba(245,158,11,0.4)' }}>
-                      <Zap style={{ width: 16, height: 16, color: '#fff', fill: '#fff' }} />
+                      style={{ background: 'linear-gradient(135deg,#6366F1,#8B5CF6)', boxShadow: '0 4px 12px rgba(99,102,241,0.4)' }}>
+                      <Mail style={{ width: 16, height: 16, color: '#fff' }} />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-white leading-none">Nova</p>
+                      <p className="text-sm font-bold text-white leading-none">Bandeja de entrada</p>
                       <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                        <span className="text-[10px] font-medium" style={{ color: '#FCD34D' }}>En línea · Asistente IA</span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
+                        <span className="text-[10px] font-medium" style={{ color: '#A5B4FC' }}>notificaciones@gemasystem.mx</span>
                       </div>
                     </div>
                   </div>
-                  {/* Chat area */}
-                  <div className="p-5 space-y-4" style={{ background: '#F7F8FA' }}>
-                    {/* Bot message */}
-                    <div className="flex gap-2.5 items-start">
-                      <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                        style={{ background: 'linear-gradient(135deg,#F59E0B,#EF4444)' }}>
-                        <Zap style={{ width: 12, height: 12, color: '#fff', fill: '#fff' }} />
+                  {/* Email list */}
+                  <div className="p-3 space-y-2" style={{ background: '#F7F8FA' }}>
+                    {[
+                      { icon: CheckCircle2, color: '#10B981', bg: 'rgba(16,185,129,0.12)', subject: '¡Bienvenido a GemaSystem!', snippet: 'Tu membresía ha sido registrada exitosamente. Aquí tienes tus datos de acceso...', time: 'Ahora' },
+                      { icon: Clock,        color: '#F59E0B', bg: 'rgba(245,158,11,0.12)', subject: 'Tu membresía vence en 3 días',  snippet: 'Renueva antes del 21/08 para seguir entrenando sin interrupciones...', time: '9:00 a.m.' },
+                      { icon: CreditCard,   color: '#6366F1', bg: 'rgba(99,102,241,0.12)', subject: 'Recibo de tu pago — $417 MXN',   snippet: 'Gracias por tu pago. Tu membresía está vigente hasta...', time: 'Ayer' },
+                    ].map(({ icon: Icon, color, bg, subject, snippet, time }) => (
+                      <div key={subject} className="flex items-start gap-3 px-3 py-3 rounded-xl"
+                        style={{ background: '#fff', border: '1px solid #EBEBF0', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: bg }}>
+                          <Icon className="w-4 h-4" style={{ color }} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-sm font-bold text-slate-800 truncate">{subject}</p>
+                            <span className="text-[10px] text-slate-400 flex-shrink-0">{time}</span>
+                          </div>
+                          <p className="text-xs text-slate-500 truncate mt-0.5">{snippet}</p>
+                        </div>
                       </div>
-                      <div className="px-4 py-3 rounded-2xl text-sm text-slate-800 max-w-xs"
-                        style={{ background: '#fff', border: '1px solid #EBEBF0', borderRadius: '16px 16px 16px 4px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                        Tienes <strong>247 miembros activos</strong>, <strong>38 visitas hoy</strong> y <strong>$18,420 MXN</strong> de ingresos este mes.
-                      </div>
-                    </div>
-                    {/* User message */}
-                    <div className="flex justify-end">
-                      <div className="px-4 py-3 rounded-2xl text-sm text-white max-w-xs"
-                        style={{ background: 'linear-gradient(135deg,#6366f1,#7c3aed)', borderRadius: '16px 16px 4px 16px' }}>
-                        ¿Qué membresías vencen esta semana?
-                      </div>
-                    </div>
-                    {/* Bot message */}
-                    <div className="flex gap-2.5 items-start">
-                      <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                        style={{ background: 'linear-gradient(135deg,#F59E0B,#EF4444)' }}>
-                        <Zap style={{ width: 12, height: 12, color: '#fff', fill: '#fff' }} />
-                      </div>
-                      <div className="px-4 py-3 rounded-2xl text-sm text-slate-800 max-w-xs"
-                        style={{ background: '#fff', border: '1px solid #EBEBF0', borderRadius: '16px 16px 16px 4px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                        Hay <strong>7 membresías que vencen en los próximos 7 días</strong>. Puedes verlas en la sección Membresías.
-                      </div>
-                    </div>
-                    {/* Typing indicator */}
-                    <div className="flex gap-2.5 items-center">
-                      <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                        style={{ background: 'linear-gradient(135deg,#F59E0B,#EF4444)' }}>
-                        <Zap style={{ width: 12, height: 12, color: '#fff', fill: '#fff' }} />
-                      </div>
-                      <div className="px-4 py-3 flex gap-1.5"
-                        style={{ background: '#fff', border: '1px solid #EBEBF0', borderRadius: '16px 16px 16px 4px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                        {[0, 150, 300].map(d => (
-                          <span key={d} className="w-1.5 h-1.5 rounded-full animate-bounce"
-                            style={{ background: '#C4C4CF', animationDelay: `${d}ms`, animationDuration: '1s' }} />
-                        ))}
-                      </div>
-                    </div>
+                    ))}
                   </div>
                 </div>
 
                 {/* Floating badge */}
-                <div className="absolute -top-4 -right-4 bg-amber-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg"
-                  style={{ boxShadow: '0 4px 14px rgba(245,158,11,0.5)' }}>
+                <div className="absolute -top-4 -right-4 bg-indigo-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg"
+                  style={{ boxShadow: '0 4px 14px rgba(99,102,241,0.5)' }}>
                   Incluido en GemaSystem
                 </div>
               </div>
@@ -1536,67 +1514,51 @@ export default function Landing() {
               <div className="space-y-2">
                 {[
                   {
-                    id: 'import',
-                    icon: Download,
-                    color: '#EF4444',
-                    accentBg: '#1a0f0f',
-                    accentBorder: 'rgba(239,68,68,0.4)',
-                    badge: 'Funcionalidad destacada',
-                    badgeColor: '#FCA5A5',
-                    title: 'Carga masiva de usuarios desde archivos',
-                    desc: '¿Tienes 50, 200 o 500 miembros en un Excel? Nova los registra todos en segundos. Solo sube el archivo, Nova detecta las columnas automáticamente, omite duplicados por correo y agrega cada registro al sistema sin tocar nada uno por uno.',
-                    extra: (
-                      <div className="mt-3 space-y-2">
-                        {[
-                          { n: '1', text: 'Abre Nova desde el menú lateral del sistema' },
-                          { n: '2', text: 'Ve a "Importar datos" y elige el tipo: Miembros o Entrenadores' },
-                          { n: '3', text: 'Arrastra tu Excel o CSV — Nova muestra una vista previa' },
-                          { n: '4', text: 'Confirma y Nova importa todo, indicando cuántos se agregaron y cuántos se omitieron' },
-                        ].map(({ n, text }) => (
-                          <div key={n} className="flex items-start gap-2.5">
-                            <span className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-extrabold mt-0.5"
-                              style={{ background: 'rgba(239,68,68,0.25)', color: '#FCA5A5' }}>{n}</span>
-                            <p className="text-xs text-slate-400 leading-snug">{text}</p>
-                          </div>
-                        ))}
-                      </div>
-                    ),
-                  },
-                  {
-                    id: 'guide',
-                    icon: MessageSquare,
-                    color: '#6366F1',
-                    accentBg: '#0f1022',
-                    accentBorder: 'rgba(99,102,241,0.4)',
-                    badge: null,
-                    title: 'Guía del sistema 24/7',
-                    desc: 'Nova te explica paso a paso cómo usar cualquier función de GemaSystem — desde registrar una visita hasta exportar reportes — sin necesidad de buscar en manuales.',
-                    extra: null,
-                  },
-                  {
-                    id: 'insights',
-                    icon: TrendingUp,
-                    color: '#F59E0B',
-                    accentBg: '#131008',
-                    accentBorder: 'rgba(245,158,11,0.4)',
-                    badge: null,
-                    title: 'Respuestas inteligentes sobre tu negocio',
-                    desc: 'Pregunta en lenguaje natural sobre miembros activos, visitas, ingresos o cualquier métrica — Nova responde en segundos con información de tu gimnasio.',
-                    extra: null,
-                  },
-                  {
-                    id: 'ai',
-                    icon: Bot,
+                    id: 'welcome',
+                    icon: CheckCircle2,
                     color: '#10B981',
                     accentBg: '#091410',
                     accentBorder: 'rgba(16,185,129,0.4)',
                     badge: null,
-                    title: 'IA avanzada de respaldo',
-                    desc: 'Para análisis complejos y preguntas sobre tendencias, Nova usa Claude AI como motor — la misma inteligencia artificial de Anthropic — para darte respuestas detalladas.',
+                    title: 'Bienvenida automática',
+                    desc: 'Cuando registras un nuevo socio, recibe al instante un correo de bienvenida con los datos de su membresía — sin que tengas que redactar nada.',
+                    extra: null,
+                  },
+                  {
+                    id: 'reminders',
+                    icon: Clock,
+                    color: '#F59E0B',
+                    accentBg: '#131008',
+                    accentBorder: 'rgba(245,158,11,0.4)',
+                    badge: 'Configurable',
+                    title: 'Recordatorios de vencimiento',
+                    desc: 'Elige con cuántos días de anticipación se avisa a tus socios antes de que venza su membresía, desde Configuración → Notificaciones. El correo se envía solo, cada día.',
+                    extra: null,
+                  },
+                  {
+                    id: 'receipts',
+                    icon: CreditCard,
+                    color: '#6366F1',
+                    accentBg: '#0f1022',
+                    accentBorder: 'rgba(99,102,241,0.4)',
+                    badge: null,
+                    title: 'Recibos y pagos',
+                    desc: 'Cada pago exitoso genera un recibo automático por correo con el monto, el plan y la vigencia. Si un cobro falla, tú y tu socio reciben un aviso para regularizarlo.',
+                    extra: null,
+                  },
+                  {
+                    id: 'birthday',
+                    icon: Gift,
+                    color: '#EC4899',
+                    accentBg: '#1a0f16',
+                    accentBorder: 'rgba(236,72,153,0.4)',
+                    badge: null,
+                    title: 'Cumpleaños y renovaciones',
+                    desc: 'GemaSystem también felicita a tus socios el día de su cumpleaños y les invita a renovar cuando su membresía está por expirar — con plantillas ya integradas en el sistema.',
                     extra: null,
                   },
                 ].map(({ id, icon: Icon, color, accentBg, accentBorder, badge, title, desc, extra }) => {
-                  const isOpen = novaOpen === id
+                  const isOpen = emailOpen === id
                   return (
                     <div
                       key={id}
@@ -1608,7 +1570,7 @@ export default function Landing() {
                     >
                       <button
                         className="w-full flex items-center gap-3 px-4 py-3.5 text-left"
-                        onClick={() => setNovaOpen(isOpen ? null : id)}
+                        onClick={() => setEmailOpen(isOpen ? null : id)}
                       >
                         <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all"
                           style={{ background: color + (isOpen ? '25' : '18'), border: `1px solid ${color}${isOpen ? '40' : '28'}` }}>
@@ -1619,7 +1581,7 @@ export default function Landing() {
                             <p className="font-bold text-white text-sm leading-snug">{title}</p>
                             {badge && (
                               <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
-                                style={{ background: 'rgba(239,68,68,0.2)', color: '#FCA5A5', border: '1px solid rgba(239,68,68,0.3)' }}>
+                                style={{ background: 'rgba(99,102,241,0.2)', color: '#A5B4FC', border: '1px solid rgba(99,102,241,0.3)' }}>
                                 {badge}
                               </span>
                             )}
@@ -1649,10 +1611,227 @@ export default function Landing() {
             {/* Bottom stat pills */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
-                { val: 'Excel / CSV', lbl: 'Formatos de archivo aceptados', color: '#EF4444' },
-                { val: '500',         lbl: 'Registros en una sola carga',   color: '#F59E0B' },
-                { val: '24/7',        lbl: 'Disponible siempre',            color: '#6366F1' },
-                { val: 'Claude',      lbl: 'IA de Anthropic',               color: '#10B981' },
+                { val: '9',            lbl: 'Tipos de correo automático',   color: '#6366F1' },
+                { val: '0',            lbl: 'Correos que escribes a mano',  color: '#10B981' },
+                { val: 'Configurable', lbl: 'Días de anticipación',         color: '#F59E0B' },
+                { val: 'SSL',          lbl: 'Envío cifrado y seguro',       color: '#EC4899' },
+              ].map(({ val, lbl, color }) => (
+                <div key={lbl} className="rounded-2xl border border-white/8 p-5 text-center hover:-translate-y-1 transition-all duration-200 cursor-default"
+                  style={{ background: '#0d1117' }}>
+                  <p className="text-2xl font-extrabold leading-none mb-1" style={{ color }}>{val}</p>
+                  <p className="text-xs text-slate-500 leading-snug">{lbl}</p>
+                </div>
+              ))}
+            </div>
+
+          </div>
+        </section>
+
+        {/* ── WhatsApp Section ── */}
+        <section id="whatsapp" className="relative z-10 py-28 overflow-hidden">
+          {/* Glow background */}
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[400px] rounded-full opacity-10"
+              style={{ background: 'radial-gradient(ellipse,#25D366,transparent 70%)', filter: 'blur(80px)' }} />
+          </div>
+
+          <div className="relative max-w-6xl mx-auto px-6">
+
+            {/* Header */}
+            <div className="text-center mb-20">
+              <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 text-xs font-bold mb-6">
+                <MessageCircle className="w-3.5 h-3.5" /> Integración con WhatsApp · Nuevo
+              </div>
+              <h2 className="text-[clamp(2rem,6vw,3rem)] font-extrabold text-white leading-tight">
+                Tu gimnasio, también en{' '}
+                <span className="bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">WhatsApp</span>
+              </h2>
+              <p className="text-slate-400 mt-5 text-lg max-w-2xl mx-auto leading-relaxed">
+                Vincula el WhatsApp del gimnasio y deja que GemaSystem envíe automáticamente bienvenidas, recordatorios y avisos a tus socios por el canal que ya usan todos los días.
+              </p>
+            </div>
+
+            {/* Main split layout */}
+            <div className="grid lg:grid-cols-2 gap-10 items-center mb-20">
+
+              {/* Left — preview card */}
+              <div className="relative">
+                {/* WhatsApp chat mockup */}
+                <div className="rounded-2xl overflow-hidden shadow-2xl border border-white/8"
+                  style={{ boxShadow: '0 0 0 1px rgba(37,211,102,0.12), 0 32px 80px rgba(0,0,0,0.6)' }}>
+                  {/* Dark panel header */}
+                  <div className="flex items-center gap-3 px-5 py-4" style={{ background: '#0D1526' }}>
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                      style={{ background: 'linear-gradient(135deg,#25D366,#128C7E)', boxShadow: '0 4px 12px rgba(37,211,102,0.4)' }}>
+                      <MessageCircle style={{ width: 16, height: 16, color: '#fff' }} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-white leading-none">WhatsApp del gimnasio</p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                        <span className="text-[10px] font-medium" style={{ color: '#6EE7B7' }}>Conectado · Sesión activa</span>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Chat area */}
+                  <div className="p-5 space-y-4" style={{ background: '#F7F8FA' }}>
+                    {/* Automated message 1 */}
+                    <div className="flex gap-2.5 items-start">
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                        style={{ background: 'linear-gradient(135deg,#25D366,#128C7E)' }}>
+                        <MessageCircle style={{ width: 12, height: 12, color: '#fff' }} />
+                      </div>
+                      <div className="px-4 py-3 rounded-2xl text-sm text-slate-800 max-w-xs"
+                        style={{ background: '#fff', border: '1px solid #EBEBF0', borderRadius: '16px 16px 16px 4px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                        👋 ¡Hola, <strong>Carlos</strong>! Bienvenido en <strong>Fitness Pro</strong>. Tu membresía fue registrada. 🆔 Socio: <strong>FP-0231</strong> 💪
+                      </div>
+                    </div>
+                    {/* Automated message 2 */}
+                    <div className="flex gap-2.5 items-start">
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                        style={{ background: 'linear-gradient(135deg,#25D366,#128C7E)' }}>
+                        <MessageCircle style={{ width: 12, height: 12, color: '#fff' }} />
+                      </div>
+                      <div className="px-4 py-3 rounded-2xl text-sm text-slate-800 max-w-xs"
+                        style={{ background: '#fff', border: '1px solid #EBEBF0', borderRadius: '16px 16px 16px 4px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                        ⏳ Hola, <strong>Carlos</strong> — tu membresía vence en <strong>3 días</strong> (el 21/08). Renuévala en recepción.
+                      </div>
+                    </div>
+                    {/* Delivered indicator */}
+                    <div className="flex items-center gap-1.5 justify-end pr-1">
+                      <CheckCircle2 className="w-3.5 h-3.5" style={{ color: '#25D366' }} />
+                      <span className="text-[10px] font-medium text-slate-400">Entregado automáticamente</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Floating badge */}
+                <div className="absolute -top-4 -right-4 bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg"
+                  style={{ boxShadow: '0 4px 14px rgba(37,211,102,0.5)' }}>
+                  Incluido en GemaSystem
+                </div>
+              </div>
+
+              {/* Right — accordion benefits */}
+              <div className="space-y-2">
+                {[
+                  {
+                    id: 'connect',
+                    icon: ScanLine,
+                    color: '#25D366',
+                    accentBg: '#091410',
+                    accentBorder: 'rgba(37,211,102,0.4)',
+                    badge: 'Sin número nuevo',
+                    title: 'Vincula tu WhatsApp en segundos',
+                    desc: 'Conecta el WhatsApp del gimnasio escaneando un código QR, igual que WhatsApp Web. No necesitas contratar una API externa ni pedir un número nuevo — usas el que ya tienes.',
+                    extra: (
+                      <div className="mt-3 space-y-2">
+                        {[
+                          { n: '1', text: 'Entra a la sección WhatsApp del sistema' },
+                          { n: '2', text: 'Escanea el código QR con tu teléfono' },
+                          { n: '3', text: 'Tu WhatsApp queda conectado y listo para enviar' },
+                          { n: '4', text: 'Si se desconecta, vuelve a escanear cuando quieras' },
+                        ].map(({ n, text }) => (
+                          <div key={n} className="flex items-start gap-2.5">
+                            <span className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-extrabold mt-0.5"
+                              style={{ background: 'rgba(37,211,102,0.25)', color: '#6EE7B7' }}>{n}</span>
+                            <p className="text-xs text-slate-400 leading-snug">{text}</p>
+                          </div>
+                        ))}
+                      </div>
+                    ),
+                  },
+                  {
+                    id: 'welcome-qr',
+                    icon: Scan,
+                    color: '#10B981',
+                    accentBg: '#0a1a12',
+                    accentBorder: 'rgba(16,185,129,0.4)',
+                    badge: null,
+                    title: 'Bienvenida con código QR de acceso',
+                    desc: 'Al registrar un nuevo socio, GemaSystem le envía por WhatsApp un mensaje de bienvenida junto con su código QR — listo para presentar en recepción desde el primer día.',
+                    extra: null,
+                  },
+                  {
+                    id: 'reminders',
+                    icon: Clock,
+                    color: '#F59E0B',
+                    accentBg: '#131008',
+                    accentBorder: 'rgba(245,158,11,0.4)',
+                    badge: null,
+                    title: 'Recordatorios de vencimiento',
+                    desc: 'Tus socios reciben un WhatsApp automático cuando su membresía está por vencer o ya venció, con el mismo lenguaje cercano que usarías tú.',
+                    extra: null,
+                  },
+                  {
+                    id: 'history',
+                    icon: MessageSquare,
+                    color: '#6366F1',
+                    accentBg: '#0f1022',
+                    accentBorder: 'rgba(99,102,241,0.4)',
+                    badge: null,
+                    title: 'Historial de cada mensaje enviado',
+                    desc: 'Todos los mensajes automáticos — bienvenidas, recordatorios, cumpleaños y pagos — quedan guardados en un historial que puedes revisar cuando quieras.',
+                    extra: null,
+                  },
+                ].map(({ id, icon: Icon, color, accentBg, accentBorder, badge, title, desc, extra }) => {
+                  const isOpen = waOpen === id
+                  return (
+                    <div
+                      key={id}
+                      className="rounded-2xl border overflow-hidden transition-all duration-200"
+                      style={{
+                        background: isOpen ? accentBg : '#0d1117',
+                        borderColor: isOpen ? accentBorder : 'rgba(255,255,255,0.1)',
+                      }}
+                    >
+                      <button
+                        className="w-full flex items-center gap-3 px-4 py-3.5 text-left"
+                        onClick={() => setWaOpen(isOpen ? null : id)}
+                      >
+                        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all"
+                          style={{ background: color + (isOpen ? '25' : '18'), border: `1px solid ${color}${isOpen ? '40' : '28'}` }}>
+                          <Icon className="w-4 h-4" style={{ color }} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-bold text-white text-sm leading-snug">{title}</p>
+                            {badge && (
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
+                                style={{ background: 'rgba(37,211,102,0.2)', color: '#6EE7B7', border: '1px solid rgba(37,211,102,0.3)' }}>
+                                {badge}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <ChevronDown
+                          className="w-4 h-4 flex-shrink-0 transition-transform duration-300"
+                          style={{ color: isOpen ? color : '#475569', transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}
+                        />
+                      </button>
+                      <div style={{
+                        maxHeight: isOpen ? '400px' : '0px',
+                        overflow: 'hidden',
+                        transition: 'max-height 0.35s cubic-bezier(0.4,0,0.2,1)',
+                      }}>
+                        <div className="px-4 pb-4">
+                          <p className="text-slate-400 text-sm leading-relaxed">{desc}</p>
+                          {extra}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Bottom stat pills */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[
+                { val: 'QR',        lbl: 'Vinculación sin número nuevo', color: '#25D366' },
+                { val: '24/7',      lbl: 'Mensajes automáticos',         color: '#F59E0B' },
+                { val: 'Historial', lbl: 'Registro de cada envío',       color: '#6366F1' },
+                { val: 'Incluido',  lbl: 'Sin costo adicional',          color: '#10B981' },
               ].map(({ val, lbl, color }) => (
                 <div key={lbl} className="rounded-2xl border border-white/8 p-5 text-center hover:-translate-y-1 transition-all duration-200 cursor-default"
                   style={{ background: '#0d1117' }}>

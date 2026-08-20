@@ -13,7 +13,7 @@ class GymClass extends Model
     protected $table = 'classes';
 
     protected $fillable = [
-        'gym_id', 'name', 'description', 'trainer_id', 'capacity', 'duration', 'difficulty',
+        'gym_id', 'name', 'color', 'description', 'trainer_id', 'capacity', 'duration', 'difficulty',
         'type', 'member_id', 'total_sessions', 'start_date',
     ];
 

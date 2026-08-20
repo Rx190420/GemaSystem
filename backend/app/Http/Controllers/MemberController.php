@@ -67,7 +67,7 @@ class MemberController extends Controller
             $query->where('membership_type', $type);
         }
 
-        $query->orderBy('first_name');
+        $this->applySort($query, $request, ['first_name', 'membership_type', 'membership_end', 'status', 'created_at'], 'first_name');
 
         try {
             $members = (clone $query)
@@ -83,9 +83,9 @@ class MemberController extends Controller
                         ->orderByDesc('end_date')
                         ->limit(1),
                 ])
-                ->paginate($request->get('per_page', 20));
+                ->paginate($request->get('per_page', 12));
         } catch (\Throwable $e) {
-            $members = $query->paginate($request->get('per_page', 20));
+            $members = $query->paginate($request->get('per_page', 12));
             $members->getCollection()->each(fn($m) => $m->setRelation('labels', collect([])));
         }
 

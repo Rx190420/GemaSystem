@@ -7,7 +7,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost/DymonSystem/backend/public',
+        target: 'http://localhost/GemaSystem/backend/public',
         changeOrigin: true,
       },
     },

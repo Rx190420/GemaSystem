@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Foundation\Bus\DispatchesJobs;
 use Illuminate\Foundation\Validation\ValidatesRequests;
+use Illuminate\Http\Request;
 use Illuminate\Routing\Controller as BaseController;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -77,5 +78,23 @@ class Controller extends BaseController
             $rule->where('gym_id', $gymId);
         }
         return $rule;
+    }
+
+    /**
+     * Applies ?sort_by=&sort_dir= to a query builder, restricted to $allowed
+     * column names — prevents sorting by an arbitrary/unindexed or relation
+     * column via a hand-crafted request. Falls back to the table's normal
+     * default order when no (valid) sort param is present.
+     */
+    protected function applySort($query, Request $request, array $allowed, string $defaultColumn, string $defaultDir = 'asc')
+    {
+        $sortBy  = $request->get('sort_by');
+        $sortDir = $request->get('sort_dir') === 'desc' ? 'desc' : 'asc';
+
+        if ($sortBy && in_array($sortBy, $allowed, true)) {
+            return $query->orderBy($sortBy, $sortDir);
+        }
+
+        return $query->orderBy($defaultColumn, $defaultDir);
     }
 }

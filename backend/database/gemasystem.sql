@@ -85,8 +85,8 @@ INSERT IGNORE INTO `users`
   (`gym_id`,`username`,`email`,`password`,`role`,`account_status`,`extended_access`,`onboarding_completed`,`created_at`,`updated_at`)
 VALUES
   (NULL,
-   'dymon_console',
-   'ops@dymon.internal',
+   'gema_root7x',
+   'root7x@gemasystem.internal',
    '$2y$12$REPLACE.WITH.YOUR.OWN.BCRYPT.HASH.GENERATED.LOCALLY',
    'user',
    'active',

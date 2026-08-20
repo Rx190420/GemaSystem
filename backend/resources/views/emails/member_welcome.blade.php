@@ -7,8 +7,13 @@
 @endsection
 
 @section('content')
-  <p class="eyebrow">Nuevo miembro</p>
-  <h1 class="h1">¡Bienvenido, {{ $member->first_name }}!</h1>
+  <div class="hero">
+    <div class="icon-badge icon-badge-indigo">
+      <img src="{{ $ICON_USER_CHECK }}" width="26" height="26" alt="" style="display:inline-block;">
+    </div>
+    <p class="eyebrow">Nuevo miembro</p>
+    <h1 class="h1">¡Bienvenido, {{ $member->first_name }}!</h1>
+  </div>
   <p class="lead">Tu membresía ha sido registrada. A continuación encontrarás tu ID de miembro y código QR personal para registrar tus visitas.</p>
 
   {{-- ID de miembro --}}

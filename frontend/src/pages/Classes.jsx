@@ -4,6 +4,7 @@ import ClassesTab from '../components/classes/ClassesTab'
 import TrainerTable from '../components/classes/TrainerTable'
 import PrivateSessionProgress from '../components/classes/PrivateSessionProgress'
 import ClassAttendancePanel from '../components/classes/ClassAttendancePanel'
+import ClassModal from '../components/classes/ClassModal'
 
 const TABS = [
   ['agenda', 'Agenda'],
@@ -15,6 +16,7 @@ export default function Classes() {
   const [tab, setTab] = useState('agenda')
   const [progressTarget, setProgressTarget]     = useState(null)
   const [attendanceTarget, setAttendanceTarget] = useState(null)
+  const [editTarget, setEditTarget]             = useState(null)
 
   return (
     <div className="space-y-5">
@@ -32,7 +34,7 @@ export default function Classes() {
       </div>
 
       {tab === 'agenda' && (
-        <AgendaTab onOpenProgress={setProgressTarget} onOpenAttendance={setAttendanceTarget} />
+        <AgendaTab onOpenProgress={setProgressTarget} onOpenAttendance={setAttendanceTarget} onEditClass={setEditTarget} />
       )}
       {tab === 'clases' && (
         <ClassesTab onOpenProgress={setProgressTarget} onOpenAttendance={setAttendanceTarget} />
@@ -44,6 +46,9 @@ export default function Classes() {
       )}
       {attendanceTarget && (
         <ClassAttendancePanel gymClass={attendanceTarget} onClose={() => setAttendanceTarget(null)} />
+      )}
+      {editTarget && (
+        <ClassModal gymClass={editTarget} onClose={() => setEditTarget(null)} />
       )}
     </div>
   )

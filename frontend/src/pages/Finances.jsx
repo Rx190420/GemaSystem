@@ -7,7 +7,7 @@ import {
 } from 'recharts'
 import {
   TrendingUp, TrendingDown, Eye, EyeOff, Loader2, CreditCard,
-  ChevronLeft, ChevronRight, X, BarChart2, Activity, Award,
+  X, BarChart2, Activity, Award,
   DollarSign, CalendarDays, Zap, CalendarCheck, Plus, Pencil, Trash2, Search, User,
 } from 'lucide-react'
 import api from '../api/axios'
@@ -16,6 +16,9 @@ import { useSettingsStore } from '../store/settingsStore'
 import useLockBodyScroll from '../hooks/useLockBodyScroll'
 import ExportMenu from '../components/ExportMenu'
 import { exportToExcel, exportToPDF } from '../utils/exportUtils'
+import useSort from '../hooks/useSort'
+import SortableTh from '../components/SortableTh'
+import Pagination from '../components/Pagination'
 
 const MONTH_NAMES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
 const METHOD_LABELS  = { cash: 'Efectivo', card: 'Tarjeta', transfer: 'Transferencia' }
@@ -591,11 +594,15 @@ export default function Finances() {
   const { privacyMode, togglePrivacy, systemSettings } = useSettingsStore()
   const qc                              = useQueryClient()
   const [page, setPage]                 = useState(1)
+  const [pageSize, setPageSize]         = useState(12)
   const [monthFilter, setMonthFilter]   = useState('')
   const [originFilter, setOriginFilter] = useState('')
   const [chartType, setChartType]       = useState('area')
   const [exporting, setExporting]       = useState(false)
   const [modal, setModal]               = useState(null)   // null | 'new' | {ingreso object}
+  const [sort, onSort]                  = useSort('date', 'desc')
+  const handleSort = key => { onSort(key); setPage(1) }
+  const handlePageSize = n => { setPageSize(n); setPage(1) }
 
   const mask = val => privacyMode ? '••••' : val
 
@@ -605,9 +612,10 @@ export default function Finances() {
   })
 
   const txParams = {
-    page, per_page: 20,
+    page, per_page: pageSize,
     ...(monthFilter  && { month: monthFilter }),
     ...(originFilter && { origin: originFilter }),
+    sort_by: sort.by, sort_dir: sort.dir,
   }
 
   const { data: txData, isLoading: loadingTx } = useQuery({
@@ -1033,10 +1041,10 @@ export default function Finances() {
                       <thead>
                         <tr className="bg-gray-50 border-b-2 border-gray-100">
                           <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Miembro / Concepto</th>
-                          <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Fecha</th>
-                          <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Origen</th>
-                          <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Método</th>
-                          <th className="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Monto</th>
+                          <SortableTh sortKey="date" sort={sort} onSort={handleSort} className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Fecha</SortableTh>
+                          <SortableTh sortKey="origin" sort={sort} onSort={handleSort} className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Origen</SortableTh>
+                          <SortableTh sortKey="payment_method" sort={sort} onSort={handleSort} className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Método</SortableTh>
+                          <SortableTh sortKey="amount" sort={sort} onSort={handleSort} align="right" className="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Monto</SortableTh>
                           <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">Acciones</th>
                         </tr>
                       </thead>
@@ -1134,22 +1142,8 @@ export default function Finances() {
                     ))}
                   </div>
 
-                  {pagination && pagination.last > 1 && (
-                    <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 bg-gray-50/50">
-                      <p className="text-xs text-gray-500">
-                        Página {pagination.current} de {pagination.last} · {pagination.total} registros
-                      </p>
-                      <div className="flex gap-2">
-                        <button onClick={() => setPage(p => p - 1)} disabled={page <= 1}
-                          className="btn-secondary py-1.5 px-3 disabled:opacity-40">
-                          <ChevronLeft className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => setPage(p => p + 1)} disabled={page >= pagination.last}
-                          className="btn-secondary py-1.5 px-3 disabled:opacity-40">
-                          <ChevronRight className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
+                  {pagination && (
+                    <Pagination page={pagination.current} lastPage={pagination.last} total={pagination.total} onPageChange={setPage} itemLabel="registros" className="px-5" pageSize={pageSize} onPageSizeChange={handlePageSize} />
                   )}
                 </>
               )}

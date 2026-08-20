@@ -7,8 +7,13 @@
 @endsection
 
 @section('content')
-  <p class="eyebrow">Solicitud de prueba</p>
-  <h1 class="h1">¡Tu cuenta está lista!</h1>
+  <div class="hero">
+    <div class="icon-badge icon-badge-green">
+      <img src="{{ $ICON_CHECK_CIRCLE }}" width="26" height="26" alt="" style="display:inline-block;">
+    </div>
+    <p class="eyebrow">Solicitud de prueba</p>
+    <h1 class="h1">Tu cuenta está lista</h1>
+  </div>
   <p class="lead">La solicitud de acceso para <strong>{{ $gymName }}</strong> ha sido aprobada. A continuación encontrarás tus credenciales. Guárdalas en un lugar seguro.</p>
 
   <div class="box">

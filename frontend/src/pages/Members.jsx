@@ -11,12 +11,17 @@ import {
 } from 'recharts'
 import {
   Plus, Search, X, Edit2, Trash2, QrCode, Check,
-  User, Phone, Mail, Calendar, Loader2, ChevronLeft, ChevronRight, ChevronDown,
+  User, Phone, Mail, Calendar, Loader2, ChevronDown,
   ExternalLink, Users, UserCheck, UserX, Shield,
   BarChart2, TrendingUp, Activity, Clock, Footprints, MessageCircle, Percent,
 } from 'lucide-react'
 import ChipSelect from '../components/ChipSelect'
 import { FixedPanel, PanelHeader, EmptyState } from '../components/Panel'
+import MembershipTypeBadge from '../components/MembershipTypeBadge'
+import useMembershipTypeColors from '../hooks/useMembershipTypeColors'
+import useSort from '../hooks/useSort'
+import SortableTh from '../components/SortableTh'
+import Pagination from '../components/Pagination'
 import { QRCodeCanvas } from 'qrcode.react'
 import toast from 'react-hot-toast'
 import api from '../api/axios'
@@ -30,7 +35,6 @@ const MONTH_NAMES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct'
 
 const STATUS_BADGE = { active: 'badge-green', inactive: 'badge-gray', suspended: 'badge-red' }
 const STATUS_LABEL = { active: 'Activo', inactive: 'Inactivo', suspended: 'Suspendido' }
-const TYPE_BADGE   = { basic: 'badge-blue', premium: 'badge-purple', vip: 'badge-yellow' }
 const TYPE_LABEL   = { basic: 'Básica', premium: 'Premium', vip: 'VIP' }
 
 // Plan duration labels and badges (active_plan_type from memberships table)
@@ -587,9 +591,13 @@ function QRModal({ member, onClose }) {
           <div className="text-center">
             <p className="font-semibold text-gray-900">{member.first_name} {member.last_name}</p>
             {member.member_code && <p className="text-xs font-mono text-indigo-600 mt-0.5">{member.member_code}</p>}
-            <span className={`${member.active_plan_type ? (PLAN_BADGE[member.active_plan_type] ?? 'badge-blue') : (TYPE_BADGE[member.membership_type] ?? 'badge-gray')} mt-1`}>
-              {member.active_plan_type ? (PLAN_LABEL[member.active_plan_type] ?? member.active_plan_type) : TYPE_LABEL[member.membership_type]}
-            </span>
+            {member.active_plan_type ? (
+              <span className={`${PLAN_BADGE[member.active_plan_type] ?? 'badge-blue'} mt-1`}>
+                {PLAN_LABEL[member.active_plan_type] ?? member.active_plan_type}
+              </span>
+            ) : (
+              <MembershipTypeBadge type={member.membership_type} className="mt-1" />
+            )}
           </div>
           {member.qr_token ? (
             <div className="p-4 bg-white border-2 border-gray-100 rounded-xl">
@@ -630,13 +638,17 @@ export default function Members() {
   const [statusFilter, setStatus] = useState('')
   const [typeFilter, setType]     = useState('')
   const [page, setPage]           = useState(1)
+  const [pageSize, setPageSize]   = useState(12)
+  const [sort, onSort]            = useSort()
+  const handleSort = key => { onSort(key); setPage(1) }
+  const handlePageSize = n => { setPageSize(n); setPage(1) }
   const [formModal, setFormModal]         = useState(null)
   const [qrModal, setQrModal]             = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [trendType, setTrendType]       = useState('bar')
   const [exporting, setExporting]       = useState(false)
 
-  const queryParams = { search, status: statusFilter, membership_type: typeFilter, page, per_page: 15 }
+  const queryParams = { search, status: statusFilter, membership_type: typeFilter, page, per_page: pageSize, sort_by: sort.by, sort_dir: sort.dir }
 
   const { data, isLoading } = useQuery({
     queryKey: ['members', queryParams],
@@ -648,6 +660,11 @@ export default function Members() {
     queryKey: ['member-summary'],
     queryFn: () => api.get('/members/summary').then(r => r.data),
   })
+
+  // Colors saved per membership type (Settings → Precios → Tipos de membresía) —
+  // used to color the "Por tipo de membresía" pie and every type badge below by
+  // each type's own color instead of a fixed 3-entry basic/premium/vip palette.
+  const typeColorByName = useMembershipTypeColors()
 
   const deleteMutation = useMutation({
     mutationFn: id => api.delete(`/members/${id}`),
@@ -668,7 +685,7 @@ export default function Members() {
   const typeData = (summary?.by_type ?? []).map(r => ({
     name:  TYPE_LABEL[r.type] ?? r.type,
     count: r.count,
-    fill:  TYPE_CHART_COLORS[r.type] ?? '#94A3B8',
+    fill:  typeColorByName[r.type] || TYPE_CHART_COLORS[r.type] || '#94A3B8',
   }))
   const typeTotal = typeData.reduce((sum, d) => sum + d.count, 0)
 
@@ -867,12 +884,12 @@ export default function Members() {
               <table className="w-full text-sm border-collapse">
                 <thead>
                   <tr className="bg-gray-50 border-b-2 border-gray-100">
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Miembro</th>
+                    <SortableTh sortKey="first_name" sort={sort} onSort={handleSort} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Miembro</SortableTh>
                     <th className="w-40 text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Contacto</th>
-                    <th className="w-40 text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Membresía</th>
-                    <th className="w-40 text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Vencimiento</th>
+                    <SortableTh sortKey="membership_type" sort={sort} onSort={handleSort} className="w-40 text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Membresía</SortableTh>
+                    <SortableTh sortKey="membership_end" sort={sort} onSort={handleSort} className="w-40 text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Vencimiento</SortableTh>
                     <th className="w-40 text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden xl:table-cell">Etiquetas</th>
-                    <th className="w-40 text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Estado</th>
+                    <SortableTh sortKey="status" sort={sort} onSort={handleSort} className="w-40 text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Estado</SortableTh>
                     <th className="w-40 px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Acciones</th>
                   </tr>
                 </thead>
@@ -910,9 +927,7 @@ export default function Members() {
                       </td>
                       <td className="w-40 px-4 py-3.5 align-top">
                         <div className="flex flex-col items-start gap-1">
-                          <span className={`${TYPE_BADGE[m.membership_type?.toLowerCase()] ?? 'badge-indigo'}`}>
-                            {m.membership_type ?? 'Sin tipo'}
-                          </span>
+                          <MembershipTypeBadge type={m.membership_type} />
                           {m.active_plan_type && (
                             <span className={`${PLAN_BADGE[m.active_plan_type] ?? 'badge-blue'} text-xs`}>
                               {PLAN_LABEL[m.active_plan_type] ?? m.active_plan_type}
@@ -1024,9 +1039,7 @@ export default function Members() {
                       )}
 
                       <div className="flex flex-wrap gap-1 mt-2">
-                        <span className={TYPE_BADGE[m.membership_type?.toLowerCase()] ?? 'badge-indigo'}>
-                          {m.membership_type ?? 'Sin tipo'}
-                        </span>
+                        <MembershipTypeBadge type={m.membership_type} />
                         {m.active_plan_type && (
                           <span className={`${PLAN_BADGE[m.active_plan_type] ?? 'badge-blue'} text-xs`}>
                             {PLAN_LABEL[m.active_plan_type] ?? m.active_plan_type}
@@ -1093,20 +1106,8 @@ export default function Members() {
               ))}
             </div>
 
-            {pagination && pagination.last > 1 && (
-              <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 bg-gray-50/50">
-                <p className="text-xs text-gray-500">
-                  Página {pagination.current} de {pagination.last} · {pagination.total} total
-                </p>
-                <div className="flex gap-2">
-                  <button onClick={() => setPage(p => p - 1)} disabled={page <= 1} className="btn-secondary py-1.5 px-3 disabled:opacity-40">
-                    <ChevronLeft className="w-4 h-4" />
-                  </button>
-                  <button onClick={() => setPage(p => p + 1)} disabled={page >= pagination.last} className="btn-secondary py-1.5 px-3 disabled:opacity-40">
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
+            {pagination && (
+              <Pagination page={pagination.current} lastPage={pagination.last} total={pagination.total} onPageChange={setPage} itemLabel="miembros" pageSize={pageSize} onPageSizeChange={handlePageSize} />
             )}
           </>
         )}

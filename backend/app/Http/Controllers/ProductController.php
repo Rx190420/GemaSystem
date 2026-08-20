@@ -45,7 +45,7 @@ class ProductController extends Controller
 
         $products = $query->withSum('sales as units_sold', 'quantity')
             ->orderBy('name')
-            ->paginate($request->get('per_page', 24));
+            ->paginate($request->get('per_page', 12));
 
         return response()->json($products);
     }

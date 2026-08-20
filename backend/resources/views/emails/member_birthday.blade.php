@@ -7,16 +7,20 @@
 @endsection
 
 @section('content')
-  <p class="eyebrow">¡Un día especial!</p>
-  <h1 class="h1">¡Feliz cumpleaños, {{ $member->first_name }}! 🎂</h1>
+  <div class="hero">
+    <div class="icon-badge icon-badge-purple">
+      <img src="{{ $ICON_GIFT }}" width="26" height="26" alt="" style="display:inline-block;">
+    </div>
+    <p class="eyebrow">Un día especial</p>
+    <h1 class="h1">¡Feliz cumpleaños, {{ $member->first_name }}!</h1>
+  </div>
   <p class="lead">
     Todo el equipo{{ $gymName ? " de <strong>{$gymName}</strong>" : '' }} te desea un día increíble lleno de energía y alegría.
-    ¡Gracias por ser parte de nuestra comunidad!
+    Gracias por ser parte de nuestra comunidad.
   </p>
 
-  <div style="text-align:center;padding:28px 20px;background:#fdf4ff;border:1px solid #e9d5ff;border-radius:8px;margin-bottom:20px;">
-    <div style="font-size:52px;line-height:1;margin-bottom:12px;">🎉🎂🎉</div>
-    <div style="font-size:20px;font-weight:800;color:#7c3aed;">¡Feliz Cumpleaños!</div>
+  <div style="text-align:center;padding:24px 20px;background:#fdf4ff;border:1px solid #e9d5ff;border-radius:8px;margin-bottom:20px;">
+    <div style="font-size:20px;font-weight:800;color:#7c3aed;">¡Feliz cumpleaños!</div>
     <div style="font-size:14px;color:#9333ea;margin-top:6px;">{{ $member->first_name }} {{ $member->last_name }}</div>
   </div>
 
@@ -35,6 +39,6 @@
   </div>
 
   <div class="notice green">
-    <p class="notice-text">💪 ¡Sigue entrenando fuerte! Tu constancia es lo que te ha traído hasta aquí.</p>
+    <p class="notice-text">Sigue entrenando fuerte — tu constancia es lo que te ha traído hasta aquí.</p>
   </div>
 @endsection

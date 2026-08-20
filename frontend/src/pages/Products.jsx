@@ -6,7 +6,7 @@ import {
 } from 'recharts'
 import {
   Plus, Search, X, Package, Pencil, Trash2, ShoppingCart, Loader2,
-  ChevronLeft, ChevronRight, AlertTriangle, DollarSign,
+  AlertTriangle, DollarSign,
   TrendingUp, Boxes, BarChart3, Tag,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -14,6 +14,9 @@ import api from '../api/axios'
 import ConfirmModal from '../components/ConfirmModal'
 import SaleCartModal from '../components/SaleCartModal'
 import useLockBodyScroll from '../hooks/useLockBodyScroll'
+import useSort from '../hooks/useSort'
+import SortableTh from '../components/SortableTh'
+import Pagination from '../components/Pagination'
 
 const METHOD_LABELS = { cash: 'Efectivo', card: 'Tarjeta', transfer: 'Transferencia' }
 const STATUS_LABEL  = { active: 'Activo', inactive: 'Inactivo' }
@@ -445,6 +448,7 @@ export default function Products() {
   const qc = useQueryClient()
   const [view, setView]                 = useState('inventory') // 'inventory' | 'sales'
   const [page, setPage]                 = useState(1)
+  const [pageSize, setPageSize]         = useState(12)
   const [search, setSearch]             = useState('')
   const [categoryFilter, setCategory]   = useState('')
   const [statusFilter, setStatus]       = useState('')
@@ -455,9 +459,14 @@ export default function Products() {
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [detailTarget, setDetailTarget] = useState(null)
   const [salesPage, setSalesPage]       = useState(1)
+  const [salesPageSize, setSalesPageSize] = useState(12)
+  const [salesSort, onSalesSort]        = useSort('date', 'desc')
+  const handleSalesSort = key => { onSalesSort(key); setSalesPage(1) }
+  const handlePageSize = n => { setPageSize(n); setPage(1) }
+  const handleSalesPageSize = n => { setSalesPageSize(n); setSalesPage(1) }
 
   const params = {
-    page, per_page: 20,
+    page, per_page: pageSize,
     ...(search.trim() && { search: search.trim() }),
     ...(categoryFilter && { category: categoryFilter }),
     ...(statusFilter && { status: statusFilter }),
@@ -478,8 +487,8 @@ export default function Products() {
   })
 
   const { data: salesData, isLoading: loadingSales } = useQuery({
-    queryKey: ['product-sales', salesPage],
-    queryFn: () => api.get('/product-sales', { params: { page: salesPage, per_page: 20 } }).then(r => r.data),
+    queryKey: ['product-sales', salesPage, salesPageSize, salesSort],
+    queryFn: () => api.get('/product-sales', { params: { page: salesPage, per_page: salesPageSize, sort_by: salesSort.by, sort_dir: salesSort.dir } }).then(r => r.data),
     keepPreviousData: true,
     enabled: view === 'sales',
   })
@@ -648,14 +657,8 @@ export default function Products() {
             </div>
           )}
 
-          {pagination && pagination.last > 1 && (
-            <div className="flex items-center justify-between px-4 py-3">
-              <p className="text-xs text-gray-500">Página {pagination.current} de {pagination.last} · {pagination.total} productos</p>
-              <div className="flex gap-2">
-                <button onClick={() => setPage(p => p - 1)} disabled={page <= 1} className="btn-secondary py-1.5 px-3 disabled:opacity-40"><ChevronLeft className="w-4 h-4" /></button>
-                <button onClick={() => setPage(p => p + 1)} disabled={page >= pagination.last} className="btn-secondary py-1.5 px-3 disabled:opacity-40"><ChevronRight className="w-4 h-4" /></button>
-              </div>
-            </div>
+          {pagination && (
+            <Pagination page={pagination.current} lastPage={pagination.last} total={pagination.total} onPageChange={setPage} itemLabel="productos" pageSize={pageSize} onPageSizeChange={handlePageSize} />
           )}
         </>
       ) : (
@@ -676,11 +679,11 @@ export default function Products() {
                     <tr className="bg-gray-50 border-b-2 border-gray-100">
                       <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Producto</th>
                       <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Socio</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Cant.</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Total</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Ganancia</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Método</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Fecha</th>
+                      <SortableTh sortKey="quantity" sort={salesSort} onSort={handleSalesSort} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Cant.</SortableTh>
+                      <SortableTh sortKey="total_amount" sort={salesSort} onSort={handleSalesSort} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Total</SortableTh>
+                      <SortableTh sortKey="profit" sort={salesSort} onSort={handleSalesSort} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Ganancia</SortableTh>
+                      <SortableTh sortKey="payment_method" sort={salesSort} onSort={handleSalesSort} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Método</SortableTh>
+                      <SortableTh sortKey="date" sort={salesSort} onSort={handleSalesSort} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Fecha</SortableTh>
                     </tr>
                   </thead>
                   <tbody>
@@ -734,14 +737,8 @@ export default function Products() {
                 ))}
               </div>
 
-              {salesPagination && salesPagination.last > 1 && (
-                <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 bg-gray-50/50">
-                  <p className="text-xs text-gray-500">Página {salesPagination.current} de {salesPagination.last} · {salesPagination.total} ventas</p>
-                  <div className="flex gap-2">
-                    <button onClick={() => setSalesPage(p => p - 1)} disabled={salesPage <= 1} className="btn-secondary py-1.5 px-3 disabled:opacity-40"><ChevronLeft className="w-4 h-4" /></button>
-                    <button onClick={() => setSalesPage(p => p + 1)} disabled={salesPage >= salesPagination.last} className="btn-secondary py-1.5 px-3 disabled:opacity-40"><ChevronRight className="w-4 h-4" /></button>
-                  </div>
-                </div>
+              {salesPagination && (
+                <Pagination page={salesPagination.current} lastPage={salesPagination.last} total={salesPagination.total} onPageChange={setSalesPage} itemLabel="ventas" pageSize={salesPageSize} onPageSizeChange={handleSalesPageSize} />
               )}
             </>
           )}

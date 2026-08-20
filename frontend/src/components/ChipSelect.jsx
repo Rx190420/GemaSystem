@@ -63,16 +63,24 @@ export default function ChipSelect({
         const label = getLabel(opt)
         const sub   = subLabel ? subLabel(opt) : null
         const sel   = value === label
+        const color = typeof opt === 'object' ? opt.color : null
+
         return (
           <button
             type="button"
             key={typeof opt === 'string' ? opt : opt.id}
             onClick={() => onChange(label)}
             className={`px-3 py-1.5 rounded-full border-2 text-xs font-medium transition-all flex items-center gap-1
-              ${sel
+              ${color ? '' : sel
                 ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
                 : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:text-gray-800'}`}
+            style={color ? {
+              borderColor: sel ? color : `color-mix(in srgb, ${color} 35%, transparent)`,
+              background: sel ? `color-mix(in srgb, ${color} 14%, transparent)` : 'transparent',
+              color: sel ? color : `color-mix(in srgb, ${color} 75%, #6B7280)`,
+            } : undefined}
           >
+            {color && <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />}
             {sel && <Check className="w-3 h-3 flex-shrink-0" strokeWidth={3} />}
             {label}
             {sub && <span className="opacity-60 ml-0.5">{sub}</span>}

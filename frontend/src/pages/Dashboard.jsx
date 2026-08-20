@@ -13,6 +13,8 @@ import { useAuthStore } from '../store/authStore'
 import { useSettingsStore } from '../store/settingsStore'
 import ActivityGraph from '../components/ActivityGraph'
 import { Panel, PanelHeader, FixedPanel, EmptyState } from '../components/Panel'
+import MembershipTypeBadge from '../components/MembershipTypeBadge'
+import useMembershipTypeColors from '../hooks/useMembershipTypeColors'
 import api from '../api/axios'
 
 const TYPE_COLORS  = { basic: '#6366F1', premium: '#8B5CF6', vip: '#F59E0B' }
@@ -87,19 +89,6 @@ function StatCard({ icon: Icon, title, value, sub, sub2, change, accent = 'viole
   )
 }
 
-function TypeBadge({ type }) {
-  const styles = {
-    basic:   'bg-indigo-50 text-indigo-700',
-    premium: 'bg-violet-50 text-violet-700',
-    vip:     'bg-amber-50 text-amber-700',
-  }
-  return (
-    <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${styles[type] ?? 'bg-gray-100 text-gray-700'}`}>
-      {TYPE_LABELS[type] ?? type}
-    </span>
-  )
-}
-
 /* ── Chart theme ── */
 const axisStyle = { tick: { fontSize: 10, fill: '#94A3B8', fontFamily: 'Sora' }, tickLine: false, axisLine: false }
 const tipStyle  = {
@@ -128,6 +117,7 @@ export default function Dashboard() {
     queryFn: () => api.get('/dashboard/stats').then(r => r.data),
     refetchInterval: 60_000,
   })
+  const typeColors = useMembershipTypeColors()
 
   if (isLoading) return (
     <div className="flex items-center justify-center h-64">
@@ -150,7 +140,11 @@ export default function Dashboard() {
 
   const revenueData = (revenue_by_month ?? []).map(r => ({ name: MONTH_NAMES[r.month - 1], total: parseFloat(r.total) }))
   const visitsData  = (visits_by_day ?? []).map(v => ({ date: fmtDate(v.date), total: v.count }))
-  const pieData     = (members_by_type ?? []).map(m => ({ name: TYPE_LABELS[m.membership_type] ?? m.membership_type, value: m.count, fill: TYPE_COLORS[m.membership_type] ?? '#94A3B8' }))
+  const pieData     = (members_by_type ?? []).map(m => ({
+    name: TYPE_LABELS[m.membership_type] ?? m.membership_type,
+    value: m.count,
+    fill: typeColors[m.membership_type] || TYPE_COLORS[m.membership_type] || '#94A3B8',
+  }))
   const methodData  = revenue_by_method ?? []
   const methodTotal = methodData.reduce((s, x) => s + x.total, 0)
 
@@ -312,7 +306,7 @@ export default function Dashboard() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold text-gray-800 truncate">{m.name}</p>
-                    <TypeBadge type={m.membership_type} />
+                    <MembershipTypeBadge type={m.membership_type} />
                   </div>
                   <span className="text-xs font-bold tabular-nums flex-shrink-0 text-red-500">
                     {m.days_since === null ? 'nunca' : `${m.days_since}d`}
@@ -389,7 +383,7 @@ export default function Dashboard() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold text-gray-800 truncate">{v.member}</p>
-                    <TypeBadge type={v.membership_type} />
+                    <MembershipTypeBadge type={v.membership_type} />
                   </div>
                   <div className="text-right flex-shrink-0">
                     <p className="text-xs font-bold tabular-nums" style={{ color: 'var(--color-primary-600)' }}>{v.visits}</p>

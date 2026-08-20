@@ -13,16 +13,21 @@
 @endsection
 
 @section('content')
-  <p class="eyebrow">{{ $isToday ? 'Vence hoy' : ($isUrgent ? 'Vencimiento próximo' : 'Recordatorio') }}</p>
-  <h1 class="h1">
-    @if($isToday)
-      Tu membresía vence hoy
-    @elseif($isUrgent)
-      Tu membresía está por vencer
-    @else
-      Recordatorio de membresía
-    @endif
-  </h1>
+  <div class="hero">
+    <div class="icon-badge {{ $isToday || $isUrgent ? 'icon-badge-red' : 'icon-badge-indigo' }}">
+      <img src="{{ $isToday || $isUrgent ? $ICON_CLOCK_URGENT : $ICON_CLOCK }}" width="26" height="26" alt="" style="display:inline-block;">
+    </div>
+    <p class="eyebrow">{{ $isToday ? 'Vence hoy' : ($isUrgent ? 'Vencimiento próximo' : 'Recordatorio') }}</p>
+    <h1 class="h1">
+      @if($isToday)
+        Tu membresía vence hoy
+      @elseif($isUrgent)
+        Tu membresía está por vencer
+      @else
+        Recordatorio de membresía
+      @endif
+    </h1>
+  </div>
   <p class="lead">
     @if($isToday)
       Tu membresía vence el día de hoy. Renuévala en recepción para seguir entrenando sin interrupciones.

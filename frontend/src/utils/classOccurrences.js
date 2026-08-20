@@ -79,3 +79,29 @@ export function getOccurrencesInRange(classes, rangeStart, rangeEnd) {
     return at.localeCompare(bt)
   })
 }
+
+/**
+ * Derives whether an occurrence is pending, happening right now, already
+ * finished or missed.
+ *
+ * Private sessions (`kind: 'session'`) carry an explicit, manually-set status
+ * (pending/completed/missed) — that's returned as-is. Recurring group classes
+ * (`kind: 'schedule'`) have no persisted per-date state, so the status is
+ * derived by comparing the occurrence's date + start/end time against now.
+ */
+export function getOccurrenceStatus(occ, now = new Date()) {
+  if (occ.kind === 'session') {
+    return occ.session.status ?? 'pending'
+  }
+
+  const day = parseYMD(occ.date)
+  const [sh, sm] = (occ.schedule.start_time ?? '00:00').slice(0, 5).split(':').map(Number)
+  const [eh, em] = (occ.schedule.end_time   ?? '23:59').slice(0, 5).split(':').map(Number)
+
+  const start = new Date(day); start.setHours(sh, sm, 0, 0)
+  const end   = new Date(day); end.setHours(eh, em, 0, 0)
+
+  if (now < start) return 'pending'
+  if (now > end)   return 'completed'
+  return 'ongoing'
+}

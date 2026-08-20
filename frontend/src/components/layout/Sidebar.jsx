@@ -177,12 +177,13 @@ export default function Sidebar({ collapsed, onToggle }) {
         {/* Collapse toggle */}
         <button
           onClick={onToggle}
-          className={`w-full flex items-center py-2 rounded-xl transition-all duration-200 mt-1 [touch-action:manipulation] ${collapsed ? 'justify-center' : 'justify-end px-3'}`}
+          className={`w-full flex items-center py-2 rounded-xl transition-all duration-200 mt-1 [touch-action:manipulation] ${collapsed ? 'justify-center' : 'justify-between px-3'}`}
           style={{ color: '#334155' }}
           title={collapsed ? 'Expandir' : 'Colapsar'}
           onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.color = '#64748B' }}
           onMouseLeave={e => { e.currentTarget.style.background = ''; e.currentTarget.style.color = '#334155' }}
         >
+          {!collapsed && <span style={{ fontSize: '12px' }}>Colapsar menú</span>}
           {collapsed
             ? <ChevronRight style={{ width: '16px', height: '16px' }} />
             : <ChevronLeft  style={{ width: '16px', height: '16px' }} />

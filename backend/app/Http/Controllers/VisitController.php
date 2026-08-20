@@ -113,7 +113,8 @@ class VisitController extends Controller
             $query->where('visit_date', '<=', $to);
         }
 
-        $visits = $query->orderByDesc('visit_date')->paginate($request->get('per_page', 20));
+        $this->applySort($query, $request, ['visit_date', 'visit_type', 'price'], 'visit_date', 'desc');
+        $visits = $query->paginate($request->get('per_page', 12));
 
         $today     = now()->toDateString();
         $memberIds = $visits->getCollection()->pluck('member_id')->unique()->filter()->values();

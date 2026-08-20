@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Setting;
 use App\Models\WhatsAppLog;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -126,12 +127,14 @@ class WhatsAppController extends Controller
         }
     }
 
-    public function logs()
+    public function logs(Request $request)
     {
         // BelongsToGym + GymScope handle isolation automatically:
         //   free gyms  → shared DB + WHERE gym_id = X
         //   paid gyms  → tenant DB (no gym_id column)
-        $logs = WhatsAppLog::orderByDesc('sent_at')->paginate(50);
+        $query = WhatsAppLog::query();
+        $this->applySort($query, $request, ['recipient_name', 'message_type', 'sent_at'], 'sent_at', 'desc');
+        $logs = $query->paginate($request->get('per_page', 12));
         return response()->json($logs);
     }
 

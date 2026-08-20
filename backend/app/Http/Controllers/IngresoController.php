@@ -39,9 +39,9 @@ class IngresoController extends Controller
             $query->where('date', '<=', $to);
         }
 
-        $ingresos = $query->orderByDesc('date')
-            ->orderByDesc('created_at')
-            ->paginate($request->get('per_page', 25));
+        $this->applySort($query, $request, ['date', 'origin', 'payment_method', 'amount'], 'date', 'desc');
+        $ingresos = $query->orderByDesc('created_at') // stable tiebreaker among same-value rows
+            ->paginate($request->get('per_page', 12));
 
         $ingresos->getCollection()->transform(fn ($i) => [
             'id'             => $i->id,
