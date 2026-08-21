@@ -505,12 +505,7 @@ class StripeController extends Controller
                 'plan_type'            => $user->gym?->plan_type ?? 'paid',
                 'onboarding_completed' => (bool) $user->onboarding_completed,
             ],
-        ])->cookie(
-            'gemasystem_token', $token,
-            0, '/', null,
-            (bool) env('SESSION_SECURE_COOKIE', false),
-            true, false, 'Lax'
-        );
+        ])->cookie(...AuthController::authCookie($token));
     }
 
     // ── Webhook handlers ──────────────────────────────────────────────────────

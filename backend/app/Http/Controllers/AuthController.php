@@ -228,19 +228,30 @@ class AuthController extends Controller
     /**
      * Parámetros de la cookie de autenticación.
      * lifetime=0 → cookie de sesión (se borra al cerrar el navegador).
+     *
+     * Frontend (Vercel) y backend (Railway) viven en dominios distintos, así
+     * que esto es una petición cross-site, no solo cross-origin. Una cookie
+     * SameSite=Lax (o Strict) nunca se envía en un fetch/XHR cross-site —
+     * solo en navegaciones de nivel superior — así que el login parecía
+     * funcionar (el Set-Cookie sí llega) pero la siguiente petición ya no la
+     * incluía, dando 401 y deslogueando al instante. SameSite=None es la
+     * única opción que un navegador acepta ahí, y None exige Secure=true
+     * (por eso va atado a la misma env var, no a 'Strict' como antes).
      */
-    private static function authCookie(string $token): array
+    public static function authCookie(string $token): array
     {
+        $secure = (bool) env('SESSION_SECURE_COOKIE', false);
+
         return [
             'gemasystem_token',
             $token,
             0,      // lifetime en minutos (0 = session cookie)
             '/',
             null,
-            (bool) env('SESSION_SECURE_COOKIE', false),
+            $secure,
             true,   // HttpOnly
             false,
-            (bool) env('SESSION_SECURE_COOKIE', false) ? 'Strict' : 'Lax',
+            $secure ? 'None' : 'Lax',
         ];
     }
 
