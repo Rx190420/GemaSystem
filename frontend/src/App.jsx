@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useAuthStore } from './store/authStore'
 import Layout from './components/layout/Layout'
 import PageLoader from './components/PageLoader'
+import { markPageLoaderDone } from './lib/pageLoaderSignal'
 import Landing from './pages/Landing'
 import Dashboard from './pages/Dashboard'
 import Members from './pages/Members'
@@ -24,6 +25,9 @@ import Profile from './pages/Profile'
 import Terminos from './pages/Terminos'
 import Privacidad from './pages/Privacidad'
 import OnboardingWizard from './components/OnboardingWizard'
+import ErrorBoundary from './components/ErrorBoundary'
+import NotFound from './pages/errors/NotFound'
+import Forbidden from './pages/errors/Forbidden'
 
 // ── Route Guards ──────────────────────────────────────────────────────────────
 
@@ -34,12 +38,16 @@ function GuestRoute({ children }) {
   return <Navigate to={`/g/${sessionHash}/panel`} replace />
 }
 
+// Unauthenticated visitors still bounce to "/" (that's a login prompt, not an
+// error). An authenticated user hitting the wrong tenant/role, though, gets a
+// real 403 instead of a silent redirect — they're logged in, just not
+// allowed *here*.
 function HashGuard({ children }) {
   const { isAuthenticated, isOperator, sessionHash } = useAuthStore()
   const { hash } = useParams()
   if (!isAuthenticated)      return <Navigate to="/" replace />
-  if (isOperator)            return <Navigate to="/" replace />
-  if (hash !== sessionHash)  return <Navigate to="/" replace />
+  if (isOperator)            return <Forbidden />
+  if (hash !== sessionHash)  return <Forbidden />
   return children
 }
 
@@ -47,8 +55,8 @@ function OperatorHashGuard({ children }) {
   const { isAuthenticated, isOperator, operatorHash } = useAuthStore()
   const { hash } = useParams()
   if (!isAuthenticated)      return <Navigate to="/" replace />
-  if (!isOperator)           return <Navigate to="/" replace />
-  if (hash !== operatorHash) return <Navigate to="/" replace />
+  if (!isOperator)           return <Forbidden />
+  if (hash !== operatorHash) return <Forbidden />
   return children
 }
 
@@ -70,7 +78,7 @@ function usePageLoader() {
     setVisible(true)
     setHiding(false)
     const t1 = setTimeout(() => setHiding(true),        delay)
-    const t2 = setTimeout(() => setVisible(false), delay + 450)
+    const t2 = setTimeout(() => { setVisible(false); markPageLoaderDone() }, delay + 450)
     return () => { clearTimeout(t1); clearTimeout(t2) }
   }
 
@@ -104,40 +112,42 @@ export default function App() {
       <BrowserRouter>
         <AuthLoader show={show} />
 
-        <Routes>
-          {/* Public */}
-          <Route path="/"                element={<GuestRoute><Landing /></GuestRoute>} />
-          <Route path="/register"        element={<GuestRoute><Landing /></GuestRoute>} />
-          <Route path="/forgot-password" element={<GuestRoute><ForgotPassword /></GuestRoute>} />
-          <Route path="/checkout/success" element={<CheckoutSuccess />} />
-          <Route path="/support"         element={<Support />} />
-          <Route path="/proyectos"       element={<Projects />} />
-          <Route path="/terminos"        element={<Terminos />} />
-          <Route path="/privacidad"      element={<Privacidad />} />
+        <ErrorBoundary>
+          <Routes>
+            {/* Public */}
+            <Route path="/"                element={<GuestRoute><Landing /></GuestRoute>} />
+            <Route path="/register"        element={<GuestRoute><Landing /></GuestRoute>} />
+            <Route path="/forgot-password" element={<GuestRoute><ForgotPassword /></GuestRoute>} />
+            <Route path="/checkout/success" element={<CheckoutSuccess />} />
+            <Route path="/support"         element={<Support />} />
+            <Route path="/proyectos"       element={<Projects />} />
+            <Route path="/terminos"        element={<Terminos />} />
+            <Route path="/privacidad"      element={<Privacidad />} />
 
-          <Route path="/console" element={<Navigate to="/" replace />} />
+            <Route path="/console" element={<Navigate to="/" replace />} />
 
-          {/* Operator console */}
-          <Route path="/sys/:hash" element={<OperatorHashGuard><SuperAdmin /></OperatorHashGuard>} />
+            {/* Operator console */}
+            <Route path="/sys/:hash" element={<OperatorHashGuard><SuperAdmin /></OperatorHashGuard>} />
 
-          {/* Private gym routes */}
-          <Route path="/g/:hash" element={<HashGuard><Layout /></HashGuard>}>
-            <Route path="panel"        element={<Dashboard />} />
-            <Route path="socios"       element={<Members />} />
-            <Route path="socio/:id"    element={<MemberDetail />} />
-            <Route path="clases"       element={<Classes />} />
-            <Route path="visitas"      element={<Visits />} />
-            <Route path="membresias"   element={<Memberships />} />
-            <Route path="productos"    element={<Products />} />
-            <Route path="finanzas"     element={<Finances />} />
-            <Route path="ajustes"      element={<Settings />} />
-            <Route path="whatsapp"     element={<WhatsAppPage />} />
-            <Route path="soporte"      element={<SupportPanel />} />
-            <Route path="perfil"       element={<Profile />} />
-          </Route>
+            {/* Private gym routes */}
+            <Route path="/g/:hash" element={<HashGuard><Layout /></HashGuard>}>
+              <Route path="panel"        element={<Dashboard />} />
+              <Route path="socios"       element={<Members />} />
+              <Route path="socio/:id"    element={<MemberDetail />} />
+              <Route path="clases"       element={<Classes />} />
+              <Route path="visitas"      element={<Visits />} />
+              <Route path="membresias"   element={<Memberships />} />
+              <Route path="productos"    element={<Products />} />
+              <Route path="finanzas"     element={<Finances />} />
+              <Route path="ajustes"      element={<Settings />} />
+              <Route path="whatsapp"     element={<WhatsAppPage />} />
+              <Route path="soporte"      element={<SupportPanel />} />
+              <Route path="perfil"       element={<Profile />} />
+            </Route>
 
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </ErrorBoundary>
 
         <OnboardingGate />
       </BrowserRouter>

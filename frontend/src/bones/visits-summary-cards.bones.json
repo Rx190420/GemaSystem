@@ -1,0 +1,11 @@
+{
+  "breakpoints": {
+    "1280": {
+      "name": "visits-summary-cards",
+      "viewportWidth": 976,
+      "width": 976,
+      "height": 0,
+      "bones": []
+    }
+  }
+}

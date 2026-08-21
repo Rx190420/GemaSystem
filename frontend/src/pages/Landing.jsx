@@ -15,12 +15,18 @@ import {
 } from 'lucide-react'
 
 import { useAuthStore } from '../store/authStore'
+import { isPageLoaderDone, onPageLoaderDone } from '../lib/pageLoaderSignal'
 import api from '../api/axios'
 import toast from 'react-hot-toast'
 import Beams from '../components/Beams'
 import GemaSystemLogo from '../components/GemaSystemLogo'
+import MobileStaggeredMenu from '../components/MobileStaggeredMenu'
+import StrokeLogoMark from '../components/StrokeLogoMark'
+import StrokeText from '../components/StrokeText'
+import TextType from '../components/TextType'
+import Reveal from '../components/Reveal'
 import RegisterModal from './Register'
-import { DashboardCard, MembersCard, FinancesCard, VisitsCard, MembershipsCard, TrainersCard, ClassesCard } from '../components/SystemCards'
+import { MembershipsCard, TrainersCard } from '../components/SystemCards'
 import useLockBodyScroll from '../hooks/useLockBodyScroll'
 
 // ─── Schemas ──────────────────────────────────────────────────────────────────
@@ -988,95 +994,35 @@ function AuthModal({ onClose }) {
   )
 }
 
-// ─── System Showcase (tabbed mock-UI) ────────────────────────────────────────
+// ─── HeroPreviewImage (static screenshot — drop the file, it just appears) ────
 
-const TABS = [
-  { id: 'dashboard',  label: 'Dashboard',   icon: Monitor,    Component: DashboardCard    },
-  { id: 'socios',     label: 'Socios',      icon: Users,      Component: MembersCard      },
-  { id: 'finanzas',   label: 'Finanzas',    icon: TrendingUp, Component: FinancesCard     },
-  { id: 'visitas',    label: 'Visitas QR',  icon: Scan,       Component: VisitsCard       },
-  { id: 'membresias', label: 'Membresías',  icon: CreditCard, Component: MembershipsCard  },
-  { id: 'entrena',    label: 'Entrenadores',icon: User,       Component: TrainersCard     },
-  { id: 'clases',     label: 'Clases',      icon: Calendar,   Component: ClassesCard      },
-]
+const HERO_PREVIEW_SRC = '/images/hero-preview.webp'
 
-function SystemShowcase() {
-  const [active, setActive] = useState('dashboard')
-  const tab = TABS.find(t => t.id === active)
+function HeroPreviewImage() {
+  const [failed, setFailed] = useState(false)
+
+  if (failed) {
+    return (
+      <div className="w-full max-w-6xl mx-auto aspect-video rounded-2xl border border-dashed border-white/15 bg-white/[0.02] flex flex-col items-center justify-center gap-2 text-slate-500 px-6 text-center">
+        <Monitor className="w-8 h-8" />
+        <p className="text-sm font-medium">
+          Coloca tu captura en <span className="text-indigo-300 font-mono">frontend/public/images/hero-preview.webp</span>
+        </p>
+      </div>
+    )
+  }
 
   return (
-    <div className="relative">
-      {/* Glow background */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <div className="w-[600px] h-[400px] rounded-full blur-3xl opacity-20"
-          style={{ background: 'radial-gradient(ellipse,#6366F1 0%,transparent 70%)' }} />
-      </div>
-
-      {/* Tab pills */}
-      <div className="flex justify-center mb-8 relative z-10">
-        <div className="inline-flex items-center gap-1 p-1 rounded-2xl bg-gray-100 border border-gray-200 shadow-inner">
-          {TABS.map(t => {
-            const isActive = t.id === active
-            return (
-              <button key={t.id} onClick={() => setActive(t.id)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${
-                  isActive
-                    ? 'bg-white text-indigo-600 shadow-md shadow-indigo-500/10'
-                    : 'text-gray-400 hover:text-gray-600 hover:bg-white/50'
-                }`}>
-                <t.icon className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">{t.label}</span>
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* Mock screen with 3D perspective */}
-      <div className="relative flex justify-center" style={{ perspective: '1200px' }}>
-        {/* Shadow / depth layer */}
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4/5 h-12 blur-2xl rounded-full opacity-20"
-          style={{ background: '#6366F1' }} />
-
-        <div
-          key={active}
-          className="relative w-full max-w-3xl rounded-2xl overflow-hidden shadow-2xl border border-gray-200/60"
-          style={{
-            transform: 'rotateX(3deg)',
-            transformOrigin: 'bottom center',
-            animation: 'showcaseFadeIn 0.35s ease-out both',
-          }}
-        >
-          {/* Browser chrome */}
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-200 bg-gray-100">
-            <div className="flex gap-1.5">
-              <div className="w-3 h-3 rounded-full bg-red-400" />
-              <div className="w-3 h-3 rounded-full bg-yellow-400" />
-              <div className="w-3 h-3 rounded-full bg-green-400" />
-            </div>
-            <div className="flex-1 bg-white rounded-md px-3 py-1 text-xs text-gray-400 font-mono border border-gray-200">
-              app.gemasystem.mx/{active}
-            </div>
-            <div className="flex items-center gap-1.5 text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              En vivo
-            </div>
-          </div>
-
-          {/* Content */}
-          <div style={{ height: 380 }}>
-            <tab.Component />
-          </div>
-        </div>
-      </div>
-
-      <style>{`
-        @keyframes showcaseFadeIn {
-          from { opacity: 0; transform: rotateX(6deg) translateY(12px); }
-          to   { opacity: 1; transform: rotateX(3deg) translateY(0); }
-        }
-      `}</style>
-    </div>
+    <img
+      src={HERO_PREVIEW_SRC}
+      alt="Panel de GemaSystem"
+      className="w-full max-w-6xl mx-auto block rounded-t-2xl border border-b-0 border-white/10"
+      style={{
+        maskImage: 'linear-gradient(to bottom, black 55%, transparent 100%)',
+        WebkitMaskImage: 'linear-gradient(to bottom, black 55%, transparent 100%)',
+      }}
+      onError={() => setFailed(true)}
+    />
   )
 }
 
@@ -1095,6 +1041,26 @@ export default function Landing() {
   const [emailOpen, setEmailOpen]     = useState('welcome')
   const [waOpen, setWaOpen]           = useState('connect')
   const navigate                  = useNavigate()
+
+  // The hero's stroke-draw title should only start once App's full-screen
+  // splash loader is gone — otherwise it plays and finishes while hidden
+  // underneath it and is never actually seen.
+  const [heroReady, setHeroReady] = useState(isPageLoaderDone)
+  useEffect(() => onPageLoaderDone(() => setHeroReady(true)), [])
+
+  // Navbar wordmark + "Prueba gratis" stay hidden while the Hero (with its
+  // own big logo + CTA) is on screen, then type in once it's scrolled fully
+  // past — and hide again if the user scrolls back up into Hero, replaying
+  // the typing next time they scroll past it again.
+  const heroRef = useRef(null)
+  const [pastHero, setPastHero] = useState(false)
+  useEffect(() => {
+    const el = heroRef.current
+    if (!el) return undefined
+    const io = new IntersectionObserver(([entry]) => setPastHero(!entry.isIntersecting), { threshold: 0 })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
 
   const [trialDone, setTrialDone]       = useState(false)
   const [trialLoading, setTrialLoading] = useState(false)
@@ -1174,6 +1140,18 @@ export default function Landing() {
         @keyframes modalIn { from { opacity:0; transform:scale(0.94) translateY(8px); } to { opacity:1; transform:scale(1) translateY(0); } }
         @keyframes fadeUp  { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
         .fade-up { animation: fadeUp 0.5s ease both; }
+        /* CardNav dropdown only expands on sm+ — below that, the hamburger
+           opens the full-screen MobileStaggeredMenu instead, so the white
+           bar itself must stay pinned at its collapsed height on mobile. */
+        .cardnav-shell { max-height: 60px; }
+        @media (min-width: 640px) {
+          .cardnav-shell.is-open { max-height: 520px; }
+        }
+        /* Anchor-linked sections (#correos, #whatsapp, #precios, ...) land
+           flush at the very top of the viewport when jumped to, but the
+           CardNav above is fixed-positioned and floats over that same space
+           — without this, each section's heading lands hidden behind it. */
+        section[id] { scroll-margin-top: 88px; }
       `}</style>
 
       {/* Beams — animated light beams background */}
@@ -1190,7 +1168,7 @@ export default function Landing() {
 
       {/* ── CardNav ── */}
       <div className="fixed top-0 left-0 right-0 z-40 flex justify-center px-4 pt-4 pointer-events-none">
-        <div className="pointer-events-auto w-full max-w-[820px]"
+        <div className={`pointer-events-auto w-full max-w-[820px] cardnav-shell ${navOpen ? 'is-open' : ''}`}
           style={{
             background: 'white',
             borderRadius: '12px',
@@ -1198,7 +1176,6 @@ export default function Landing() {
               ? '0 20px 60px rgba(0,0,0,0.18), 0 4px 12px rgba(0,0,0,0.08)'
               : '0 4px 24px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.05)',
             overflow: 'hidden',
-            maxHeight: navOpen ? '520px' : '60px',
             transition: 'max-height 0.45s cubic-bezier(0.4,0,0.2,1), box-shadow 0.3s ease',
           }}>
 
@@ -1208,7 +1185,19 @@ export default function Landing() {
               <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-md shadow-indigo-500/30 flex-shrink-0">
                 <GemaSystemLogo className="w-3.5 h-3.5" />
               </div>
-              <span className="font-extrabold text-base text-gray-900 tracking-tight">GemaSystem</span>
+              {/* Hidden while Hero (with its own big logo) is on screen — types in
+                  once scrolled fully past it (see pastHero above), and unmounts
+                  (resetting the typing) if the user scrolls back up into Hero, so
+                  it replays every time Hero is passed again. */}
+              {pastHero && (
+                <TextType
+                  texts={['GemaSystem']}
+                  loop={false}
+                  initialDelay={200}
+                  typingSpeed={55}
+                  className="font-extrabold text-base text-gray-900 tracking-tight"
+                />
+              )}
               <span className="hidden sm:inline text-xs font-bold px-1.5 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700">BETA</span>
             </div>
             <div className="flex items-center gap-1.5">
@@ -1233,7 +1222,15 @@ export default function Landing() {
                 className="hidden sm:flex items-center gap-1.5 text-sm font-bold px-3.5 py-1.5 rounded-lg text-white"
                 style={{ background: 'linear-gradient(135deg,#4F46E5,#7C3AED)' }}>
                 <Gift className="w-3.5 h-3.5" />
-                Prueba gratis
+                {pastHero && (
+                  <TextType
+                    texts={['Prueba gratis']}
+                    loop={false}
+                    initialDelay={700}
+                    typingSpeed={35}
+                    showCursor={false}
+                  />
+                )}
               </button>
               <button onClick={() => setNavOpen(o => !o)} aria-label="Menú"
                 className="w-9 h-9 flex flex-col items-center justify-center gap-[5px] rounded-lg hover:bg-gray-100 transition-colors ml-1 flex-shrink-0">
@@ -1243,8 +1240,8 @@ export default function Landing() {
             </div>
           </div>
 
-          {/* ── Cards ── */}
-          <div className="px-2 pb-2 grid grid-cols-1 sm:grid-cols-3 gap-2"
+          {/* ── Cards (sm+ only — mobile uses MobileStaggeredMenu instead) ── */}
+          <div className="hidden sm:grid px-2 pb-2 sm:grid-cols-3 gap-2"
             style={{ opacity: navOpen ? 1 : 0, transition: 'opacity 0.25s ease 0.1s', pointerEvents: navOpen ? 'auto' : 'none' }}>
 
             {/* Explorar */}
@@ -1320,114 +1317,117 @@ export default function Landing() {
         </div>
       </div>
 
+      <MobileStaggeredMenu
+        open={navOpen}
+        onClose={() => setNavOpen(false)}
+        onLogin={() => setLoginOpen(true)}
+        onTrial={scrollToTrial}
+      />
+
       {/* ── Hero ── */}
-      <section className="relative z-10 min-h-screen flex flex-col items-center justify-center text-center px-6 pt-20">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-violet-500/30 bg-violet-500/10 text-violet-300 text-xs font-semibold mb-6 backdrop-blur-sm">
-          <Zap className="w-3 h-3" /> v1.0.0-beta.1 · Acceso anticipado disponible
-        </div>
-        <h1 className="text-[clamp(2.25rem,7vw,4.5rem)] font-extrabold text-white max-w-4xl leading-[1.08] tracking-tight">
-          La plataforma que tu{' '}
-          <span className="bg-gradient-to-r from-indigo-400 via-violet-400 to-purple-400 bg-clip-text text-transparent">
-            gimnasio necesita
-          </span>
-        </h1>
-        <p className="mt-6 text-lg md:text-xl text-slate-400 max-w-2xl leading-relaxed">
-          Gestiona miembros, visitas, finanzas y clases desde un solo panel.
-          Moderno, potente y diseñado para crecer contigo.
-        </p>
-        <div className="flex flex-wrap items-center justify-center gap-4 mt-10">
+      <section ref={heroRef} className="relative z-10 overflow-hidden pt-20">
+        <div className="flex flex-col items-center justify-center text-center px-4 sm:px-6 pt-24 sm:pt-28 pb-10">
+          {heroReady ? (
+            <h1 className="flex items-center justify-center gap-0.5 sm:gap-1">
+              <StrokeLogoMark
+                className="h-[clamp(52px,9vw,140px)]"
+                delay={0}
+                duration={0.8}
+              />
+              <StrokeText
+                text="emaSystem"
+                className="h-[clamp(52px,9vw,140px)]"
+                delay={0.55}
+              />
+            </h1>
+          ) : (
+            <div className="h-[clamp(52px,9vw,140px)]" aria-hidden="true" />
+          )}
+          <TextType
+            texts={[
+              'La plataforma que tu gimnasio necesita',
+              'Miembros, pagos y visitas en un solo lugar',
+              'Tu gimnasio, siempre bajo control',
+              'Moderniza tu gimnasio en minutos',
+            ]}
+            as="p"
+            className="mt-5 sm:mt-6 text-sm sm:text-base md:text-lg font-semibold text-violet-300 min-h-[1.6em] px-2"
+          />
+          <p className="mt-4 text-base sm:text-lg md:text-xl text-slate-400 max-w-2xl leading-relaxed">
+            Gestiona miembros, visitas, finanzas y clases desde un solo panel.
+            Moderno, potente y diseñado para crecer contigo.
+          </p>
           <button onClick={scrollToTrial}
-            className="flex items-center gap-2.5 px-8 py-4 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold text-base transition-all shadow-2xl shadow-indigo-500/30 hover:shadow-indigo-500/50 hover:-translate-y-0.5 duration-200">
+            className="flex items-center gap-2.5 px-9 py-4 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold text-base transition-all shadow-2xl shadow-indigo-500/30 hover:shadow-indigo-500/50 hover:-translate-y-0.5 hover:scale-[1.03] ring-1 ring-white/15 duration-200 mt-10">
             <Gift className="w-5 h-5" /> Prueba 10 días gratis
           </button>
-          <button onClick={() => goRegister()}
-            className="flex items-center gap-2.5 px-8 py-4 rounded-xl border border-white/20 bg-white/5 backdrop-blur-sm text-white font-semibold text-base hover:bg-white/10 transition-all">
-            Ver planes <ArrowRight className="w-4 h-4" />
-          </button>
         </div>
-        <div className="flex flex-wrap justify-center gap-10 mt-16 pb-6">
-          {[
-            { val: '6+',      lbl: 'Módulos integrados'    },
-            { val: '12+',     lbl: 'Gráficas interactivas' },
-            { val: 'PDF/XLS', lbl: 'Exportación de reportes'},
-            { val: 'QR',      lbl: 'Registro de visitas'   },
-          ].map(s => (
-            <div key={s.lbl} className="text-center">
-              <p className="text-3xl font-extrabold text-white tracking-tight">{s.val}</p>
-              <p className="text-xs text-slate-500 mt-1 font-medium">{s.lbl}</p>
-            </div>
-          ))}
-        </div>
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce text-slate-600">
-          <ChevronDown className="w-6 h-6" />
+
+        {/* Product preview — positioned right below the hero CTA, à la wope.com */}
+        <div className="relative max-w-6xl mx-auto px-6 pt-16 pb-28">
+          <HeroPreviewImage />
         </div>
       </section>
 
       {/* ── Content ── */}
       <div className="relative z-10">
 
-        {/* Dashboard screenshot */}
-        <section className="max-w-6xl mx-auto px-6 py-24">
-          <div className="text-center mb-12">
-            <p className="text-xs font-bold uppercase tracking-widest text-indigo-400 mb-3">Vista previa</p>
-            <h2 className="text-[clamp(1.75rem,5vw,2.25rem)] font-extrabold text-white leading-tight">Un solo panel. Todo bajo control.</h2>
-            <p className="text-slate-400 mt-4 text-lg max-w-xl mx-auto">Dashboard en tiempo real con métricas clave de tu negocio en un vistazo.</p>
-          </div>
-          <SystemShowcase />
-        </section>
-
         {/* Features */}
         <section id="características" className="py-24">
           <div className="max-w-6xl mx-auto px-6">
-            <div className="text-center mb-16">
+            <Reveal as="div" className="text-center mb-16">
               <p className="text-xs font-bold uppercase tracking-widest text-indigo-400 mb-3">Módulos</p>
               <h2 className="text-[clamp(1.75rem,5vw,2.25rem)] font-extrabold text-white leading-tight">Todo lo que necesita tu gimnasio</h2>
               <p className="text-slate-400 mt-4 text-lg max-w-xl mx-auto">Herramientas profesionales diseñadas para la operación diaria de un gimnasio moderno.</p>
-            </div>
+            </Reveal>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {FEATURES.map((f, i) => (
-                <div key={i} className="group rounded-2xl border p-6 hover:-translate-y-1 transition-all duration-300 cursor-default"
-                  style={{
-                    background: '#0d1117',
-                    borderColor: 'rgba(99,102,241,0.18)',
-                    boxShadow: '0 2px 16px rgba(0,0,0,0.4)',
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = f.color + '55'; e.currentTarget.style.boxShadow = `0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px ${f.color}33` }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(99,102,241,0.18)'; e.currentTarget.style.boxShadow = '0 2px 16px rgba(0,0,0,0.4)' }}
-                >
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-5 transition-transform group-hover:scale-110 duration-300" style={{ background: f.color + '20', border: `1px solid ${f.color}35` }}>
-                    <f.icon className="w-6 h-6" style={{ color: f.color }} />
+                <Reveal key={i} delay={(i % 3) * 0.08}>
+                  <div className="group rounded-2xl border p-6 hover:-translate-y-1 transition-all duration-300 cursor-default"
+                    style={{
+                      background: '#0d1117',
+                      borderColor: 'rgba(99,102,241,0.18)',
+                      boxShadow: '0 2px 16px rgba(0,0,0,0.4)',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = f.color + '55'; e.currentTarget.style.boxShadow = `0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px ${f.color}33` }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(99,102,241,0.18)'; e.currentTarget.style.boxShadow = '0 2px 16px rgba(0,0,0,0.4)' }}
+                  >
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-5 transition-transform group-hover:scale-110 duration-300" style={{ background: f.color + '20', border: `1px solid ${f.color}35` }}>
+                      <f.icon className="w-6 h-6" style={{ color: f.color }} />
+                    </div>
+                    <h3 className="text-base font-bold text-white mb-2">{f.title}</h3>
+                    <p className="text-sm text-slate-400 leading-relaxed">{f.desc}</p>
                   </div>
-                  <h3 className="text-base font-bold text-white mb-2">{f.title}</h3>
-                  <p className="text-sm text-slate-400 leading-relaxed">{f.desc}</p>
-                </div>
+                </Reveal>
               ))}
             </div>
             {/* Module previews — two side-by-side mock UIs */}
-            <div className="grid md:grid-cols-2 gap-8 mt-16">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-16">
               {[
                 { Component: TrainersCard,    label: 'entrenadores', title: 'Gestión de entrenadores' },
                 { Component: MembershipsCard, label: 'membresias',   title: 'Control de membresías'   },
-              ].map(({ Component, label, title }) => (
-                <div key={label} className="flex flex-col gap-3">
-                  <div className="rounded-2xl overflow-hidden shadow-xl border border-white/10"
-                    style={{ perspective: '900px' }}>
-                    <div style={{ transform: 'rotateX(2deg)', transformOrigin: 'bottom center' }}>
-                      <div className="flex items-center gap-2 px-3 py-2 border-b border-white/10 bg-black/40">
-                        <div className="flex gap-1.5">
-                          <div className="w-2 h-2 rounded-full bg-red-400" />
-                          <div className="w-2 h-2 rounded-full bg-yellow-400" />
-                          <div className="w-2 h-2 rounded-full bg-green-400" />
+              ].map(({ Component, label, title }, i) => (
+                <Reveal key={label} delay={i * 0.15}>
+                  <div className="flex flex-col gap-3">
+                    <div className="rounded-2xl overflow-hidden shadow-xl border border-white/10"
+                      style={{ perspective: '900px' }}>
+                      <div style={{ transform: 'rotateX(2deg)', transformOrigin: 'bottom center' }}>
+                        <div className="flex items-center gap-2 px-3 py-2 border-b border-white/10 bg-black/40">
+                          <div className="flex gap-1.5">
+                            <div className="w-2 h-2 rounded-full bg-red-400" />
+                            <div className="w-2 h-2 rounded-full bg-yellow-400" />
+                            <div className="w-2 h-2 rounded-full bg-green-400" />
+                          </div>
+                          <span className="text-[10px] font-mono text-slate-400">app.gemasystem.mx/{label}</span>
                         </div>
-                        <span className="text-[10px] font-mono text-slate-400">app.gemasystem.mx/{label}</span>
-                      </div>
-                      <div style={{ height: 300 }}>
-                        <Component />
+                        <div style={{ height: 300 }}>
+                          <Component />
+                        </div>
                       </div>
                     </div>
+                    <p className="text-center text-xs font-semibold text-slate-400">{title}</p>
                   </div>
-                  <p className="text-center text-xs font-semibold text-slate-400">{title}</p>
-                </div>
+                </Reveal>
               ))}
             </div>
           </div>
@@ -1444,7 +1444,7 @@ export default function Landing() {
           <div className="relative max-w-6xl mx-auto px-6">
 
             {/* Header */}
-            <div className="text-center mb-20">
+            <Reveal as="div" className="text-center mb-20">
               <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-300 text-xs font-bold mb-6">
                 <Mail className="w-3.5 h-3.5" /> Notificaciones automáticas · Correo electrónico
               </div>
@@ -1455,13 +1455,13 @@ export default function Landing() {
               <p className="text-slate-400 mt-5 text-lg max-w-2xl mx-auto leading-relaxed">
                 GemaSystem le escribe a tus socios en el momento exacto — bienvenida, recordatorios de vencimiento, recibos de pago y más — sin que tengas que redactar ni enviar nada tú mismo.
               </p>
-            </div>
+            </Reveal>
 
             {/* Main split layout */}
-            <div className="grid lg:grid-cols-2 gap-10 items-center mb-20">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center mb-20">
 
               {/* Left — preview card */}
-              <div className="relative">
+              <Reveal as="div" className="relative">
                 {/* Inbox mockup */}
                 <div className="rounded-2xl overflow-hidden shadow-2xl border border-white/8"
                   style={{ boxShadow: '0 0 0 1px rgba(99,102,241,0.12), 0 32px 80px rgba(0,0,0,0.6)' }}>
@@ -1508,10 +1508,10 @@ export default function Landing() {
                   style={{ boxShadow: '0 4px 14px rgba(99,102,241,0.5)' }}>
                   Incluido en GemaSystem
                 </div>
-              </div>
+              </Reveal>
 
               {/* Right — accordion benefits */}
-              <div className="space-y-2">
+              <Reveal as="div" className="space-y-2" delay={0.15}>
                 {[
                   {
                     id: 'welcome',
@@ -1605,7 +1605,7 @@ export default function Landing() {
                     </div>
                   )
                 })}
-              </div>
+              </Reveal>
             </div>
 
             {/* Bottom stat pills */}
@@ -1615,12 +1615,14 @@ export default function Landing() {
                 { val: '0',            lbl: 'Correos que escribes a mano',  color: '#10B981' },
                 { val: 'Configurable', lbl: 'Días de anticipación',         color: '#F59E0B' },
                 { val: 'SSL',          lbl: 'Envío cifrado y seguro',       color: '#EC4899' },
-              ].map(({ val, lbl, color }) => (
-                <div key={lbl} className="rounded-2xl border border-white/8 p-5 text-center hover:-translate-y-1 transition-all duration-200 cursor-default"
-                  style={{ background: '#0d1117' }}>
-                  <p className="text-2xl font-extrabold leading-none mb-1" style={{ color }}>{val}</p>
-                  <p className="text-xs text-slate-500 leading-snug">{lbl}</p>
-                </div>
+              ].map(({ val, lbl, color }, i) => (
+                <Reveal key={lbl} delay={(i % 4) * 0.08}>
+                  <div className="rounded-2xl border border-white/8 p-5 text-center hover:-translate-y-1 transition-all duration-200 cursor-default"
+                    style={{ background: '#0d1117' }}>
+                    <p className="text-2xl font-extrabold leading-none mb-1" style={{ color }}>{val}</p>
+                    <p className="text-xs text-slate-500 leading-snug">{lbl}</p>
+                  </div>
+                </Reveal>
               ))}
             </div>
 
@@ -1638,7 +1640,7 @@ export default function Landing() {
           <div className="relative max-w-6xl mx-auto px-6">
 
             {/* Header */}
-            <div className="text-center mb-20">
+            <Reveal as="div" className="text-center mb-20">
               <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 text-xs font-bold mb-6">
                 <MessageCircle className="w-3.5 h-3.5" /> Integración con WhatsApp · Nuevo
               </div>
@@ -1649,13 +1651,13 @@ export default function Landing() {
               <p className="text-slate-400 mt-5 text-lg max-w-2xl mx-auto leading-relaxed">
                 Vincula el WhatsApp del gimnasio y deja que GemaSystem envíe automáticamente bienvenidas, recordatorios y avisos a tus socios por el canal que ya usan todos los días.
               </p>
-            </div>
+            </Reveal>
 
             {/* Main split layout */}
-            <div className="grid lg:grid-cols-2 gap-10 items-center mb-20">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center mb-20">
 
               {/* Left — preview card */}
-              <div className="relative">
+              <Reveal as="div" className="relative">
                 {/* WhatsApp chat mockup */}
                 <div className="rounded-2xl overflow-hidden shadow-2xl border border-white/8"
                   style={{ boxShadow: '0 0 0 1px rgba(37,211,102,0.12), 0 32px 80px rgba(0,0,0,0.6)' }}>
@@ -1710,10 +1712,10 @@ export default function Landing() {
                   style={{ boxShadow: '0 4px 14px rgba(37,211,102,0.5)' }}>
                   Incluido en GemaSystem
                 </div>
-              </div>
+              </Reveal>
 
               {/* Right — accordion benefits */}
-              <div className="space-y-2">
+              <Reveal as="div" className="space-y-2" delay={0.15}>
                 {[
                   {
                     id: 'connect',
@@ -1822,7 +1824,7 @@ export default function Landing() {
                     </div>
                   )
                 })}
-              </div>
+              </Reveal>
             </div>
 
             {/* Bottom stat pills */}
@@ -1832,12 +1834,14 @@ export default function Landing() {
                 { val: '24/7',      lbl: 'Mensajes automáticos',         color: '#F59E0B' },
                 { val: 'Historial', lbl: 'Registro de cada envío',       color: '#6366F1' },
                 { val: 'Incluido',  lbl: 'Sin costo adicional',          color: '#10B981' },
-              ].map(({ val, lbl, color }) => (
-                <div key={lbl} className="rounded-2xl border border-white/8 p-5 text-center hover:-translate-y-1 transition-all duration-200 cursor-default"
-                  style={{ background: '#0d1117' }}>
-                  <p className="text-2xl font-extrabold leading-none mb-1" style={{ color }}>{val}</p>
-                  <p className="text-xs text-slate-500 leading-snug">{lbl}</p>
-                </div>
+              ].map(({ val, lbl, color }, i) => (
+                <Reveal key={lbl} delay={(i % 4) * 0.08}>
+                  <div className="rounded-2xl border border-white/8 p-5 text-center hover:-translate-y-1 transition-all duration-200 cursor-default"
+                    style={{ background: '#0d1117' }}>
+                    <p className="text-2xl font-extrabold leading-none mb-1" style={{ color }}>{val}</p>
+                    <p className="text-xs text-slate-500 leading-snug">{lbl}</p>
+                  </div>
+                </Reveal>
               ))}
             </div>
 
@@ -1847,9 +1851,9 @@ export default function Landing() {
         {/* ── Free trial section ── */}
         <section id="prueba-gratis" className="relative z-10 py-24">
           <div className="relative max-w-6xl mx-auto px-6">
-            <div className="grid md:grid-cols-2 gap-12 items-center">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
               {/* Left: info */}
-              <div>
+              <Reveal as="div">
                 <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-violet-500/15 border border-violet-500/30 text-violet-300 text-xs font-bold mb-6">
                   <Clock className="w-3.5 h-3.5" /> 10 días completamente gratis
                 </div>
@@ -1881,10 +1885,10 @@ export default function Landing() {
                   <span>·</span>
                   <span className="flex items-center gap-1.5"><Zap className="w-3.5 h-3.5" /> Activo en minutos</span>
                 </div>
-              </div>
+              </Reveal>
 
               {/* Right: form */}
-              <div className="rounded-2xl border border-white/10 shadow-2xl shadow-black/50 p-8"
+              <Reveal as="div" delay={0.15} className="rounded-2xl border border-white/10 shadow-2xl shadow-black/50 p-8"
                 style={{ background: 'rgba(13,15,28,0.85)', backdropFilter: 'blur(16px)' }}>
                 {trialDone ? (
                   <div className="text-center py-6">
@@ -1998,7 +2002,7 @@ export default function Landing() {
                     </form>
                   </>
                 )}
-              </div>
+              </Reveal>
             </div>
           </div>
         </section>
@@ -2017,7 +2021,7 @@ export default function Landing() {
           <div className="relative max-w-6xl mx-auto px-6">
 
             {/* Header */}
-            <div className="text-center mb-20">
+            <Reveal as="div" className="text-center mb-20">
               <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-indigo-400 mb-5">
                 <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse inline-block" />
                 Precios
@@ -2030,12 +2034,13 @@ export default function Landing() {
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse flex-shrink-0" />
                 <span className="text-xs font-bold text-amber-400">Precios especiales de fase beta — garantizados mientras dure el acceso anticipado</span>
               </div>
-            </div>
+            </Reveal>
 
             {/* Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
 
               {/* ── Semanal ── */}
+              <Reveal as="div">
               <div className="relative flex flex-col rounded-3xl p-7 border border-white/10 backdrop-blur-sm
                 hover:-translate-y-2 transition-all duration-300 group"
                 style={{ background: 'rgba(255,255,255,0.04)' }}>
@@ -2062,8 +2067,10 @@ export default function Landing() {
                   Comenzar
                 </button>
               </div>
+              </Reveal>
 
               {/* ── Mensual (destacado) ── */}
+              <Reveal as="div" delay={0.08}>
               <div className="relative flex flex-col rounded-3xl p-[1.5px] transition-all duration-300 hover:-translate-y-2"
                 style={{ background: 'linear-gradient(135deg,#6366f1 0%,#8b5cf6 50%,#ec4899 100%)',
                   boxShadow: '0 0 60px rgba(99,102,241,0.35), 0 30px 60px rgba(99,102,241,0.2)' }}>
@@ -2099,8 +2106,10 @@ export default function Landing() {
                   </button>
                 </div>
               </div>
+              </Reveal>
 
               {/* ── Prueba gratuita ── */}
+              <Reveal as="div" delay={0.16}>
               <div className="relative flex flex-col rounded-3xl p-[1.5px] transition-all duration-300 hover:-translate-y-2"
                 style={{ background: 'linear-gradient(135deg,#10b981 0%,#059669 50%,#34d399 100%)',
                   boxShadow: '0 0 40px rgba(16,185,129,0.2)' }}>
@@ -2141,6 +2150,7 @@ export default function Landing() {
                   </button>
                 </div>
               </div>
+              </Reveal>
 
             </div>
 
@@ -2154,31 +2164,33 @@ export default function Landing() {
         {/* ── VS Comparison ── */}
         <section id="comparativa" className="relative z-10 py-20 px-6">
           <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-12">
+            <Reveal as="div" className="text-center mb-12">
               <p className="text-xs font-bold uppercase tracking-widest text-indigo-400 mb-3">Comparativa</p>
               <h2 className="text-3xl font-extrabold text-white">¿Por qué GemaSystem y no otra opción?</h2>
               <p className="text-slate-400 mt-3 max-w-2xl mx-auto text-base">
                 Comparamos GemaSystem contra el caos del papel y contra sistemas overcomplicated que nadie termina usando.
               </p>
-            </div>
-            <VSComparison />
-            <div className="mt-8 text-center">
+            </Reveal>
+            <Reveal as="div" delay={0.1}>
+              <VSComparison />
+            </Reveal>
+            <Reveal as="div" delay={0.2} className="mt-8 text-center">
               <button onClick={scrollToTrial}
                 className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm transition-all shadow-lg shadow-indigo-500/25 hover:-translate-y-0.5">
                 <Gift className="w-4 h-4" /> Empieza gratis hoy — 10 días sin costo
               </button>
-            </div>
+            </Reveal>
           </div>
         </section>
 
         {/* ── Reviews ── */}
         <section id="reseñas" className="relative z-10 py-24">
           <div className="max-w-6xl mx-auto px-6">
-            <div className="text-center mb-10">
+            <Reveal as="div" className="text-center mb-10">
               <p className="text-xs font-bold uppercase tracking-widest text-indigo-400 mb-3">Reseñas</p>
               <h2 className="text-3xl font-extrabold text-white">Lo que dicen nuestros usuarios</h2>
               <p className="text-slate-400 mt-3 max-w-lg mx-auto">Opiniones reales de quienes ya usan GemaSystem en su día a día.</p>
-            </div>
+            </Reveal>
 
             {/* Tabs */}
             <div className="flex justify-center mb-10">
@@ -2211,19 +2223,21 @@ export default function Landing() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
                   {MEMBER_REVIEWS.map((r, i) => (
-                    <div key={i} className="rounded-2xl border border-white/10 p-6 hover:-translate-y-1 transition-all duration-300 flex flex-col" style={{ background: '#0d1020' }}>
-                      <div className="flex items-center justify-between mb-3">
-                        <StarRating value={r.rating} onChange={() => {}} readOnly size="sm" />
-                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-indigo-500/15 text-indigo-300 border border-indigo-500/25 whitespace-nowrap">
-                          {r.highlight}
-                        </span>
+                    <Reveal key={i} delay={(i % 3) * 0.08}>
+                      <div className="rounded-2xl border border-white/10 p-6 hover:-translate-y-1 transition-all duration-300 flex flex-col" style={{ background: '#0d1020' }}>
+                        <div className="flex items-center justify-between mb-3">
+                          <StarRating value={r.rating} onChange={() => {}} readOnly size="sm" />
+                          <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-indigo-500/15 text-indigo-300 border border-indigo-500/25 whitespace-nowrap">
+                            {r.highlight}
+                          </span>
+                        </div>
+                        <p className="text-slate-300 text-sm leading-relaxed flex-1">"{r.comment}"</p>
+                        <div className="mt-5 pt-4 border-t border-white/10">
+                          <p className="font-bold text-white text-sm">{r.author}</p>
+                          <p className="text-xs text-slate-500 mt-0.5">{r.role}</p>
+                        </div>
                       </div>
-                      <p className="text-slate-300 text-sm leading-relaxed flex-1">"{r.comment}"</p>
-                      <div className="mt-5 pt-4 border-t border-white/10">
-                        <p className="font-bold text-white text-sm">{r.author}</p>
-                        <p className="text-xs text-slate-500 mt-0.5">{r.role}</p>
-                      </div>
-                    </div>
+                    </Reveal>
                   ))}
                 </div>
               </>
@@ -2231,7 +2245,7 @@ export default function Landing() {
 
             {/* Tab: Dueños — empty state */}
             {activeReviewTab === 'duenos' && (
-              <div className="mb-12">
+              <Reveal as="div" className="mb-12">
                 <div className="max-w-md mx-auto text-center py-14 rounded-2xl border border-dashed border-white/20" style={{ background: '#0d1020' }}>
                   <div className="w-16 h-16 rounded-2xl bg-indigo-500/15 border border-indigo-500/25 flex items-center justify-center mx-auto mb-5">
                     <MessageSquare className="w-7 h-7 text-indigo-400" />
@@ -2245,11 +2259,11 @@ export default function Landing() {
                     Sé el primero en calificar
                   </div>
                 </div>
-              </div>
+              </Reveal>
             )}
 
             {/* Submit review form — shown in both tabs */}
-            <div className="max-w-xl mx-auto rounded-2xl border border-white/10 p-8" style={{ background: '#0d1020' }}>
+            <Reveal as="div" className="max-w-xl mx-auto rounded-2xl border border-white/10 p-8" style={{ background: '#0d1020' }}>
               {reviewDone ? (
                 <div className="text-center py-4">
                   <div className="w-14 h-14 rounded-full bg-emerald-500/20 flex items-center justify-center mx-auto mb-4">
@@ -2310,7 +2324,7 @@ export default function Landing() {
                   </form>
                 </>
               )}
-            </div>
+            </Reveal>
           </div>
         </section>
 
@@ -2321,9 +2335,9 @@ export default function Landing() {
             <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-violet-600/10 rounded-full blur-3xl" />
           </div>
           <div className="relative max-w-5xl mx-auto px-6 text-center">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-400/10 border border-amber-400/30 text-amber-300 text-sm font-bold mb-8">
+            <Reveal as="div" className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-400/10 border border-amber-400/30 text-amber-300 text-sm font-bold mb-8">
               <Zap className="w-4 h-4" /> Programa de Acceso Anticipado — v1.0.0-beta.1
-            </div>
+            </Reveal>
             <h2 className="text-[clamp(1.75rem,7vw,3rem)] font-extrabold text-white mb-5 leading-tight">
               Estás usando una versión <span className="text-amber-400">BETA</span>
             </h2>
@@ -2336,17 +2350,17 @@ export default function Landing() {
                 { icon: Shield,     title: 'Datos protegidos',     desc: 'Aunque es beta, tu información está protegida con los mismos estándares de un sistema en producción.' },
                 { icon: BadgeCheck, title: 'Precio especial beta', desc: 'Los usuarios beta reciben precio reducido mientras dure el programa de acceso anticipado. Precio garantizado.' },
               ].map((item, i) => (
-                <div key={i} className="border border-white/10 rounded-2xl p-6 transition-colors" style={{ background: '#0d1020' }}>
+                <Reveal as="div" key={i} delay={(i % 3) * 0.08} className="border border-white/10 rounded-2xl p-6 transition-colors" style={{ background: '#0d1020' }}>
                   <div className="w-10 h-10 rounded-xl bg-indigo-500/15 flex items-center justify-center mb-4">
                     <item.icon className="w-5 h-5 text-indigo-400" />
                   </div>
                   <h3 className="font-bold text-white mb-2">{item.title}</h3>
                   <p className="text-slate-400 text-sm leading-relaxed">{item.desc}</p>
-                </div>
+                </Reveal>
               ))}
             </div>
             {/* ── Roadmap ── */}
-            <div className="mt-12 w-full max-w-2xl mx-auto text-left">
+            <Reveal as="div" className="mt-12 w-full max-w-2xl mx-auto text-left">
 
               {/* Toggle header */}
               <button onClick={() => setRoadmapOpen(o => !o)}
@@ -2463,25 +2477,27 @@ export default function Landing() {
                   ))}
                 </div>
               </div>
-            </div>
+            </Reveal>
           </div>
         </section>
 
         {/* ── FAQ ── */}
         <section id="faq" className="relative z-10 py-24 px-6">
           <div className="max-w-3xl mx-auto">
-            <div className="text-center mb-12">
+            <Reveal as="div" className="text-center mb-12">
               <p className="text-xs font-bold uppercase tracking-widest text-indigo-400 mb-3">FAQ</p>
               <h2 className="text-3xl font-extrabold text-white">Preguntas frecuentes</h2>
               <p className="text-slate-400 mt-3 max-w-lg mx-auto">Todo lo que necesitas saber antes de empezar.</p>
-            </div>
-            <LandingFaq />
+            </Reveal>
+            <Reveal as="div" delay={0.1}>
+              <LandingFaq />
+            </Reveal>
           </div>
         </section>
 
         {/* Final CTA */}
         <section className="py-28 text-center px-6">
-          <div className="max-w-3xl mx-auto">
+          <Reveal as="div" className="max-w-3xl mx-auto">
             <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-indigo-500/30">
               <GemaSystemLogo className="w-10 h-10" />
             </div>
@@ -2489,16 +2505,12 @@ export default function Landing() {
               ¿Listo para modernizar<br className="hidden sm:block" /> tu gimnasio?
             </h2>
             <p className="text-xl text-slate-400 mb-12 max-w-xl mx-auto leading-relaxed">
-              Empieza con 10 días gratis o elige tu plan. Sin permanencia. Sin riesgos.
+              Empieza gratis hoy mismo. Sin tarjeta, sin permanencia, sin riesgos.
             </p>
             <div className="flex flex-wrap justify-center gap-4">
               <button onClick={scrollToTrial}
                 className="flex items-center gap-2.5 px-10 py-4 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold text-lg transition-all shadow-2xl shadow-indigo-500/30 hover:-translate-y-1 duration-200">
-                <Gift className="w-5 h-5" /> Prueba 10 días gratis
-              </button>
-              <button onClick={() => goRegister()}
-                className="flex items-center gap-2 px-10 py-4 rounded-xl border-2 border-white/20 text-white font-bold text-lg hover:border-indigo-400 hover:text-indigo-300 transition-all duration-200">
-                Ver planes <ArrowRight className="w-5 h-5" />
+                <Gift className="w-5 h-5" /> Comenzar gratis
               </button>
             </div>
             <p className="text-sm text-slate-500 mt-8 flex flex-wrap justify-center gap-4">
@@ -2507,27 +2519,86 @@ export default function Landing() {
               <span className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-400" />Cancela cuando quieras</span>
               <span className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-400" />Soporte incluido</span>
             </p>
-          </div>
+          </Reveal>
         </section>
 
-        {/* Footer */}
-        <footer className="py-10 px-6" style={{ background: '#040812', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-          <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-3">
-              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
-                <GemaSystemLogo className="w-3.5 h-3.5" />
+        {/* Footer — multi-column, à la wope.com */}
+        <footer className="pt-16 pb-8 px-6" style={{ background: '#040812', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+          <div className="max-w-6xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-[1.3fr_1fr_1fr_1fr_1.2fr] gap-10 pb-12">
+
+              {/* Brand + CTA */}
+              <div>
+                <div className="flex items-center gap-2.5 mb-3">
+                  <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
+                    <GemaSystemLogo className="w-3.5 h-3.5" />
+                  </div>
+                  <span className="font-extrabold text-white text-sm">GemaSystem</span>
+                </div>
+                <p className="text-sm text-slate-400 leading-relaxed max-w-[220px]">
+                  La nueva generación de gestión para gimnasios.
+                </p>
+                <button onClick={scrollToTrial}
+                  className="mt-5 inline-flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-lg border border-white/15 bg-white/5 text-white hover:bg-white/10 transition-colors">
+                  Prueba 10 días gratis
+                </button>
               </div>
-              <span className="font-extrabold text-white text-sm">GemaSystem</span>
-              <span className="text-xs text-slate-500 border border-white/15 rounded-full px-2 py-0.5 font-mono">v1.0.0-beta.1</span>
+
+              {/* Producto */}
+              <div>
+                <p className="text-white text-sm font-bold mb-4">Producto</p>
+                <div className="flex flex-col gap-2.5">
+                  {[
+                    { label: 'Características',      href: '#características' },
+                    { label: 'Correos automáticos',   href: '#correos' },
+                    { label: 'WhatsApp',              href: '#whatsapp' },
+                    { label: 'Precios',               href: '#precios' },
+                    { label: 'Comparativa',           href: '#comparativa' },
+                  ].map(l => (
+                    <a key={l.label} href={l.href} className="text-sm text-slate-400 hover:text-white transition-colors">{l.label}</a>
+                  ))}
+                </div>
+              </div>
+
+              {/* Legal */}
+              <div>
+                <p className="text-white text-sm font-bold mb-4">Legal</p>
+                <div className="flex flex-col gap-2.5">
+                  <a href="/privacidad" className="text-sm text-slate-400 hover:text-white transition-colors">Privacidad</a>
+                  <a href="/terminos" className="text-sm text-slate-400 hover:text-white transition-colors">Términos</a>
+                </div>
+              </div>
+
+              {/* Recursos */}
+              <div>
+                <p className="text-white text-sm font-bold mb-4">Recursos</p>
+                <div className="flex flex-col gap-2.5">
+                  <a href="#faq" className="text-sm text-slate-400 hover:text-white transition-colors">Preguntas frecuentes</a>
+                  <a href="#reseñas" className="text-sm text-slate-400 hover:text-white transition-colors">Reseñas</a>
+                  <Link to="/support" className="text-sm text-slate-400 hover:text-white transition-colors">Centro de soporte</Link>
+                </div>
+              </div>
+
+              {/* Contacto */}
+              <div className="rounded-2xl border border-white/10 p-5" style={{ background: 'rgba(255,255,255,0.02)' }}>
+                <p className="text-white text-sm font-bold mb-3">Contacto</p>
+                <div className="space-y-2">
+                  <a href="mailto:soporte@gemasystem.mx" className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors">
+                    <Send className="w-3.5 h-3.5 flex-shrink-0" /> soporte@gemasystem.mx
+                  </a>
+                  <p className="flex items-center gap-2 text-sm text-slate-400">
+                    <BadgeCheck className="w-3.5 h-3.5 flex-shrink-0" /> Hecho en México
+                  </p>
+                </div>
+              </div>
             </div>
-            <p className="text-xs text-slate-500 text-center">
-              © {new Date().getFullYear()} GemaSystem · Software de gestión para gimnasios · Todos los derechos reservados
-            </p>
-            <div className="flex items-center gap-5 text-xs text-slate-500">
-              <span className="font-medium">Hecho en México</span>
-              <a href="/privacidad" className="hover:text-slate-300 transition-colors">Privacidad</a>
-              <a href="/terminos"   className="hover:text-slate-300 transition-colors">Términos</a>
-              <Link to="/support" className="hover:text-slate-300 transition-colors">Soporte</Link>
+
+            {/* Bottom bar */}
+            <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+              <p className="text-xs text-slate-500 text-center sm:text-left">
+                © {new Date().getFullYear()} GemaSystem · Software de gestión para gimnasios · Todos los derechos reservados
+              </p>
+              <span className="text-xs text-slate-500 border border-white/15 rounded-full px-2.5 py-0.5 font-mono">v1.0.0-beta.1</span>
             </div>
           </div>
         </footer>

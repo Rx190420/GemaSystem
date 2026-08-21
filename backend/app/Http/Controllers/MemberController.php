@@ -11,6 +11,7 @@ use App\Models\Visit;
 use App\Services\MemberCodeService;
 use App\Services\NotificationService;
 use App\Services\WhatsAppService;
+use App\Support\SqlPortability;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -35,8 +36,8 @@ class MemberController extends Controller
         $startDate = $now->copy()->startOfMonth()->subMonths(11);
         $byMonth = Member::where('created_at', '>=', $startDate)
             ->select(
-                DB::raw('YEAR(created_at) as year'),
-                DB::raw('MONTH(created_at) as month'),
+                DB::raw(SqlPortability::yearExpr('created_at')),
+                DB::raw(SqlPortability::monthExpr('created_at')),
                 DB::raw('COUNT(*) as count')
             )
             ->groupBy('year', 'month')

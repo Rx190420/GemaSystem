@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react'
+import { Skeleton } from 'boneyard-js/react'
+import { LoadingLogoOverlay } from '../components/SkeletonLogoMark'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
@@ -242,9 +244,9 @@ function MembershipTypesSection() {
 
   return (
     <SubCard icon={Tag} title="Tipos de membresía" description="Opciones que aparecen en los formularios de registro, cada una con su propio color.">
-      {isLoading ? (
-        <div className="flex items-center gap-2 text-gray-400 text-sm"><Loader2 className="w-4 h-4 animate-spin" />Cargando...</div>
-      ) : (
+      <LoadingLogoOverlay show={isLoading} size={32} />
+      <Skeleton name="settings-membership-types" loading={isLoading}>
+      {(
         <div className="flex flex-wrap gap-2">
           {types.map(t => {
             const color = t.color || '#94A3B8'
@@ -303,6 +305,7 @@ function MembershipTypesSection() {
           )}
         </div>
       )}
+      </Skeleton>
     </SubCard>
   )
 }
@@ -339,9 +342,9 @@ function DiscountCategoriesSection() {
 
   return (
     <SubCard icon={Percent} title="Categorías de descuento" description="Se asignan a miembros al registrarlos. Edita el % aquí después de crearlas.">
-      {isLoading ? (
-        <div className="flex items-center gap-2 text-gray-400 text-sm"><Loader2 className="w-4 h-4 animate-spin" />Cargando...</div>
-      ) : categories.length === 0 ? (
+      <LoadingLogoOverlay show={isLoading} size={32} />
+      <Skeleton name="settings-discount-categories" loading={isLoading}>
+      {categories.length === 0 ? (
         <p className="text-sm text-gray-400">Sin categorías aún.</p>
       ) : (
         <div className="space-y-2">
@@ -360,6 +363,7 @@ function DiscountCategoriesSection() {
           ))}
         </div>
       )}
+      </Skeleton>
 
       {adding ? (
         <form onSubmit={handleAdd} className="flex items-end gap-2 flex-wrap">

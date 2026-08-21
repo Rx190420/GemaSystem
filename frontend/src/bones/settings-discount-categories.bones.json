@@ -1,0 +1,19 @@
+{
+  "breakpoints": {
+    "1280": {
+      "name": "settings-discount-categories",
+      "viewportWidth": 628,
+      "width": 628,
+      "height": 20,
+      "bones": [
+        {
+          "x": 0,
+          "y": 0,
+          "w": 100,
+          "h": 20,
+          "r": 8
+        }
+      ]
+    }
+  }
+}

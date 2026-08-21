@@ -1,5 +1,7 @@
  import { useState, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { Skeleton } from 'boneyard-js/react'
+import { LoadingLogoOverlay } from '../components/SkeletonLogoMark'
 import {
   BarChart, Bar, LineChart, Line, AreaChart, Area,
   PieChart, Pie, Cell,
@@ -671,6 +673,8 @@ export default function Finances() {
   const maxMember = topMembers[0]?.total ?? 1
 
   return (
+    <>
+    <LoadingLogoOverlay show={isLoading || loadingTx} />
     <div className="space-y-6">
 
       {/* Modal */}
@@ -701,11 +705,7 @@ export default function Finances() {
         </div>
       </div>
 
-      {isLoading ? (
-        <div className="flex justify-center items-center h-40">
-          <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
-        </div>
-      ) : (
+      <Skeleton name="finances-page" loading={isLoading}>
         <>
           {/* ── KPI cards ── */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1020,12 +1020,9 @@ export default function Finances() {
               </div>
             </div>
 
+            <Skeleton name="finances-table" loading={loadingTx}>
             <div className="card overflow-hidden">
-              {loadingTx ? (
-                <div className="flex justify-center items-center h-40">
-                  <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
-                </div>
-              ) : transactions.length === 0 ? (
+              {transactions.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-40 text-gray-400">
                   <CreditCard className="w-8 h-8 mb-2 opacity-30" />
                   <p className="text-sm">Sin ingresos registrados</p>
@@ -1148,9 +1145,11 @@ export default function Finances() {
                 </>
               )}
             </div>
+            </Skeleton>
           </div>
         </>
-      )}
+      </Skeleton>
     </div>
+    </>
   )
 }

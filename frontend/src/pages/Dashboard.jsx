@@ -1,11 +1,13 @@
 import { useQuery } from '@tanstack/react-query'
+import { Skeleton } from 'boneyard-js/react'
+import { LoadingLogoOverlay } from '../components/SkeletonLogoMark'
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
 import {
   Users, Clock, DollarSign, Dumbbell, TrendingUp, TrendingDown,
-  AlertCircle, Loader2, Eye, EyeOff, Cake, Wallet,
+  AlertCircle, Eye, EyeOff, Cake, Wallet,
   CreditCard, Award, ChevronRight, Smile, Banknote, ArrowRightLeft, UserX, Activity,
 } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -119,12 +121,6 @@ export default function Dashboard() {
   })
   const typeColors = useMembershipTypeColors()
 
-  if (isLoading) return (
-    <div className="flex items-center justify-center h-64">
-      <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--color-primary-500)' }} />
-    </div>
-  )
-
   if (isError) return (
     <div className="flex flex-col items-center justify-center h-64 text-gray-500 gap-2">
       <AlertCircle className="w-10 h-10 text-red-400" />
@@ -132,11 +128,15 @@ export default function Dashboard() {
     </div>
   )
 
+  // Defaults so the layout below can render safely (all zeros/empty) while
+  // isLoading is true and `data` hasn't arrived yet — needed because
+  // <Skeleton> renders these children even during loading, just visually
+  // replaced by the gray placeholder on top; it doesn't unmount them.
   const {
-    stats, recent_visits, visits_by_day, members_by_type,
-    revenue_by_month, top_visitors, upcoming_birthdays, revenue_by_method,
-    at_risk_members,
-  } = data
+    stats = {}, recent_visits = [], visits_by_day = [], members_by_type = [],
+    revenue_by_month = [], top_visitors = [], upcoming_birthdays = [], revenue_by_method = [],
+    at_risk_members = [],
+  } = data ?? {}
 
   const revenueData = (revenue_by_month ?? []).map(r => ({ name: MONTH_NAMES[r.month - 1], total: parseFloat(r.total) }))
   const visitsData  = (visits_by_day ?? []).map(v => ({ date: fmtDate(v.date), total: v.count }))
@@ -153,6 +153,9 @@ export default function Dashboard() {
   const memChange = pct(stats.new_members_month, stats.new_members_last)
 
   return (
+    <>
+    <LoadingLogoOverlay show={isLoading} />
+    <Skeleton name="dashboard" loading={isLoading}>
     <div className="space-y-6">
 
       {/* ── Welcome ── */}
@@ -462,5 +465,7 @@ export default function Dashboard() {
         </FixedPanel>
       </div>
     </div>
+    </Skeleton>
+    </>
   )
 }

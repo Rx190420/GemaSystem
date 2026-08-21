@@ -155,6 +155,19 @@ return [
             'prefix_indexes' => true,
             'schema' => 'public',
             'sslmode' => 'prefer',
+            // ── Persistent connections ──────────────────────────────────────
+            // Same reasoning as the 'mysql' block above: Supabase is a remote
+            // DB (network round-trip, not localhost), so opening a fresh
+            // TCP+TLS+auth handshake on every request is real cost (~850ms
+            // measured against the pooler) on top of the query itself. With
+            // PDO::ATTR_PERSISTENT each Apache worker keeps its socket open
+            // and reuses it across requests. HandleDatabaseConnection already
+            // pings and reconnects this connection at the top of every /api
+            // request, so a stale/dropped persistent socket self-heals.
+            'options' => extension_loaded('pdo_pgsql') ? [
+                PDO::ATTR_PERSISTENT => true,
+                PDO::ATTR_TIMEOUT => 8,
+            ] : [],
         ],
 
         'sqlsrv' => [

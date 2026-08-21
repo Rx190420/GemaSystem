@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\ProductSale;
 use App\Services\ImageUploadService;
 use App\Services\ProductSkuService;
+use App\Support\SqlPortability;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -186,8 +187,8 @@ class ProductController extends Controller
         $startDate = now()->copy()->startOfMonth()->subMonths(5);
         $byMonthRaw = (clone $base)->where('date', '>=', $startDate)
             ->select(
-                DB::raw('YEAR(date) as year'),
-                DB::raw('MONTH(date) as month'),
+                DB::raw(SqlPortability::yearExpr('date')),
+                DB::raw(SqlPortability::monthExpr('date')),
                 DB::raw('SUM(quantity) as units'),
                 DB::raw('SUM(total_amount) as revenue'),
                 DB::raw('SUM(profit) as profit')

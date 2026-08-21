@@ -34,7 +34,14 @@ class HandleDatabaseConnection
 {
     public function handle(Request $request, Closure $next)
     {
-        $this->ensureAlive('mysql');
+        // Ping whichever connection is actually active (env DB_CONNECTION —
+        // 'mysql' locally, 'pgsql' on Supabase). A previous version hardcoded
+        // 'mysql' here: with DB_CONNECTION=pgsql the 'mysql' config block
+        // still reads the same DB_HOST/DB_PORT env vars (now pointing at
+        // Supabase), so PDO tried to speak the MySQL wire protocol against a
+        // Postgres server and hung indefinitely waiting for a handshake that
+        // never comes — every /api/* request stalled here.
+        $this->ensureAlive(config('database.default'));
 
         return $next($request);
     }

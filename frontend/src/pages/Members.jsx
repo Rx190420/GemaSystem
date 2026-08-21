@@ -1,4 +1,6 @@
 import { useState, useCallback, useEffect } from 'react'
+import { Skeleton } from 'boneyard-js/react'
+import { LoadingLogoOverlay } from '../components/SkeletonLogoMark'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
@@ -758,6 +760,8 @@ export default function Members() {
   }
 
   return (
+    <>
+    <LoadingLogoOverlay show={isLoading || loadingSummary} />
     <div className="space-y-5">
 
       {/* ── Header ── */}
@@ -774,8 +778,9 @@ export default function Members() {
         </div>
       </div>
 
+      <Skeleton name="members-summary" loading={loadingSummary}>
       {/* ── Stat cards ── */}
-      {!loadingSummary && s && (
+      {s && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard icon={Users}     title="Total"       value={s.total}     color="indigo" />
           <StatCard icon={UserCheck} title="Activos"     value={s.active}    color="emerald" />
@@ -785,7 +790,7 @@ export default function Members() {
       )}
 
       {/* ── Charts ── */}
-      {!loadingSummary && summary && (
+      {summary && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
           {/* By membership type — pie */}
@@ -838,6 +843,7 @@ export default function Members() {
 
         </div>
       )}
+      </Skeleton>
 
       {/* ── Filters ── */}
       <div className="card p-4 flex flex-col sm:flex-row gap-3">
@@ -865,12 +871,9 @@ export default function Members() {
       </div>
 
       {/* ── Table ── */}
+      <Skeleton name="members-table" loading={isLoading}>
       <div className="card overflow-hidden">
-        {isLoading ? (
-          <div className="flex items-center justify-center h-48">
-            <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
-          </div>
-        ) : members.length === 0 ? (
+        {members.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-48 text-gray-400">
             <User className="w-10 h-10 mb-2 opacity-30" />
             <p className="text-sm">No se encontraron miembros</p>
@@ -1112,6 +1115,7 @@ export default function Members() {
           </>
         )}
       </div>
+      </Skeleton>
 
       {formModal && (
         <MemberFormModal
@@ -1129,5 +1133,6 @@ export default function Members() {
         />
       )}
     </div>
+    </>
   )
 }

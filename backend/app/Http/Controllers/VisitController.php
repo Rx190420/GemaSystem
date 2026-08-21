@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Ingreso;
 use App\Models\Visit;
 use App\Services\NotificationService;
+use App\Support\SqlPortability;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -30,8 +31,8 @@ class VisitController extends Controller
         $startDate = $now->copy()->startOfMonth()->subMonths(11);
         $byMonth = Visit::where('visit_date', '>=', $startDate)
             ->select(
-                DB::raw('YEAR(visit_date) as year'),
-                DB::raw('MONTH(visit_date) as month'),
+                DB::raw(SqlPortability::yearExpr('visit_date')),
+                DB::raw(SqlPortability::monthExpr('visit_date')),
                 DB::raw('COUNT(*) as count')
             )
             ->groupBy('year', 'month')

@@ -1,4 +1,6 @@
 import { useState, useRef } from 'react'
+import { Skeleton } from 'boneyard-js/react'
+import { LoadingLogoOverlay } from '../components/SkeletonLogoMark'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import {
@@ -334,10 +336,9 @@ function ProductDetailModal({ product, onClose, onEdit }) {
           </div>
         </div>
 
+        <Skeleton name="product-detail-modal" loading={isLoading}>
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
-          {isLoading ? (
-            <div className="flex justify-center items-center h-40"><Loader2 className="w-6 h-6 animate-spin text-indigo-600" /></div>
-          ) : (
+          {(
             <>
               {/* Pricing tiles */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -431,6 +432,7 @@ function ProductDetailModal({ product, onClose, onEdit }) {
             </>
           )}
         </div>
+        </Skeleton>
 
         <div className="px-6 py-4 border-t border-gray-100 flex gap-3">
           <button onClick={onClose} className="btn-secondary flex-1">Cerrar</button>
@@ -481,7 +483,7 @@ export default function Products() {
     enabled: view === 'inventory',
   })
 
-  const { data: summary } = useQuery({
+  const { data: summary, isLoading: loadingProductsSummary } = useQuery({
     queryKey: ['products-summary'],
     queryFn: () => api.get('/products/summary').then(r => r.data),
   })
@@ -509,6 +511,8 @@ export default function Products() {
   const salesPagination = salesData ? { current: salesData.current_page, last: salesData.last_page, total: salesData.total } : null
 
   return (
+    <>
+    <LoadingLogoOverlay show={isLoading || loadingProductsSummary || loadingSales} />
     <div className="space-y-5">
 
       {/* ── Header ── */}
@@ -528,6 +532,7 @@ export default function Products() {
       </div>
 
       {/* ── Stat cards ── */}
+      <Skeleton name="products-summary" loading={loadingProductsSummary}>
       {summary && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard icon={Boxes}      title="Productos activos" value={summary.active_products} color="indigo" />
@@ -537,6 +542,7 @@ export default function Products() {
             value={`${summary.low_stock_count} / ${summary.out_of_stock_count}`} color="red" />
         </div>
       )}
+      </Skeleton>
 
       {/* ── View toggle ── */}
       <div className="flex rounded-xl border border-gray-200 bg-gray-50 p-1 gap-1 w-fit">
@@ -587,9 +593,8 @@ export default function Products() {
           </div>
 
           {/* ── Grid ── */}
-          {isLoading ? (
-            <div className="flex justify-center items-center h-40"><Loader2 className="w-6 h-6 animate-spin text-indigo-600" /></div>
-          ) : products.length === 0 ? (
+          <Skeleton name="products-grid" loading={isLoading}>
+          {products.length === 0 ? (
             <div className="card flex flex-col items-center justify-center h-40 text-gray-400">
               <Package className="w-8 h-8 mb-2 opacity-30" />
               <p className="text-sm">Sin productos registrados</p>
@@ -660,12 +665,12 @@ export default function Products() {
           {pagination && (
             <Pagination page={pagination.current} lastPage={pagination.last} total={pagination.total} onPageChange={setPage} itemLabel="productos" pageSize={pageSize} onPageSizeChange={handlePageSize} />
           )}
+          </Skeleton>
         </>
       ) : (
+        <Skeleton name="products-sales-table" loading={loadingSales}>
         <div className="card overflow-hidden">
-          {loadingSales ? (
-            <div className="flex justify-center items-center h-40"><Loader2 className="w-6 h-6 animate-spin text-indigo-600" /></div>
-          ) : sales.length === 0 ? (
+          {sales.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-40 text-gray-400">
               <ShoppingCart className="w-8 h-8 mb-2 opacity-30" />
               <p className="text-sm">Sin ventas registradas</p>
@@ -743,6 +748,7 @@ export default function Products() {
             </>
           )}
         </div>
+        </Skeleton>
       )}
 
       {modalProduct !== undefined && <ProductModal product={modalProduct} onClose={() => setModalProduct(undefined)} />}
@@ -764,5 +770,6 @@ export default function Products() {
         />
       )}
     </div>
+    </>
   )
 }

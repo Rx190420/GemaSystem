@@ -2,12 +2,28 @@ import { NavLink, useParams } from 'react-router-dom'
 import {
   LayoutDashboard, Users, Calendar,
   CreditCard, Clock, TrendingUp, Settings, LifeBuoy, MessageCircle,
-  ChevronLeft, ChevronRight, Package,
+  ChevronLeft, ChevronRight, Package, X,
 } from 'lucide-react'
 import { useSettingsStore } from '../../store/settingsStore'
 import GemaSystemLogo from '../GemaSystemLogo'
 
-export default function Sidebar({ collapsed, onToggle }) {
+// `onClose`/`mobile`/`open` are only passed by the mobile drawer instance in
+// Layout — when present, this renders as a slide-in overlay panel (closed by
+// its own X button) instead of the desktop collapsible rail.
+//
+// The slide animation lives on THIS <aside> itself (not on a wrapping div in
+// Layout) very deliberately: Tailwind v4's translate-x utilities animate via
+// the CSS `translate` property, and its percentage is resolved against the
+// element's OWN box. A wrapping <div> here would have zero width (its only
+// child, this <aside>, is itself `position:fixed` and so contributes no size
+// to a parent's shrink-to-fit box) — translating a 0px-wide box by "-100%"
+// moves it 0px, so it silently never leaves the screen. Confirmed live: the
+// wrapper's computed `translate` was correctly "-100%", but its rect was
+// 0×height, so the actual fixed-position <aside> inside always rendered
+// pinned to the top-left corner regardless of open/closed state, blocking
+// the hamburger button underneath it. Putting the translate on this <aside>
+// (which has a real, explicit w-16/w-64) fixes that at the source.
+export default function Sidebar({ collapsed, onToggle, onClose, mobile = false, open = true }) {
   const { systemSettings } = useSettingsStore()
   const gymName = systemSettings?.gym_name || 'GemaSystem'
   const { hash } = useParams()
@@ -42,33 +58,48 @@ export default function Sidebar({ collapsed, onToggle }) {
     <aside
       className={`fixed inset-y-0 left-0 z-40 flex flex-col overflow-y-auto overscroll-contain
         [-webkit-overflow-scrolling:touch] [touch-action:pan-y]
-        transition-all duration-300 ease-in-out ${collapsed ? 'w-16' : 'w-64'}`}
+        transition-all duration-300 ease-in-out ${collapsed ? 'w-16' : 'w-64'}
+        ${mobile ? `lg:hidden ${open ? 'translate-x-0' : '-translate-x-full'}` : ''}`}
       style={{
         background: 'linear-gradient(180deg, #0D1117 0%, #0A0E18 100%)',
         borderRight: '1px solid rgba(255,255,255,0.05)',
       }}
     >
       {/* Logo */}
-      <div className={`flex items-center gap-3 px-4 py-5 flex-shrink-0 ${collapsed ? 'justify-center' : ''}`}
+      <div className={`flex items-center gap-3 px-4 py-5 flex-shrink-0 ${collapsed ? 'justify-center' : 'justify-between'}`}
         style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}
       >
-        <div
-          className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center"
-          style={{
-            background: 'linear-gradient(135deg, #8B5CF6, #6366F1)',
-            boxShadow: '0 0 20px rgba(139,92,246,0.4)',
-          }}
-        >
-          <GemaSystemLogo className="w-4 h-4 text-white" />
-        </div>
-        {!collapsed && (
-          <div>
-            <span className="text-white font-bold text-base tracking-tight leading-none">{gymName}</span>
-            <div className="flex items-center gap-1 mt-0.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" style={{ boxShadow: '0 0 6px #34D399' }} />
-              <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 500 }}>Sistema activo</span>
-            </div>
+        <div className="flex items-center gap-3 min-w-0">
+          <div
+            className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center"
+            style={{
+              background: 'linear-gradient(135deg, #8B5CF6, #6366F1)',
+              boxShadow: '0 0 20px rgba(139,92,246,0.4)',
+            }}
+          >
+            <GemaSystemLogo className="w-4 h-4 text-white" />
           </div>
+          {!collapsed && (
+            <div className="min-w-0">
+              <span className="text-white font-bold text-base tracking-tight leading-none truncate block">{gymName}</span>
+              <div className="flex items-center gap-1 mt-0.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" style={{ boxShadow: '0 0 6px #34D399' }} />
+                <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 500 }}>Sistema activo</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Close button — mobile drawer only (see comment on the component). */}
+        {onClose && (
+          <button
+            onClick={onClose}
+            aria-label="Cerrar menú"
+            title="Cerrar menú"
+            className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:bg-white/10 hover:text-white transition-colors [touch-action:manipulation]"
+          >
+            <X className="w-4.5 h-4.5" style={{ width: '18px', height: '18px' }} />
+          </button>
         )}
       </div>
 
@@ -174,21 +205,24 @@ export default function Sidebar({ collapsed, onToggle }) {
           </NavLink>
         ))}
 
-        {/* Collapse toggle */}
-        <button
-          onClick={onToggle}
-          className={`w-full flex items-center py-2 rounded-xl transition-all duration-200 mt-1 [touch-action:manipulation] ${collapsed ? 'justify-center' : 'justify-between px-3'}`}
-          style={{ color: '#334155' }}
-          title={collapsed ? 'Expandir' : 'Colapsar'}
-          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.color = '#64748B' }}
-          onMouseLeave={e => { e.currentTarget.style.background = ''; e.currentTarget.style.color = '#334155' }}
-        >
-          {!collapsed && <span style={{ fontSize: '12px' }}>Colapsar menú</span>}
-          {collapsed
-            ? <ChevronRight style={{ width: '16px', height: '16px' }} />
-            : <ChevronLeft  style={{ width: '16px', height: '16px' }} />
-          }
-        </button>
+        {/* Collapse toggle — desktop rail only; the mobile drawer closes via
+            the X button in the header above instead (see onClose above). */}
+        {!onClose && (
+          <button
+            onClick={onToggle}
+            className={`w-full flex items-center py-2 rounded-xl transition-all duration-200 mt-1 [touch-action:manipulation] ${collapsed ? 'justify-center' : 'justify-between px-3'}`}
+            style={{ color: '#334155' }}
+            title={collapsed ? 'Expandir' : 'Colapsar'}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.color = '#64748B' }}
+            onMouseLeave={e => { e.currentTarget.style.background = ''; e.currentTarget.style.color = '#334155' }}
+          >
+            {!collapsed && <span style={{ fontSize: '12px' }}>Colapsar menú</span>}
+            {collapsed
+              ? <ChevronRight style={{ width: '16px', height: '16px' }} />
+              : <ChevronLeft  style={{ width: '16px', height: '16px' }} />
+            }
+          </button>
+        )}
       </div>
     </aside>
   )

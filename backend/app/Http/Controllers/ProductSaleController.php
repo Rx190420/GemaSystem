@@ -6,6 +6,7 @@ use App\Models\Ingreso;
 use App\Models\Product;
 use App\Models\ProductSale;
 use App\Services\NotificationService;
+use App\Support\SqlPortability;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
@@ -101,7 +102,7 @@ class ProductSaleController extends Controller
         }
 
         if ($month = $request->get('month')) {
-            $query->whereRaw("DATE_FORMAT(date, '%Y-%m') = ?", [$month]);
+            $query->whereRaw(SqlPortability::yearMonthEquals('date'), [$month]);
         }
 
         if ($from = $request->get('from')) {

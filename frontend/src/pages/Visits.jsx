@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { Skeleton } from 'boneyard-js/react'
+import { LoadingLogoOverlay } from '../components/SkeletonLogoMark'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { yupResolver } from '@hookform/resolvers/yup'
@@ -991,6 +993,8 @@ export default function Visits() {
   const totalTypeCount = typeData.reduce((s, d) => s + d.count, 0)
 
   return (
+    <>
+    <LoadingLogoOverlay show={isLoading || loadingSummary} />
     <div className="space-y-5">
 
       {/* ── Header ── */}
@@ -1008,7 +1012,8 @@ export default function Visits() {
       </div>
 
       {/* ── Stat cards ── */}
-      {!loadingSummary && s && (
+      <Skeleton name="visits-summary-cards" loading={loadingSummary}>
+      {s && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard icon={Clock}      title="Total visitas" value={s.total}     color="emerald" />
           <StatCard icon={Calendar}   title="Hoy"           value={s.today}     color="indigo"  />
@@ -1016,6 +1021,7 @@ export default function Visits() {
           <StatCard icon={Activity}   title="Este mes"      value={s.thisMonth} color="violet"  />
         </div>
       )}
+      </Skeleton>
 
       {/* ── Main 2-column layout ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
@@ -1071,8 +1077,9 @@ export default function Visits() {
             </div>
           </div>
 
-          {/* Visit type breakdown */}
-          {!loadingSummary && typeData.length > 0 && (
+          {/* Visit type breakdown + monthly trend */}
+          <Skeleton name="visits-summary-panels" loading={loadingSummary}>
+          {typeData.length > 0 && (
             <div className="card p-5">
               <h3 className="text-sm font-semibold text-gray-700 mb-4">Tipos de visita</h3>
               <div className="space-y-3">
@@ -1102,7 +1109,7 @@ export default function Visits() {
           )}
 
           {/* Monthly trend */}
-          {!loadingSummary && summary && (
+          {summary && (
             <div className="card p-5">
               <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
                 <h3 className="text-sm font-semibold text-gray-700">Tendencia — 12 meses</h3>
@@ -1111,6 +1118,7 @@ export default function Visits() {
               <TrendChart />
             </div>
           )}
+          </Skeleton>
         </div>
 
         {/* ── Right panel: visits table ── */}
@@ -1148,12 +1156,9 @@ export default function Visits() {
           </div>
 
           {/* Table */}
+          <Skeleton name="visits-table" loading={isLoading}>
           <div className="card overflow-hidden">
-            {isLoading ? (
-              <div className="flex justify-center items-center h-40">
-                <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
-              </div>
-            ) : visits.length === 0 ? (
+            {visits.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-40 text-gray-400">
                 <Clock className="w-8 h-8 mb-2 opacity-30" />
                 <p className="text-sm">Sin visitas registradas</p>
@@ -1284,6 +1289,7 @@ export default function Visits() {
               </>
             )}
           </div>
+          </Skeleton>
         </div>
       </div>
 
@@ -1297,5 +1303,6 @@ export default function Visits() {
         />
       )}
     </div>
+    </>
   )
 }

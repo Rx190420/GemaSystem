@@ -42,12 +42,15 @@ export default function Layout() {
         />
       </div>
 
-      {/* Mobile sidebar */}
-      <div
-        className={`fixed inset-y-0 left-0 z-40 lg:hidden transition-transform duration-300 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}
-      >
-        <Sidebar collapsed={false} onToggle={() => setMobileOpen(false)} />
-      </div>
+      {/* Mobile sidebar — `mobile`/`open` drive its own slide transform
+          directly (see the comment in Sidebar.jsx for why that can't live on
+          a wrapping div here). */}
+      <Sidebar
+        collapsed={false}
+        onClose={() => setMobileOpen(false)}
+        mobile
+        open={mobileOpen}
+      />
 
       {/* Main content area */}
       <div

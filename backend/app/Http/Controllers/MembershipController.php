@@ -6,6 +6,7 @@ use App\Models\Ingreso;
 use App\Models\Member;
 use App\Models\Membership;
 use App\Models\Payment;
+use App\Support\SqlPortability;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -28,8 +29,8 @@ class MembershipController extends Controller
         $startDate = $now->copy()->startOfMonth()->subMonths(11);
         $byMonth = Membership::where('created_at', '>=', $startDate)
             ->select(
-                DB::raw('YEAR(created_at) as year'),
-                DB::raw('MONTH(created_at) as month'),
+                DB::raw(SqlPortability::yearExpr('created_at')),
+                DB::raw(SqlPortability::monthExpr('created_at')),
                 DB::raw('COUNT(*) as count')
             )
             ->groupBy('year', 'month')

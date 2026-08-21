@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Ingreso;
 use App\Services\NotificationService;
+use App\Support\SqlPortability;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -16,7 +17,7 @@ class IngresoController extends Controller
         $query = Ingreso::with('member:id,first_name,last_name,member_code');
 
         if ($month = $request->get('month')) {
-            $query->whereRaw("DATE_FORMAT(date, '%Y-%m') = ?", [$month]);
+            $query->whereRaw(SqlPortability::yearMonthEquals('date'), [$month]);
         }
 
         if ($origin = $request->get('origin')) {
@@ -207,8 +208,8 @@ class IngresoController extends Controller
         $startDate = $now->copy()->startOfMonth()->subMonths(11);
         $byMonthRaw = Ingreso::where('date', '>=', $startDate)
             ->select(
-                DB::raw('YEAR(date) as year'),
-                DB::raw('MONTH(date) as month'),
+                DB::raw(SqlPortability::yearExpr('date')),
+                DB::raw(SqlPortability::monthExpr('date')),
                 DB::raw('SUM(amount) as total')
             )
             ->groupBy('year', 'month')
@@ -223,7 +224,7 @@ class IngresoController extends Controller
         // By day (current month)
         $startOfMonth = $now->copy()->startOfMonth();
         $byDayRaw = Ingreso::whereBetween('date', [$startOfMonth->toDateString(), $now->toDateString()])
-            ->select(DB::raw('DAY(date) as day'), DB::raw('SUM(amount) as total'))
+            ->select(DB::raw(SqlPortability::dayExpr('date')), DB::raw('SUM(amount) as total'))
             ->groupBy('day')->get()->keyBy('day');
         $byDayMonth = [];
         for ($d = 1; $d <= $now->day; $d++) {

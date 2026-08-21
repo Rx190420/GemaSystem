@@ -1,0 +1,11 @@
+{
+  "breakpoints": {
+    "1280": {
+      "name": "visits-summary-panels",
+      "viewportWidth": 312,
+      "width": 312,
+      "height": 0,
+      "bones": []
+    }
+  }
+}

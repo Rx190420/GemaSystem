@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Payment;
 use App\Models\Visit;
 use App\Models\Ingreso;
+use App\Support\SqlPortability;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -95,8 +96,8 @@ class FinanceController extends Controller
         $payByMonth = Payment::where('status', 'completed')
             ->where('payment_date', '>=', $startDate)
             ->select(
-                DB::raw('YEAR(payment_date)  as year'),
-                DB::raw('MONTH(payment_date) as month'),
+                DB::raw(SqlPortability::yearExpr('payment_date')),
+                DB::raw(SqlPortability::monthExpr('payment_date')),
                 DB::raw('SUM(amount)         as total')
             )
             ->groupBy('year', 'month')
@@ -106,8 +107,8 @@ class FinanceController extends Controller
             ->where('price', '>', 0)
             ->where('visit_date', '>=', $startDate)
             ->select(
-                DB::raw('YEAR(visit_date)  as year'),
-                DB::raw('MONTH(visit_date) as month'),
+                DB::raw(SqlPortability::yearExpr('visit_date')),
+                DB::raw(SqlPortability::monthExpr('visit_date')),
                 DB::raw('SUM(price)        as total')
             )
             ->groupBy('year', 'month')
@@ -154,7 +155,7 @@ class FinanceController extends Controller
 
         $payByDay = Payment::where('status', 'completed')
             ->whereBetween('payment_date', [$startOfMonth->toDateString(), $now->toDateString()])
-            ->select(DB::raw('DAY(payment_date) as day'), DB::raw('SUM(amount) as total'))
+            ->select(DB::raw(SqlPortability::dayExpr('payment_date')), DB::raw('SUM(amount) as total'))
             ->groupBy('day')
             ->get()
             ->keyBy('day');
@@ -162,7 +163,7 @@ class FinanceController extends Controller
         $visitByDay = Visit::whereNotNull('price')
             ->where('price', '>', 0)
             ->whereBetween('visit_date', [$startOfMonth->toDateString(), $now->toDateString()])
-            ->select(DB::raw('DAY(visit_date) as day'), DB::raw('SUM(price) as total'))
+            ->select(DB::raw(SqlPortability::dayExpr('visit_date')), DB::raw('SUM(price) as total'))
             ->groupBy('day')
             ->get()
             ->keyBy('day');
@@ -246,7 +247,7 @@ class FinanceController extends Controller
             $q = Payment::with('member:id,first_name,last_name,member_code')
                 ->where('status', 'completed');
             if ($month) {
-                $q->whereRaw("DATE_FORMAT(payment_date, '%Y-%m') = ?", [$month]);
+                $q->whereRaw(SqlPortability::yearMonthEquals('payment_date'), [$month]);
             }
             $payments = $q->orderByDesc('payment_date')->get()->map(fn ($p) => [
                 'id'          => 'pay_' . $p->id,
@@ -265,7 +266,7 @@ class FinanceController extends Controller
                 ->whereNotNull('price')
                 ->where('price', '>', 0);
             if ($month) {
-                $q->whereRaw("DATE_FORMAT(visit_date, '%Y-%m') = ?", [$month]);
+                $q->whereRaw(SqlPortability::yearMonthEquals('visit_date'), [$month]);
             }
             $visits = $q->orderByDesc('visit_date')->get()->map(fn ($v) => [
                 'id'          => 'vis_' . $v->id,

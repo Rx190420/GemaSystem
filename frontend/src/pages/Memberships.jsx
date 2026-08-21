@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react'
+import { Skeleton } from 'boneyard-js/react'
+import { LoadingLogoOverlay } from '../components/SkeletonLogoMark'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import {
@@ -514,6 +516,8 @@ export default function Memberships() {
   }
 
   return (
+    <>
+    <LoadingLogoOverlay show={isLoading || loadingSummary} />
     <div className="space-y-5">
 
       {/* ── Header ── */}
@@ -530,8 +534,9 @@ export default function Memberships() {
         </div>
       </div>
 
+      <Skeleton name="memberships-summary" loading={loadingSummary}>
       {/* ── Stat cards ── */}
-      {!loadingSummary && s && (
+      {s && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard icon={Users}       title="Total"      value={s.total}     color="indigo" />
           <StatCard icon={CheckCircle} title="Activas"    value={s.active}    color="emerald" />
@@ -541,7 +546,7 @@ export default function Memberships() {
       )}
 
       {/* ── Charts ── */}
-      {!loadingSummary && summary && (
+      {summary && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
           {/* By type */}
@@ -613,6 +618,7 @@ export default function Memberships() {
 
         </div>
       )}
+      </Skeleton>
 
       {/* ── Filters ── */}
       <div className="card p-4 flex gap-3 flex-wrap">
@@ -644,10 +650,9 @@ export default function Memberships() {
       </div>
 
       {/* ── Table ── */}
+      <Skeleton name="memberships-table" loading={isLoading}>
       <div className="card overflow-hidden">
-        {isLoading ? (
-          <div className="flex justify-center items-center h-40"><Loader2 className="w-6 h-6 animate-spin text-indigo-600" /></div>
-        ) : memberships.length === 0 ? (
+        {memberships.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-40 text-gray-400">
             <CreditCard className="w-8 h-8 mb-2 opacity-30" />
             <p className="text-sm">Sin membresías registradas</p>
@@ -761,6 +766,7 @@ export default function Memberships() {
           </>
         )}
       </div>
+      </Skeleton>
 
       {showModal && <NewMembershipModal onClose={() => setShowModal(false)} />}
       {deleteTarget && (
@@ -773,5 +779,6 @@ export default function Memberships() {
         />
       )}
     </div>
+    </>
   )
 }
