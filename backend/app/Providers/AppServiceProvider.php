@@ -13,19 +13,22 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register()
     {
-        //
+        // The 'personal_access_tokens' table already exists — created by our
+        // own SQL import (gemasystem_supabase.sql / gemasystem_tenant_pgsql.sql),
+        // not by Sanctum's bundled migration. This MUST live in register(),
+        // not boot(): Laravel runs register() for every provider before
+        // boot() runs for any of them, and Sanctum's own provider registers
+        // its migration during ITS boot() — which fires before our
+        // AppServiceProvider's boot() does (packages boot first). Calling
+        // ignoreMigrations() from boot() was too late; Sanctum had already
+        // queued the migration by then, so `php artisan migrate` kept trying
+        // to CREATE TABLE a table that's already there and crashing the
+        // deploy with "already exists".
+        Sanctum::ignoreMigrations();
     }
 
     public function boot()
     {
-        // The 'personal_access_tokens' table already exists — created by our
-        // own SQL import (gemasystem_supabase.sql / gemasystem_tenant_pgsql.sql),
-        // not by Sanctum's bundled migration. Without this, Sanctum still
-        // registers its own copy of that migration on every app boot, and
-        // Railway's deploy-time `php artisan migrate` tries to CREATE TABLE a
-        // table that's already there, crashing the deploy with "already exists".
-        Sanctum::ignoreMigrations();
-
         // Force HTTPS in production
         if ($this->app->environment('production')) {
             URL::forceScheme('https');
