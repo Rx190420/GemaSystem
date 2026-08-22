@@ -1,33 +1,53 @@
 import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, lazy, Suspense } from 'react'
+import { Loader2 } from 'lucide-react'
 import { useAuthStore } from './store/authStore'
 import Layout from './components/layout/Layout'
 import PageLoader from './components/PageLoader'
 import { markPageLoaderDone } from './lib/pageLoaderSignal'
-import Landing from './pages/Landing'
-import Dashboard from './pages/Dashboard'
-import Members from './pages/Members'
-import MemberDetail from './pages/MemberDetail'
-import Classes from './pages/Classes'
-import Visits from './pages/Visits'
-import Memberships from './pages/Memberships'
-import Products from './pages/Products'
-import Finances from './pages/Finances'
-import Settings from './pages/Settings'
-import WhatsAppPage from './pages/WhatsApp'
-import Support from './pages/Support'
-import SupportPanel from './pages/SupportPanel'
-import Projects from './pages/Projects'
-import SuperAdmin from './pages/SuperAdmin'
-import CheckoutSuccess from './pages/CheckoutSuccess'
-import ForgotPassword from './pages/ForgotPassword'
-import Profile from './pages/Profile'
-import Terminos from './pages/Terminos'
-import Privacidad from './pages/Privacidad'
 import OnboardingWizard from './components/OnboardingWizard'
 import ErrorBoundary from './components/ErrorBoundary'
 import NotFound from './pages/errors/NotFound'
 import Forbidden from './pages/errors/Forbidden'
+
+// ── Route-level code splitting ──────────────────────────────────────────────
+// Previously every page (Landing's three.js/WebGL background, PDF/Excel
+// export libs, recharts, jspdf, qrcode.react, all ~20 pages) was imported
+// eagerly here, so Vite bundled the *entire app* into one ~3.8MB (~1MB
+// gzipped) chunk — a landing-page visitor downloaded the whole authenticated
+// dashboard before seeing a single word. lazy() + Suspense splits each page
+// into its own chunk, fetched only when that route is actually visited.
+const Landing         = lazy(() => import('./pages/Landing'))
+const Dashboard       = lazy(() => import('./pages/Dashboard'))
+const Members         = lazy(() => import('./pages/Members'))
+const MemberDetail    = lazy(() => import('./pages/MemberDetail'))
+const Classes         = lazy(() => import('./pages/Classes'))
+const Visits          = lazy(() => import('./pages/Visits'))
+const Memberships     = lazy(() => import('./pages/Memberships'))
+const Products        = lazy(() => import('./pages/Products'))
+const Finances        = lazy(() => import('./pages/Finances'))
+const Settings        = lazy(() => import('./pages/Settings'))
+const WhatsAppPage    = lazy(() => import('./pages/WhatsApp'))
+const Support         = lazy(() => import('./pages/Support'))
+const SupportPanel    = lazy(() => import('./pages/SupportPanel'))
+const Projects        = lazy(() => import('./pages/Projects'))
+const SuperAdmin      = lazy(() => import('./pages/SuperAdmin'))
+const CheckoutSuccess = lazy(() => import('./pages/CheckoutSuccess'))
+const ForgotPassword  = lazy(() => import('./pages/ForgotPassword'))
+const Profile         = lazy(() => import('./pages/Profile'))
+const Terminos        = lazy(() => import('./pages/Terminos'))
+const Privacidad      = lazy(() => import('./pages/Privacidad'))
+
+// Only shows up on slow connections navigating between already-mounted
+// routes — the very first page load stays covered by <PageLoader>'s splash
+// (2.6s, plenty of time for that first chunk to arrive).
+function RouteFallback() {
+  return (
+    <div className="flex items-center justify-center h-64">
+      <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--color-primary-500, #6366F1)' }} />
+    </div>
+  )
+}
 
 // ── Route Guards ──────────────────────────────────────────────────────────────
 
@@ -113,6 +133,7 @@ export default function App() {
         <AuthLoader show={show} />
 
         <ErrorBoundary>
+          <Suspense fallback={<RouteFallback />}>
           <Routes>
             {/* Public */}
             <Route path="/"                element={<GuestRoute><Landing /></GuestRoute>} />
@@ -147,6 +168,7 @@ export default function App() {
 
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </Suspense>
         </ErrorBoundary>
 
         <OnboardingGate />
