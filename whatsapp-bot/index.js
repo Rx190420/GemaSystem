@@ -6,9 +6,14 @@ const path     = require('path')
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
-const PORT       = process.env.WHATSAPP_BOT_PORT || 3001
+// Railway (and most container hosts) assign the port to listen on via `PORT` —
+// WHATSAPP_BOT_PORT stays as a local-dev override so `start-bot.bat` keeps working.
+const PORT       = process.env.PORT || process.env.WHATSAPP_BOT_PORT || 3001
 const API_SECRET = process.env.WHATSAPP_BOT_SECRET || ''
 const DATA_PATH  = process.env.WHATSAPP_BOT_DATA   || './.wwebjs_auth'
+// Points at a system-installed Chromium (see Dockerfile) instead of downloading
+// puppeteer's own copy — set by the container image, not needed for local dev.
+const CHROME_PATH = process.env.PUPPETEER_EXECUTABLE_PATH || undefined
 
 // ── Session store ─────────────────────────────────────────────────────────────
 
@@ -26,6 +31,7 @@ function SessionState(id) {
 function makePuppeteerArgs() {
     return {
         headless: true,
+        executablePath: CHROME_PATH,
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
@@ -301,9 +307,15 @@ app.post('/sessions/:id/send-batch', async (req, res) => {
 
 // ── Start ─────────────────────────────────────────────────────────────────────
 
-app.listen(PORT, '127.0.0.1', () => {
+// '0.0.0.0' — not '127.0.0.1'. Loopback-only is invisible to anything outside
+// the process itself; Railway's network (and any other container host) reaches
+// the app through its own proxy/network layer, which needs it to listen on
+// all interfaces. This was the actual reason the bot never worked on Railway:
+// bound to localhost, there was nothing outside the container that could
+// ever reach it, no matter how the rest of the deploy was configured.
+app.listen(PORT, '0.0.0.0', () => {
     console.log('\n🤖  GemaSystem WhatsApp Bot Manager')
-    console.log(`    API:  http://127.0.0.1:${PORT}/sessions`)
+    console.log(`    API:  http://0.0.0.0:${PORT}/sessions`)
     if (API_SECRET) console.log('    Auth: activo (x-api-key)')
     console.log()
     autoRestore()
