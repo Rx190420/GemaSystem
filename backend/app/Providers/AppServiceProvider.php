@@ -35,6 +35,15 @@ class AppServiceProvider extends ServiceProvider
         // outbound SMTP entirely (every port), but HTTPS is never blocked.
         // See app/Mail/Transport/ResendTransport.php for the why/how.
         Mail::extend('resend', function (array $config) {
+            if (empty($config['key'])) {
+                // A null key previously reached the constructor as a raw
+                // TypeError ("must be of type string, null given") — technically
+                // caught by the try/catch around Mail::send() same as any other
+                // failure, but not obvious *why* at a glance. This says it plainly.
+                throw new \RuntimeException(
+                    'RESEND_KEY no está configurada — agrégala en las variables de entorno.'
+                );
+            }
             return new ResendTransport($config['key']);
         });
 
