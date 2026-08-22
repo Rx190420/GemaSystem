@@ -41,7 +41,16 @@ return [
             'encryption' => env('MAIL_ENCRYPTION', 'tls'),
             'username' => env('MAIL_USERNAME'),
             'password' => env('MAIL_PASSWORD'),
-            'timeout' => null,
+            // Was null (no timeout of its own), so a hung SMTP connection
+            // just ran until PHP's global max_execution_time (30s) killed
+            // the *entire request* with an uncatchable fatal error — no
+            // try/catch around Mail::send() can stop that, since execution
+            // is torn down mid-instruction, not unwound through the call
+            // stack. A short timeout here means a bad SMTP connection fails
+            // with a normal, catchable exception well before that global
+            // limit, so the try/catch blocks around Mail::send() calls
+            // actually get a chance to run and the request survives.
+            'timeout' => env('MAIL_TIMEOUT', 10),
             'auth_mode' => null,
         ],
 
