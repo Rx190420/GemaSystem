@@ -45,6 +45,12 @@ return [
         'price_annual'   => env('STRIPE_PRICE_ANNUAL'),
     ],
 
+    'superadmin' => [
+        // Second factor beyond auth:sanctum + operator PIN, required only for
+        // the "delete this gym permanently" action — SuperAdminController::deleteGym().
+        'delete_secret' => env('SUPERADMIN_DELETE_SECRET'),
+    ],
+
     'recaptcha' => [
         'secret_key' => env('RECAPTCHA_SECRET_KEY'),
     ],

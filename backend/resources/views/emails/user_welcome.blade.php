@@ -14,25 +14,25 @@
     <p class="eyebrow">Cuenta creada</p>
     <h1 class="h1">Tu cuenta está lista</h1>
   </div>
-  <p class="lead">Se ha creado tu cuenta en GemaSystem. A continuación encontrarás tus credenciales de acceso. Guárdalas en un lugar seguro.</p>
+  <p class="lead">Se ha creado tu cuenta en GemaSystem. Además de la contraseña que elegiste al registrarte, necesitas el siguiente código de acceso para iniciar sesión. Guárdalo en un lugar seguro.</p>
 
   <div class="box">
-    <div class="box-label">Credenciales de acceso</div>
+    <div class="box-label">Datos de tu cuenta</div>
     <div class="row">
       <span class="rk">Usuario</span>
-      <span class="rv" style="font-family:'Courier New',monospace;font-size:15px;">{{ $username }}</span>
+      <span class="rv" style="font-family:'Courier New',monospace;font-size:15px;">{{ $user->username }}</span>
     </div>
     <div class="row">
-      <span class="rk">Contraseña temporal</span>
-      <span class="rv" style="font-family:'Courier New',monospace;font-size:15px;">{{ $tempPassword }}</span>
+      <span class="rk">Código de acceso</span>
+      <span class="rv" style="font-family:'Courier New',monospace;font-size:15px;">{{ $accessCode }}</span>
     </div>
     <div class="row">
       <span class="rk">Correo</span>
-      <span class="rv" style="font-size:12px;">{{ $email }}</span>
+      <span class="rv" style="font-size:12px;">{{ $user->email }}</span>
     </div>
   </div>
 
   <div class="notice amber">
-    <p class="notice-text"><strong>Importante:</strong> Cambia tu contraseña inmediatamente después de iniciar sesión por primera vez. Estas credenciales son personales e intransferibles.</p>
+    <p class="notice-text"><strong>Importante:</strong> este código de acceso se te pedirá cada vez que inicies sesión, junto con tu contraseña. Es personal e intransferible — no lo compartas con nadie.</p>
   </div>
 @endsection

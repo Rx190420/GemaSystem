@@ -175,6 +175,75 @@ class CreateGymDatabase extends Command
     }
 
     /**
+     * Permanently wipes ALL operational data belonging to a gym — the
+     * dedicated schema/database for a paid gym, or every gym_id-scoped row
+     * in the shared schema for a free gym. Mirror image of provision(): this
+     * only handles the STORAGE side. The caller is responsible for deleting
+     * the gym's `users` rows and the `gyms` row itself afterward — same
+     * division of responsibility provision() already has (it doesn't touch
+     * those either; StripeController creates them before calling it).
+     *
+     * Irreversible. Called from SuperAdminController::deleteGym(), which
+     * gates it behind SUPERADMIN_DELETE_SECRET.
+     */
+    public static function destroy(Gym $gym): void
+    {
+        if (config('database.default') === 'mysql') {
+            self::destroyMysqlStorage($gym);
+        } else {
+            self::destroyPgsqlStorage($gym);
+        }
+    }
+
+    private static function destroyMysqlStorage(Gym $gym): void
+    {
+        if ($gym->plan_type === 'paid' && $gym->db_name) {
+            DB::statement("DROP DATABASE IF EXISTS `{$gym->db_name}`");
+            return;
+        }
+
+        // Free-tier gym — shared 'gemasystem' database, gym_id-scoped rows.
+        self::wipeSharedGymData($gym->id);
+    }
+
+    private static function destroyPgsqlStorage(Gym $gym): void
+    {
+        if ($gym->plan_type === 'paid' && $gym->db_name) {
+            DB::connection('pgsql')->statement("DROP SCHEMA IF EXISTS \"{$gym->db_name}\" CASCADE");
+            return;
+        }
+
+        // Free-tier gym — shared 'public' schema, gym_id-scoped rows.
+        self::wipeSharedGymData($gym->id);
+    }
+
+    /**
+     * Deletes every row belonging to this gym across the shared schema's
+     * gym_id-scoped tables. Order matters: tables listed first are either
+     * referenced by a later table with a plain (non-cascading) FK — e.g.
+     * product_sales.product_id blocks deleting products first — or are
+     * children of a later table whose own rows we're about to remove.
+     * Tables with NO gym_id column of their own (class_schedules,
+     * class_sessions, member_labels, ticket_messages) aren't listed here —
+     * they cascade automatically once their parent (classes/members/
+     * labels/support_tickets) rows are deleted, per the FKs declared in
+     * gemasystem_supabase.sql.
+     */
+    private static function wipeSharedGymData(int $gymId): void
+    {
+        $order = [
+            'product_sales', 'payments', 'visits', 'memberships',
+            'classes', 'products', 'support_tickets', 'trainers', 'members',
+            'ingresos', 'labels', 'membership_types', 'discount_categories',
+            'settings', 'whatsapp_logs',
+        ];
+
+        foreach ($order as $table) {
+            DB::table($table)->where('gym_id', $gymId)->delete();
+        }
+    }
+
+    /**
      * Seed default settings directly into the tenant database.
      * Tenant settings table has no gym_id column.
      */

@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Console\Commands\CreateGymDatabase;
+use App\Mail\InvoiceReceiptMail;
 use App\Mail\TrialApproved;
 use App\Mail\TrialRejected;
+use App\Mail\UserWelcome;
 use App\Models\Gym;
 use App\Models\SupportTicket;
 use App\Models\TrialRequest;
@@ -14,8 +17,11 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Stripe\Stripe;
+use Stripe\Subscription as StripeSubscription;
 
 class SuperAdminController extends Controller
 {
@@ -298,11 +304,26 @@ class SuperAdminController extends Controller
     private function getGymStats(Gym $gym): array
     {
         try {
-            if ($gym->isPaid() && $gym->db_name) {
-                config(['database.connections.tenant' => array_merge(
-                    config('database.connections.mysql'),
-                    ['database' => $gym->db_name]
-                )]);
+            if ($gym->isPaid()) {
+                // Same driver-branch CreateGymDatabase::provision() uses — a paid
+                // gym's dedicated storage is a MySQL database OR a Postgres schema
+                // depending on which DB backs this deployment, never both. This
+                // previously always built the tenant connection off the 'mysql'
+                // config unconditionally, so on a Postgres/Supabase deployment
+                // (this project's actual driver) connecting to the tenant schema
+                // silently failed every time — caught below, logged, and the gym
+                // detail screen just rendered with empty stats, no error visible.
+                if (config('database.default') === 'mysql') {
+                    config(['database.connections.tenant' => array_merge(
+                        config('database.connections.mysql'),
+                        ['database' => $gym->db_name]
+                    )]);
+                } else {
+                    config(['database.connections.tenant' => array_merge(
+                        config('database.connections.pgsql'),
+                        ['schema' => [$gym->db_name, 'public']]
+                    )]);
+                }
                 DB::purge('tenant');
                 $conn = DB::connection('tenant');
             } else {
@@ -311,14 +332,16 @@ class SuperAdminController extends Controller
 
             $where = $gym->isPaid() ? [] : ['gym_id' => $gym->id];
 
-            $members = $conn->table('members')
+            // Conditional aggregation instead of a separate COUNT() per flavor —
+            // each of these is a network round-trip to Supabase, so 8 sequential
+            // queries visibly added up ("tarda en mostrar"). CASE WHEN is
+            // standard SQL (unlike whereMonth/whereYear's date-function
+            // rewriting), so this stays portable across the mysql/pgsql split
+            // above without needing a second raw-SQL branch here.
+            $memberStats = $conn->table('members')
                 ->when(!empty($where), fn($q) => $q->where($where))
-                ->count();
-
-            $activeMembers = $conn->table('members')
-                ->when(!empty($where), fn($q) => $q->where($where))
-                ->where('status', 'active')
-                ->count();
+                ->selectRaw("COUNT(*) as total, SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active_count")
+                ->first();
 
             $visits = $conn->table('visits')
                 ->when(!empty($where), fn($q) => $q->where($where))
@@ -330,26 +353,26 @@ class SuperAdminController extends Controller
                 ->whereYear('visit_date', now()->year)
                 ->count();
 
-            $memberships = $conn->table('memberships')
+            $membershipStats = $conn->table('memberships')
                 ->when(!empty($where), fn($q) => $q->where($where))
-                ->count();
+                ->selectRaw("COUNT(*) as total, SUM(CASE WHEN status = 'active' AND end_date >= ? THEN 1 ELSE 0 END) as active_count", [now()->toDateString()])
+                ->first();
 
-            $activeMemberships = $conn->table('memberships')
+            $paymentStats = $conn->table('payments')
                 ->when(!empty($where), fn($q) => $q->where($where))
-                ->where('status', 'active')
-                ->where('end_date', '>=', now()->toDateString())
-                ->count();
+                ->selectRaw("COUNT(*) as total, SUM(CASE WHEN status = 'completed' THEN amount ELSE 0 END) as revenue")
+                ->first();
 
-            $payments = $conn->table('payments')
-                ->when(!empty($where), fn($q) => $q->where($where))
-                ->count();
-
-            $revenue = (float) $conn->table('payments')
-                ->when(!empty($where), fn($q) => $q->where($where))
-                ->where('status', 'completed')
-                ->sum('amount');
-
-            return compact('members','activeMembers','visits','visitsThisMonth','memberships','activeMemberships','payments','revenue');
+            return [
+                'members'           => (int) $memberStats->total,
+                'activeMembers'     => (int) $memberStats->active_count,
+                'visits'            => $visits,
+                'visitsThisMonth'   => $visitsThisMonth,
+                'memberships'       => (int) $membershipStats->total,
+                'activeMemberships' => (int) $membershipStats->active_count,
+                'payments'          => (int) $paymentStats->total,
+                'revenue'           => (float) $paymentStats->revenue,
+            ];
         } catch (\Throwable $e) {
             \Log::warning("getGymStats failed for gym {$gym->id}: " . $e->getMessage());
             return [];
@@ -449,6 +472,65 @@ class SuperAdminController extends Controller
         return response()->json(['message' => 'Código de seguridad eliminado.']);
     }
 
+    // ── Email resends ─────────────────────────────────────────────────────────
+    // Every email GemaSystem can actually send this user again from what's
+    // already on record — no fabricated data. Welcome always works (the access
+    // code is stored in the clear precisely so it can be resent); the invoice
+    // receipt only applies if there's a real Stripe subscription/invoice behind it.
+
+    public function resendWelcomeEmail(User $user)
+    {
+        if (empty($user->access_code_plain)) {
+            return response()->json([
+                'message' => 'Este usuario no tiene un código de acceso guardado — no se puede reconstruir el correo de bienvenida.',
+            ], 422);
+        }
+
+        try {
+            Mail::to($user->email)->send(new UserWelcome($user, $user->access_code_plain));
+        } catch (\Throwable $e) {
+            return response()->json(['message' => 'Error enviando correo: ' . $e->getMessage()], 500);
+        }
+
+        return response()->json(['message' => 'Correo de bienvenida reenviado a ' . $user->email]);
+    }
+
+    public function resendInvoiceEmail(User $user)
+    {
+        $gym = $user->gym;
+
+        if (!$gym || !$gym->stripe_subscription_id) {
+            return response()->json(['message' => 'Este gym no tiene una suscripción de Stripe.'], 422);
+        }
+
+        Stripe::setApiKey(config('services.stripe.secret'));
+
+        try {
+            $invoices = \Stripe\Invoice::all(['subscription' => $gym->stripe_subscription_id, 'limit' => 1]);
+            $invoice  = $invoices->data[0] ?? null;
+
+            if (!$invoice) {
+                return response()->json(['message' => 'No se encontró ningún recibo de pago en Stripe para este gym.'], 404);
+            }
+
+            Mail::to($user->email)->send(new InvoiceReceiptMail(
+                gymName:     $gym->name,
+                planLabel:   $gym->plan === 'weekly' ? 'Semanal' : 'Mensual',
+                amount:      number_format(($invoice->amount_paid ?? 0) / 100, 2),
+                currency:    strtoupper($invoice->currency ?? 'MXN'),
+                periodStart: $gym->subscription_starts_at,
+                periodEnd:   $gym->subscription_ends_at,
+                invoiceId:   $invoice->id ?? null,
+                invoiceUrl:  $invoice->hosted_invoice_url ?? null,
+                invoicePdf:  $invoice->invoice_pdf ?? null,
+            ));
+        } catch (\Throwable $e) {
+            return response()->json(['message' => 'Error enviando recibo: ' . $e->getMessage()], 500);
+        }
+
+        return response()->json(['message' => 'Recibo de pago reenviado a ' . $user->email]);
+    }
+
     // ── Paid gym DB management ────────────────────────────────────────────────
 
     public function paidGymDbStats(Gym $gym)
@@ -457,10 +539,17 @@ class SuperAdminController extends Controller
             return response()->json(['message' => 'Este gym no tiene base de datos dedicada.'], 422);
         }
 
-        config(['database.connections.tenant' => array_merge(
-            config('database.connections.mysql'),
-            ['database' => $gym->db_name]
-        )]);
+        if (config('database.default') === 'mysql') {
+            config(['database.connections.tenant' => array_merge(
+                config('database.connections.mysql'),
+                ['database' => $gym->db_name]
+            )]);
+        } else {
+            config(['database.connections.tenant' => array_merge(
+                config('database.connections.pgsql'),
+                ['schema' => [$gym->db_name, 'public']]
+            )]);
+        }
         DB::purge('tenant');
 
         $counts = [
@@ -474,6 +563,67 @@ class SuperAdminController extends Controller
             'gym'    => $gym->only('id', 'name', 'db_name', 'status'),
             'counts' => $counts,
         ]);
+    }
+
+    // ── Danger zone: delete gym permanently ───────────────────────────────────
+
+    /**
+     * Irreversibly wipes a gym: its dedicated schema/DB (paid) or every
+     * gym_id-scoped row in the shared schema (free) via
+     * CreateGymDatabase::destroy(), its users, and the gym record itself.
+     * Best-effort cancels the Stripe subscription so billing actually stops
+     * too — a data wipe alone would leave the customer's card being charged
+     * for a gym that no longer exists.
+     *
+     * Gated by SUPERADMIN_DELETE_SECRET on top of the usual
+     * auth:sanctum + operator PIN — a second factor specifically for this
+     * one destructive action, so it can't happen from a operator session
+     * alone (a wrong click, a compromised session).
+     */
+    public function deleteGym(Request $request, Gym $gym)
+    {
+        $request->validate(['secret' => 'required|string']);
+
+        $expected = config('services.superadmin.delete_secret');
+        if (empty($expected) || !hash_equals($expected, (string) $request->secret)) {
+            return response()->json(['message' => 'Clave secreta incorrecta.'], 403);
+        }
+
+        $gymId           = $gym->id;
+        $gymName         = $gym->name;
+        $stripeSubId     = $gym->stripe_subscription_id;
+        $userIds         = User::where('gym_id', $gymId)->pluck('id');
+
+        try {
+            DB::transaction(function () use ($gym, $gymId, $userIds) {
+                DB::table('personal_access_tokens')
+                    ->whereIn('tokenable_id', $userIds)
+                    ->where('tokenable_type', User::class)
+                    ->delete();
+
+                CreateGymDatabase::destroy($gym);
+
+                User::where('gym_id', $gymId)->delete();
+
+                $gym->delete();
+            });
+        } catch (\Throwable $e) {
+            Log::error("deleteGym failed for gym {$gymId} ({$gymName}): " . $e->getMessage());
+            return response()->json(['message' => 'Error eliminando el gym: ' . $e->getMessage()], 500);
+        }
+
+        if ($stripeSubId) {
+            try {
+                Stripe::setApiKey(config('services.stripe.secret'));
+                StripeSubscription::cancel($stripeSubId);
+            } catch (\Throwable $e) {
+                Log::warning("deleteGym: no se pudo cancelar la suscripción de Stripe {$stripeSubId} para gym {$gymId}: " . $e->getMessage());
+            }
+        }
+
+        Log::warning("Gym {$gymId} (\"{$gymName}\") eliminado permanentemente vía panel de operador.");
+
+        return response()->json(['message' => "Gym \"{$gymName}\" eliminado permanentemente."]);
     }
 
     // ── Trial requests (public submit endpoint) ───────────────────────────────

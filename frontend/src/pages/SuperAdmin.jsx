@@ -21,7 +21,7 @@ async function api(method, path, body) {
   try {
     const m = method.toLowerCase()
     const res = m === 'delete'
-      ? await axiosInstance.delete(`/operator${path}`)
+      ? await axiosInstance.delete(`/operator${path}`, body ? { data: body } : undefined)
       : await axiosInstance[m](`/operator${path}`, body)
     return res.data
   } catch (err) {
@@ -592,7 +592,14 @@ function ManageTab({ selectedGym, onBack }) {
   const [forms, setForms]         = useState({})
   const [pendingAction, setPending] = useState(null) // { key, label, fn, needsReason }
   const [reason, setReason]       = useState('')
-  useLockBodyScroll(!!pendingAction)
+
+  // Danger zone — delete gym
+  const [deleteOpen, setDeleteOpen]     = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState('')
+  const [deleteSecret, setDeleteSecret]   = useState('')
+  const [deleteBusy, setDeleteBusy]       = useState(false)
+
+  useLockBodyScroll(!!pendingAction || deleteOpen)
 
   const load = useCallback(async () => {
     if (!selectedGym) return
@@ -631,6 +638,20 @@ function ManageTab({ selectedGym, onBack }) {
     setBusy(null)
     setPending(null)
     setReason('')
+  }
+
+  const doDeleteGym = async () => {
+    if (!detail) return
+    setDeleteBusy(true)
+    try {
+      const r = await api('DELETE', `/gyms/${detail.gym.id}`, { secret: deleteSecret })
+      toast.success(r.message)
+      setDeleteOpen(false)
+      onBack()
+    } catch (e) {
+      toast.error(e.message)
+    }
+    setDeleteBusy(false)
   }
 
   if (!selectedGym) return (
@@ -912,9 +933,92 @@ function ManageTab({ selectedGym, onBack }) {
                 </button>
               </div>
             </div>
+
+            {/* Emails — everything GemaSystem can actually send this user
+                again from what's already on record (no fabricated data) */}
+            <div>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Correos</p>
+              <div className="flex flex-wrap gap-2">
+                <button disabled={busy === `welcome-${user.id}`}
+                  onClick={() => action(`welcome-${user.id}`, () => api('POST', `/users/${user.id}/resend-welcome`))}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border bg-white transition-colors disabled:opacity-60 text-indigo-600 border-indigo-200 hover:bg-indigo-50">
+                  {busy === `welcome-${user.id}` ? <Loader2 className="w-3 h-3 animate-spin" /> : <Mail className="w-3 h-3" />}
+                  Reenviar bienvenida
+                </button>
+                {gym.stripe_subscription_id && (
+                  <button disabled={busy === `invoice-${user.id}`}
+                    onClick={() => action(`invoice-${user.id}`, () => api('POST', `/users/${user.id}/resend-invoice`))}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border bg-white transition-colors disabled:opacity-60 text-teal-600 border-teal-200 hover:bg-teal-50">
+                    {busy === `invoice-${user.id}` ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                    Reenviar recibo de pago
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
         ))}
       </div>
+
+      {/* ── Danger zone: delete gym ── */}
+      <div className="bg-red-50/60 rounded-2xl border-2 border-red-200 shadow-sm p-5">
+        <p className="text-xs font-bold text-red-500 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+          <AlertTriangle className="w-3.5 h-3.5" /> Zona de peligro
+        </p>
+        <p className="text-xs text-red-400 mb-4">
+          Borra permanentemente este gym: su base de datos/schema dedicado (o todos sus registros en la base compartida),
+          sus usuarios, y cancela su suscripción de Stripe si tiene una activa. No se puede deshacer.
+        </p>
+        <button onClick={() => { setDeleteOpen(true); setDeleteConfirm(''); setDeleteSecret('') }}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-red-600 hover:bg-red-700 transition-colors">
+          <Ban className="w-3.5 h-3.5" /> Borrar gym permanentemente
+        </button>
+      </div>
+
+      {/* ── Delete gym confirmation dialog ── */}
+      {deleteOpen && (
+        <div
+          className="fixed inset-0 z-[300] flex items-center justify-center px-4"
+          style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(6px)' }}
+          onClick={() => !deleteBusy && setDeleteOpen(false)}
+        >
+          <div className="bg-white rounded-2xl shadow-2xl border border-red-200 w-full max-w-md p-6 space-y-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-red-50 border border-red-200 flex items-center justify-center flex-shrink-0">
+                <Ban className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <p className="font-bold text-gray-900 text-sm">Borrar "{gym.name}" permanentemente</p>
+                <p className="text-xs text-red-500">Esta acción no se puede deshacer.</p>
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                Escribe <span className="font-mono text-gray-700">{gym.name}</span> para confirmar
+              </label>
+              <input value={deleteConfirm} onChange={e => setDeleteConfirm(e.target.value)}
+                placeholder={gym.name}
+                className="w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-xl bg-gray-50 outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100 focus:bg-white" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Clave secreta</label>
+              <input type="password" value={deleteSecret} onChange={e => setDeleteSecret(e.target.value)}
+                placeholder="SUPERADMIN_DELETE_SECRET"
+                className="w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-xl bg-gray-50 outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100 focus:bg-white" />
+            </div>
+            <div className="flex gap-2">
+              <button onClick={doDeleteGym} disabled={deleteBusy || deleteConfirm !== gym.name || !deleteSecret}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 transition-colors">
+                {deleteBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Ban className="w-4 h-4" />}
+                Borrar permanentemente
+              </button>
+              <button onClick={() => setDeleteOpen(false)} disabled={deleteBusy}
+                className="px-5 py-2.5 rounded-xl text-sm font-bold text-gray-600 border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50">
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Reason confirmation dialog ── */}
       {pendingAction && (

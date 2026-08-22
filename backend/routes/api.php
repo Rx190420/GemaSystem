@@ -190,6 +190,7 @@ Route::middleware(['auth:sanctum', 'operator', 'throttle:operator'])->prefix('op
     Route::put('/gyms/{gym}/restrict',                     [SuperAdminController::class, 'restrictGym']);
     Route::put('/gyms/{gym}/activate',                     [SuperAdminController::class, 'activateGym']);
     Route::put('/gyms/{gym}/billing-status',               [SuperAdminController::class, 'setBillingStatus']);
+    Route::delete('/gyms/{gym}',                           [SuperAdminController::class, 'deleteGym']); // gated by SUPERADMIN_DELETE_SECRET
 
     // Per-user management
     Route::put('/users/{user}/suspend',                    [SuperAdminController::class, 'suspendUser']);
@@ -198,6 +199,8 @@ Route::middleware(['auth:sanctum', 'operator', 'throttle:operator'])->prefix('op
     Route::put('/users/{user}/password',                   [SuperAdminController::class, 'changePassword']);
     Route::put('/users/{user}/security-code',              [SuperAdminController::class, 'changeSecurityCode']);
     Route::delete('/users/{user}/security-code',           [SuperAdminController::class, 'removeSecurityCode']);
+    Route::post('/users/{user}/resend-welcome',            [SuperAdminController::class, 'resendWelcomeEmail']);
+    Route::post('/users/{user}/resend-invoice',            [SuperAdminController::class, 'resendInvoiceEmail']);
 
     // Form submissions
     Route::get('/submissions',                             [FormSubmissionController::class, 'index']);
