@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use App\Mail\Transport\ResendTransport;
 use App\Support\MailIcons;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -29,6 +31,13 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot()
     {
+        // Resend over their HTTP API instead of raw SMTP — Railway blocks
+        // outbound SMTP entirely (every port), but HTTPS is never blocked.
+        // See app/Mail/Transport/ResendTransport.php for the why/how.
+        Mail::extend('resend', function (array $config) {
+            return new ResendTransport($config['key']);
+        });
+
         // Force HTTPS in production
         if ($this->app->environment('production')) {
             URL::forceScheme('https');

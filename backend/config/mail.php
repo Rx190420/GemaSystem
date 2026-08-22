@@ -54,6 +54,15 @@ return [
             'auth_mode' => null,
         ],
 
+        // HTTP-API-based (not SMTP) — see app/Mail/Transport/ResendTransport.php
+        // and its registration in AppServiceProvider::boot(). Needed because
+        // Railway blocks outbound SMTP entirely (confirmed in production:
+        // both port 465 and 587 time out at the raw TCP level).
+        'resend' => [
+            'transport' => 'resend',
+            'key' => env('RESEND_KEY'),
+        ],
+
         'ses' => [
             'transport' => 'ses',
         ],
