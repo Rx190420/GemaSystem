@@ -319,9 +319,16 @@ app.post('/sessions/:id/send-batch', async (req, res) => {
 // all interfaces. This was the actual reason the bot never worked on Railway:
 // bound to localhost, there was nothing outside the container that could
 // ever reach it, no matter how the rest of the deploy was configured.
-app.listen(PORT, '0.0.0.0', () => {
+//
+// '::' rather than '0.0.0.0' — Railway's private network (the one the Laravel
+// backend uses to reach this bot via *.railway.internal) is IPv6. Binding
+// only to 0.0.0.0 (IPv4) made the port fix from before necessary but not
+// sufficient: the backend still couldn't reach it over the private network.
+// '::' is the IPv6 wildcard and — with Node's default dual-stack socket —
+// also accepts IPv4 connections, so this covers both.
+app.listen(PORT, '::', () => {
     console.log('\n🤖  GemaSystem WhatsApp Bot Manager')
-    console.log(`    API:  http://0.0.0.0:${PORT}/sessions`)
+    console.log(`    API:  http://[::]:${PORT}/sessions`)
     if (API_SECRET) console.log('    Auth: activo (x-api-key)')
     console.log()
     autoRestore()
