@@ -10,7 +10,13 @@ const path     = require('path')
 // WHATSAPP_BOT_PORT stays as a local-dev override so `start-bot.bat` keeps working.
 const PORT       = process.env.PORT || process.env.WHATSAPP_BOT_PORT || 3001
 const API_SECRET = process.env.WHATSAPP_BOT_SECRET || ''
-const DATA_PATH  = process.env.WHATSAPP_BOT_DATA   || './.wwebjs_auth'
+// RAILWAY_VOLUME_MOUNT_PATH is injected automatically by Railway once a Volume
+// is attached to this service (no manual env var needed for it) — if present,
+// store the session inside it so it survives redeploys. WHATSAPP_BOT_DATA
+// still wins if someone sets it explicitly; plain relative path for local dev.
+const DATA_PATH  = process.env.WHATSAPP_BOT_DATA
+    || (process.env.RAILWAY_VOLUME_MOUNT_PATH && path.join(process.env.RAILWAY_VOLUME_MOUNT_PATH, '.wwebjs_auth'))
+    || './.wwebjs_auth'
 // Points at a system-installed Chromium (see Dockerfile) instead of downloading
 // puppeteer's own copy — set by the container image, not needed for local dev.
 const CHROME_PATH = process.env.PUPPETEER_EXECUTABLE_PATH || undefined
