@@ -68,6 +68,29 @@
     /* ── Footer ── */
     .footer { padding:16px 24px; border-top:1px solid #f4f4f5; }
     .footer p { font-size:11px; color:#a1a1aa; text-align:center; line-height:1.7; }
+
+    /* ── Mobile ──
+       .code was the worst offender: 44px + 10px letter-spacing on an 8-char
+       code (e.g. "FIT-0001") runs past a ~340px content width on a phone,
+       forcing horizontal scroll inside the email. .row also needs to wrap
+       instead of squeezing a long value (email addresses especially)
+       against its label on one line. Gmail's Android/iOS apps and Apple
+       Mail both apply <style> media queries fine — only some Outlook
+       desktop builds ignore them, and this app's mail is 100% consumer
+       inboxes, not corporate Outlook. */
+    @media screen and (max-width: 480px) {
+      .wrap { margin:20px auto; padding:0 12px 28px; }
+      .nav { padding:14px 16px; }
+      .body { padding:24px 16px; }
+      .h1 { font-size:19px; }
+      .lead { font-size:13.5px; }
+      .box { padding:16px; }
+      .code-box { padding:20px 12px; }
+      .code { font-size:28px; letter-spacing:4px; }
+      .row { flex-wrap:wrap; row-gap:2px; }
+      .rv { text-align:left; width:100%; }
+      .icon-badge { width:48px; height:48px; line-height:48px; }
+    }
   </style>
 </head>
 <body>

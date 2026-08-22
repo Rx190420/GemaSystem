@@ -3,13 +3,19 @@
 namespace App\Support;
 
 /**
- * Inline base64 SVG icons shared by every email template (resources/views/emails).
+ * Icons shared by every email template (resources/views/emails), served as
+ * real hosted files at {APP_URL}/mail-assets/*.svg instead of inline base64
+ * data-URIs.
  *
- * Delivered as data-URIs via <img>, same technique as the GemaSystem logo mark —
- * the most broadly-compatible way to get a crisp, colored icon rendering the
- * same in Gmail/Outlook/Apple Mail without depending on web fonts, an icon
- * font, or an externally-hosted image (which some mail clients block by
- * default until the user clicks "show images").
+ * Previously these were data:image/svg+xml;base64,... URIs — Resend flagged
+ * this explicitly ("Imágenes de host en el dominio de envío"): mail clients,
+ * Gmail especially, treat inline/off-domain image sources as a phishing
+ * signal, since spam evades image-scanning that way. Actual files served
+ * from the sending app's own domain read as legitimate.
+ *
+ * The .svg files themselves live in public/mail-assets/ — generated once
+ * from the original base64 strings, not hand-authored (see git history if
+ * they ever need regenerating from scratch).
  *
  * Bound to every `emails.*` view via a View::composer in AppServiceProvider —
  * NOT via the layout's own @php block. Blade's @extends evaluates a child
@@ -23,20 +29,19 @@ class MailIcons
     public static function all(): array
     {
         return [
-            'LOGO' => 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjQ0MyA1MyA1NTQgNzA1Ij48cGF0aCBmaWxsPSIjZmZmIiBkPSJNNTg2LjY5MTQwNiA2MTYuMTcxODc1TDQ0OS4xNzE4NzUgNjE2LjE3MTg3NUM0NDUuODAwNzgxIDYxNi4xNzE4NzUgNDQzLjA3MDMxMiA2MTMuNDM3NSA0NDMuMDcwMzEyIDYxMC4wNjY0MDZMNDQzLjA3MDMxMiAyOTQuNTcwMzEyQzQ0My4wNzAzMTIgMTYxLjc4OTA2MiA1NjAuMTcxODc1IDUzLjc2MTcxOSA3MDQuMTEzMjgxIDUzLjc2MTcxOUw4NTIuNDkyMTg4IDUzLjc2MTcxOUM4NTUuODU1NDY5IDUzLjc2MTcxOSA4NTguNTg1OTM4IDU2LjQ5NjA5NCA4NTguNTg1OTM4IDU5Ljg2NzE4OEw4NTguNTg1OTM4IDE4NS43NzczNDRDODU4LjU4NTkzOCAxODkuMTQ0NTMxIDg1NS44NTU0NjkgMTkxLjg3ODkwNiA4NTIuNDkyMTg4IDE5MS44Nzg5MDZMNzA0LjExMzI4MSAxOTEuODc4OTA2QzY0Mi43MjY1NjIgMTkxLjg3ODkwNiA1OTIuNzg5MDYyIDIzNy45NDUzMTIgNTkyLjc4OTA2MiAyOTQuNTcwMzEyTDU5Mi43ODkwNjIgNjEwLjA2NjQwNkM1OTIuNzg5MDYyIDYxMy40Mzc1IDU5MC4wNTg1OTQgNjE2LjE3MTg3NSA1ODYuNjkxNDA2IDYxNi4xNzE4NzUiLz48cGF0aCBmaWxsPSIjZmZmIiBkPSJNNzM1Ljg3NSA3NTAuMDExNzE5TDczNS44NzUgNjI0LjAxOTUzMUM3MzUuODc1IDYyMC43NDYwOTQgNzM4LjQ2MDkzOCA2MTguMDkzNzUgNzQxLjczODI4MSA2MTcuOTMzNTk0QzgwMC40MDYyNSA2MTUuMTEzMjgxIDg0Ny4yMDMxMjUgNTcwLjE5NTMxMiA4NDcuMjAzMTI1IDUxNS4zNzg5MDZMODQ3LjIwMzEyNSA0NjkuOTE0MDYyQzg0Ny4yMDMxMjUgNDY2LjU0Njg3NSA4NDQuNDY0ODQ0IDQ2My44MTI1IDg0MS4xMDE1NjIgNDYzLjgxMjVMNzQxLjk4MDQ2OSA0NjMuODEyNUM3MzguNjEzMjgxIDQ2My44MTI1IDczNS44NzUgNDYxLjA4MjAzMSA3MzUuODc1IDQ1Ny43MTA5MzhMNzM1Ljg3NSAzMzEuODAwNzgxQzczNS44NzUgMzI4LjQyOTY4OCA3MzguNjEzMjgxIDMyNS43MDMxMjUgNzQxLjk4MDQ2OSAzMjUuNzAzMTI1TDk5MC44MTY0MDYgMzI1LjcwMzEyNUM5OTQuMTg3NSAzMjUuNzAzMTI1IDk5Ni45MjE4NzUgMzI4LjQyOTY4OCA5OTYuOTIxODc1IDMzMS44MDA3ODFMOTk2LjkyMTg3NSA1MTUuMzc4OTA2Qzk5Ni45MjE4NzUgNjQ2LjIzNDM3NSA4ODMuMTg3NSA3NTMuMDQ2ODc1IDc0Mi4xMjEwOTQgNzU2LjEyMTA5NEM3MzguNjk5MjE5IDc1Ni4xOTUzMTIgNzM1Ljg3NSA3NTMuNDM3NSA3MzUuODc1IDc1MC4wMTE3MTkiLz48L3N2Zz4=',
-
-            'ICON_CHECK'        => 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMxNmEzNGEiIHN0cm9rZS13aWR0aD0iMi41IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwb2x5bGluZSBwb2ludHM9IjIwIDYgOSAxNyA0IDEyIi8+PC9zdmc+Cg==',
-            'ICON_CHECK_CIRCLE' => 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMxNmEzNGEiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSI5Ii8+PHBvbHlsaW5lIHBvaW50cz0iOCAxMiAxMSAxNSAxNiA5Ii8+PC9zdmc+Cg==',
-            'ICON_RECEIPT'      => 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMxNmEzNGEiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSI5Ii8+PHBhdGggZD0iTTEyIDd2MTBNMTUgOS4zYzAtMS4xLTEuMzQtMS44LTMtMS44cy0zIC44LTMgMS44YzAgMS4xIDEuMzQgMS41IDMgMS45czMgLjggMyAxLjljMCAxLjEtMS4zNCAxLjktMyAxLjlzLTMtLjgtMy0xLjkiLz48L3N2Zz4K',
-            'ICON_ALERT'        => 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNkYzI2MjYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTIgMyAyIDIwaDIwTDEyIDNaIi8+PHBhdGggZD0iTTEyIDEwdjQiLz48cGF0aCBkPSJNMTIgMTdoLjAxIi8+PC9zdmc+Cg==',
-            'ICON_CLOCK'        => 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM2MzY2ZjEiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSI5Ii8+PHBvbHlsaW5lIHBvaW50cz0iMTIgNyAxMiAxMiAxNS41IDE0Ii8+PC9zdmc+Cg==',
-            'ICON_CLOCK_URGENT' => 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNkYzI2MjYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSI5Ii8+PHBvbHlsaW5lIHBvaW50cz0iMTIgNyAxMiAxMiAxNS41IDE0Ii8+PC9zdmc+Cg==',
-            'ICON_SHIELD'       => 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM2MzY2ZjEiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTIgM2w3IDN2NmMwIDQuNS0zIDcuNS03IDktNC0xLjUtNy00LjUtNy05VjZsNy0zWiIvPjxwb2x5bGluZSBwb2ludHM9IjkgMTIgMTEuNSAxNC41IDE1LjUgMTAiLz48L3N2Zz4K',
-            'ICON_HEADSET'      => 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM2MzY2ZjEiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNNCAxNHYtMmE4IDggMCAwIDEgMTYgMHYyIi8+PHJlY3QgeD0iMiIgeT0iMTQiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIHJ4PSIxLjUiLz48cmVjdCB4PSIxOCIgeT0iMTQiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIHJ4PSIxLjUiLz48L3N2Zz4K',
-            'ICON_USER_CHECK'   => 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM2MzY2ZjEiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48Y2lyY2xlIGN4PSIxMCIgY3k9IjgiIHI9IjQiLz48cGF0aCBkPSJNMiAyMXYtMWE2IDYgMCAwIDEgNi02aDJhNiA2IDAgMCAxIDMgLjgiLz48cG9seWxpbmUgcG9pbnRzPSIxNiAxNi41IDE4IDE4LjUgMjIgMTQuNSIvPjwvc3ZnPgo=',
-            'ICON_GIFT'         => 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM3YzNhZWQiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cmVjdCB4PSIzIiB5PSI5IiB3aWR0aD0iMTgiIGhlaWdodD0iNCIgcng9IjEiLz48cmVjdCB4PSI1IiB5PSIxMyIgd2lkdGg9IjE0IiBoZWlnaHQ9IjgiIHJ4PSIxIi8+PHBhdGggZD0iTTEyIDl2MTIiLz48cGF0aCBkPSJNMTIgOWMtMS4zLTIuOC0zLjYtNC4yLTUtM1M1LjcgOSA4IDkiLz48cGF0aCBkPSJNMTIgOWMxLjMtMi44IDMuNi00LjIgNS0zczEuMyAzLTEgMyIvPjwvc3ZnPgo=',
-            'ICON_DUMBBELL'     => 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMxNmEzNGEiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNOSAxMmg2Ii8+PHJlY3QgeD0iMiIgeT0iOSIgd2lkdGg9IjQiIGhlaWdodD0iNiIgcng9IjEiLz48cmVjdCB4PSIxOCIgeT0iOSIgd2lkdGg9IjQiIGhlaWdodD0iNiIgcng9IjEiLz48cmVjdCB4PSI2IiB5PSIxMCIgd2lkdGg9IjMiIGhlaWdodD0iNCIgcng9IjEiLz48cmVjdCB4PSIxNSIgeT0iMTAiIHdpZHRoPSIzIiBoZWlnaHQ9IjQiIHJ4PSIxIi8+PC9zdmc+Cg==',
-            'ICON_INFO'         => 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM3MTcxN2EiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSI5Ii8+PGxpbmUgeDE9IjEyIiB5MT0iMTEiIHgyPSIxMiIgeTI9IjE2Ii8+PGNpcmNsZSBjeD0iMTIiIGN5PSI3LjUiIHI9IjAuNzUiIGZpbGw9IiM3MTcxN2EiIHN0cm9rZT0ibm9uZSIvPjwvc3ZnPgo=',
+            'LOGO'              => asset('mail-assets/logo.svg'),
+            'ICON_CHECK'        => asset('mail-assets/icon-check.svg'),
+            'ICON_CHECK_CIRCLE' => asset('mail-assets/icon-check-circle.svg'),
+            'ICON_RECEIPT'      => asset('mail-assets/icon-receipt.svg'),
+            'ICON_ALERT'        => asset('mail-assets/icon-alert.svg'),
+            'ICON_CLOCK'        => asset('mail-assets/icon-clock.svg'),
+            'ICON_CLOCK_URGENT' => asset('mail-assets/icon-clock-urgent.svg'),
+            'ICON_SHIELD'       => asset('mail-assets/icon-shield.svg'),
+            'ICON_HEADSET'      => asset('mail-assets/icon-headset.svg'),
+            'ICON_USER_CHECK'   => asset('mail-assets/icon-user-check.svg'),
+            'ICON_GIFT'         => asset('mail-assets/icon-gift.svg'),
+            'ICON_DUMBBELL'     => asset('mail-assets/icon-dumbbell.svg'),
+            'ICON_INFO'         => asset('mail-assets/icon-info.svg'),
         ];
     }
 }

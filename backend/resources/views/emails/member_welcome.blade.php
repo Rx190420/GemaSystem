@@ -27,8 +27,8 @@
     <div style="font-size:10px;font-weight:700;color:#a1a1aa;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Código QR personal</div>
     <div class="qr-wrap">
       <img
-        src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&data={{ urlencode($member->qr_token) }}&color=09090b&bgcolor=ffffff"
-        alt="QR" width="140" height="140" style="display:block;border-radius:4px;"
+        src="{{ url('/mail-assets/qr/' . $member->qr_token) }}"
+        alt="QR" width="140" height="140" style="display:block;border-radius:4px;max-width:100%;height:auto;"
       />
     </div>
   </div>
