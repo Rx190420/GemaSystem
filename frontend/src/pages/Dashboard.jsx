@@ -156,7 +156,7 @@ export default function Dashboard() {
     <>
     <LoadingLogoOverlay show={isLoading} />
     <Skeleton name="dashboard" loading={isLoading}>
-    <div className="space-y-6">
+    <div className="space-y-8">
 
       {/* ── Welcome ── */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">

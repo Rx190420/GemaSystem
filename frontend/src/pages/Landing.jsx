@@ -7,11 +7,12 @@ import ReCAPTCHA from 'react-google-recaptcha'
 import {
   Users, CreditCard, TrendingUp, Calendar,
   Shield, Download, Eye, EyeOff, Loader2, Check, X,
-  Lock, ArrowRight, ChevronDown, Zap, BadgeCheck, Monitor,
-  Scan, Star, Gift, MessageSquare, Clock,
-  Building2, User, Phone, Send, AlertTriangle,
+  Lock, ArrowRight, Zap, BadgeCheck, Monitor,
+  Scan, Gift, MessageSquare, Clock,
+  Building2, User, Phone, Send,
   Bot, MonitorSmartphone, Store, Terminal, Mail, CheckCircle2, KeyRound, LogIn,
-  MessageCircle, ScanLine,
+  MessageCircle,
+  MailCheck,
 } from 'lucide-react'
 
 import { useAuthStore } from '../store/authStore'
@@ -26,7 +27,6 @@ import StrokeText from '../components/StrokeText'
 import TextType from '../components/TextType'
 import Reveal from '../components/Reveal'
 import RegisterModal from './Register'
-import { MembershipsCard, TrainersCard } from '../components/SystemCards'
 import useLockBodyScroll from '../hooks/useLockBodyScroll'
 
 // ─── Schemas ──────────────────────────────────────────────────────────────────
@@ -49,68 +49,7 @@ const trialSchema = yup.object({
 
 const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY
 
-const reviewSchema = yup.object({
-  author:  yup.string().required('Tu nombre es requerido').max(80),
-  role:    yup.string().max(80),
-  comment: yup.string().required('El comentario es requerido').min(10,'Mínimo 10 caracteres').max(500),
-})
 
-
-
-// ─── LandingFaq ───────────────────────────────────────────────────────────────
-
-const LANDING_FAQS = [
-  { q: '¿GemaSystem tiene un período de prueba gratuito?',               a: 'Sí. Puedes probar GemaSystem gratis durante 10 días completos, sin tarjeta de crédito. Accedes a todas las funciones del plan mensual para que evalúes si se adapta a tu gimnasio sin ningún riesgo.' },
-  { q: '¿Puedo cancelar mi suscripción en cualquier momento?',       a: 'Absolutamente. No hay contratos ni permanencias. Puedes cancelar desde el portal de Stripe o escribiéndonos a soporte@gemasystem.mx. Al cancelar, mantienes acceso hasta el final del período ya pagado.' },
-  { q: '¿Cuántos miembros puedo registrar?',                         a: 'En todos los planes el número de miembros es ilimitado. Puedes registrar desde 10 hasta 10,000 socios sin costo adicional ni cambios de plan.' },
-  { q: '¿Necesito conocimientos técnicos para configurarlo?',        a: 'No. GemaSystem está diseñado para que cualquier persona pueda configurarlo en menos de 10 minutos. Si tienes dudas, nuestro equipo de soporte te guía paso a paso sin costo adicional.' },
-  { q: '¿Mis datos están seguros en GemaSystem?',                         a: 'Sí. Todos los datos se almacenan con cifrado SSL de 256 bits en servidores seguros con respaldos automáticos diarios. Tu información nunca se comparte con terceros.' },
-  { q: '¿Funciona en dispositivos móviles?',                         a: 'Sí. GemaSystem es completamente responsivo y funciona en celulares, tablets y computadoras. Próximamente estará disponible como app instalable (PWA) en cualquier dispositivo.' },
-  { q: '¿Puedo usarlo desde varios dispositivos al mismo tiempo?',   a: 'Sí. Puedes acceder desde cualquier dispositivo con internet de forma simultánea. Ideal para tener el sistema en recepción, oficina y teléfono al mismo tiempo.' },
-  { q: '¿Cómo funciona el registro de visitas por QR?',              a: 'Cada miembro recibe un código QR único al registrarse. El recepcionista lo escanea desde el módulo de visitas y la entrada queda registrada automáticamente con fecha y hora en menos de 1 segundo.' },
-  { q: '¿Puedo migrar mis datos desde otra plataforma?',             a: 'Sí. Nuestro equipo te ayuda a importar tus datos desde Excel, CSV u otras plataformas. El proceso de migración asistida es gratuito y sin costo adicional.' },
-  { q: '¿Qué diferencia hay entre el plan Mensual y el Anual?',      a: 'El plan anual incluye todo lo del mensual más: ahorro en el precio, acceso anticipado a nuevas funciones, múltiples sucursales (próximamente) y un gestor de cuenta dedicado.' },
-  { q: '¿Ofrecen descuentos para gimnasios pequeños?',               a: 'Sí. Si tu gimnasio tiene menos de 50 miembros o está comenzando, escríbenos a soporte@gemasystem.mx para conocer nuestros planes de arranque con tarifas especiales.' },
-  { q: '¿Cómo recibo las actualizaciones del sistema?',              a: 'GemaSystem es un sistema web, por lo que las actualizaciones son automáticas. Siempre tendrás la versión más reciente sin descargas ni reinicios.' },
-  { q: '¿Puedo personalizar el sistema con mi marca?',               a: 'Sí. Puedes configurar el nombre de tu gimnasio, el color principal de la interfaz y los precios de los planes desde Configuración. Los planes Enterprise incluyen branding completo.' },
-  { q: '¿El sistema envía notificaciones automáticas a mis socios?', a: 'Sí. GemaSystem envía correos automáticos cuando una membresía está por vencer (con los días de anticipación que configures) y al registrar un nuevo socio. Puedes activar o desactivar cada tipo de notificación.' },
-]
-
-function LandingFaq() {
-  const [open, setOpen] = useState(null)
-  return (
-    <div className="space-y-2">
-      {LANDING_FAQS.map((item, i) => {
-        const isOpen = open === i
-        return (
-          <div key={i}
-            className={`rounded-2xl border transition-all duration-200 overflow-hidden
-              ${isOpen ? 'border-indigo-500/40 bg-white/5' : 'border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/5'}`}>
-            <button
-              onClick={() => setOpen(isOpen ? null : i)}
-              className="w-full flex items-center justify-between px-6 py-4 text-left gap-4 group">
-              <span className={`text-sm font-semibold leading-relaxed transition-colors
-                ${isOpen ? 'text-indigo-300' : 'text-slate-300 group-hover:text-white'}`}>
-                {item.q}
-              </span>
-              <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center transition-all duration-200
-                ${isOpen ? 'bg-indigo-500/20 text-indigo-300 rotate-180' : 'bg-white/10 text-slate-400 group-hover:bg-white/15'}`}>
-                <ChevronDown className="w-3.5 h-3.5" />
-              </div>
-            </button>
-            {isOpen && (
-              <div className="px-6 pb-5 pt-0">
-                <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-xl px-4 py-3.5">
-                  <p className="text-sm text-slate-300 leading-relaxed">{item.a}</p>
-                </div>
-              </div>
-            )}
-          </div>
-        )
-      })}
-    </div>
-  )
-}
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -143,227 +82,6 @@ const PLANS = [
     cta: 'Elegir Anual', ctaColor: 'gold',
   },
 ]
-
-const VS_CATEGORIES = [
-  { id: 'all',       label: 'Todo' },
-  { id: 'gestion',   label: 'Gestión diaria',   icon: Users },
-  { id: 'finanzas',  label: 'Finanzas',         icon: TrendingUp },
-  { id: 'facilidad', label: 'Facilidad de uso', icon: Zap },
-  { id: 'soporte',   label: 'Soporte',          icon: MessageSquare },
-]
-
-const VS_ROWS = [
-  {
-    aspect: 'Buscar un socio',
-    category: 'gestion',
-    without: 'Revisar cuadernos hoja por hoja',
-    other:   'Navegar menús y submenús confusos, 3–5 clics',
-    with:    'Búsqueda instantánea en menos de 1 segundo',
-  },
-  {
-    aspect: 'Control de pagos',
-    category: 'finanzas',
-    without: 'Cálculos manuales con calculadora, errores',
-    other:   'Módulos de facturación complejos y lentos',
-    with:    'Historial automático, sin errores ni omisiones',
-  },
-  {
-    aspect: 'Curva de aprendizaje',
-    category: 'facilidad',
-    without: 'Nula — pero sin datos útiles',
-    other:   'Semanas de capacitación, manuales extensos',
-    with:    'Listo en 10 min, interfaz intuitiva',
-  },
-  {
-    aspect: 'Costo mensual',
-    category: 'finanzas',
-    without: 'Solo cuadernos (~$50 MXN)',
-    other:   'Desde $3,000 hasta $15,000 MXN / mes',
-    with:    'Desde $417 MXN / semana',
-  },
-  {
-    aspect: 'Membresías vencidas',
-    category: 'gestion',
-    without: 'Te enteras tarde o nunca',
-    other:   'Configuración técnica avanzada requerida',
-    with:    'Alertas automáticas sin configurar nada',
-  },
-  {
-    aspect: 'Registro de asistencia',
-    category: 'gestion',
-    without: 'Lista en papel, fácil de perder',
-    other:   'Requiere hardware adicional costoso',
-    with:    'QR con cualquier dispositivo existente',
-  },
-  {
-    aspect: 'Reportes financieros',
-    category: 'finanzas',
-    without: 'Horas con calculadora o Excel manual',
-    other:   'Módulos de BI extra con costo adicional',
-    with:    'PDF o Excel con un solo clic',
-  },
-  {
-    aspect: 'Soporte técnico',
-    category: 'soporte',
-    without: 'Ninguno',
-    other:   'Tickets lentos, soporte premium con costo extra',
-    with:    'Soporte directo e incluido en el plan',
-  },
-  {
-    aspect: 'Funciones innecesarias',
-    category: 'facilidad',
-    without: 'No aplica',
-    other:   'Decenas de módulos que nunca usarás',
-    with:    'Solo lo que un gimnasio realmente necesita',
-  },
-  {
-    aspect: 'Tiempo de implementación',
-    category: 'facilidad',
-    without: 'Inmediato (seguir con papel)',
-    other:   'Semanas o meses de configuración e instalación',
-    with:    'Operativo el mismo día',
-  },
-]
-
-const VS_CELL_STYLES = {
-  red:     { text: 'text-red-400/80', iconBg: 'bg-red-500/10', icon: 'text-red-400' },
-  amber:   { text: 'text-amber-400/80', iconBg: 'bg-amber-500/10', icon: 'text-amber-400' },
-  emerald: { text: 'text-emerald-300 font-semibold', iconBg: 'bg-emerald-500/15', icon: 'text-emerald-400' },
-}
-
-function VsLegendPill({ icon: Icon, color, label, highlight }) {
-  const c = VS_CELL_STYLES[color]
-  return (
-    <div className={`flex items-center justify-center gap-1.5 px-2 py-2.5 rounded-xl border ${
-      highlight ? 'bg-emerald-500/10 border-emerald-500/25' : `${c.iconBg} border-white/5`}`}>
-      <Icon className={`w-3.5 h-3.5 ${c.icon}`} />
-      <span className={`text-[11px] font-bold uppercase tracking-wide ${c.icon}`}>{label}</span>
-    </div>
-  )
-}
-
-function VsCell({ icon: Icon, color, text, label, highlight }) {
-  const c = VS_CELL_STYLES[color]
-  return (
-    <div className={`flex items-start gap-2 rounded-xl px-3 py-2.5 ${highlight ? 'bg-emerald-500/[0.06] border border-emerald-500/15' : ''}`}>
-      <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${c.iconBg}`}>
-        <Icon className={`w-3 h-3 ${c.icon}`} />
-      </div>
-      <div className="min-w-0">
-        {label && <p className={`sm:hidden text-[9px] font-bold uppercase tracking-wide mb-0.5 ${c.icon}`}>{label}</p>}
-        <span className={`text-xs leading-relaxed ${c.text}`}>{text}</span>
-      </div>
-    </div>
-  )
-}
-
-function VSComparison() {
-  const [filter, setFilter] = useState('all')
-  const rows = filter === 'all' ? VS_ROWS : VS_ROWS.filter(r => r.category === filter)
-
-  return (
-    <div>
-      {/* Filter chips */}
-      <div className="flex flex-wrap items-center justify-center gap-2 mb-4">
-        {VS_CATEGORIES.map(cat => {
-          const active = filter === cat.id
-          const count = cat.id === 'all' ? VS_ROWS.length : VS_ROWS.filter(r => r.category === cat.id).length
-          return (
-            <button key={cat.id} onClick={() => setFilter(cat.id)}
-              className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold border transition-all duration-200 ${
-                active
-                  ? 'bg-indigo-500 border-indigo-400 text-white shadow-lg shadow-indigo-500/30'
-                  : 'bg-[#0d1020] border-white/10 text-slate-400 hover:text-white hover:border-white/20 hover:bg-[#161a35]'
-              }`}>
-              {cat.icon && <cat.icon className="w-3.5 h-3.5" />}
-              {cat.label}
-              <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${active ? 'bg-white/20' : 'bg-white/10'}`}>{count}</span>
-            </button>
-          )
-        })}
-      </div>
-
-      <p className="text-center text-xs text-slate-500 mb-7">
-        Mostrando <span className="text-white font-semibold">{rows.length}</span> de {VS_ROWS.length} comparaciones
-      </p>
-
-      {/* Legend — desktop only, shown once above the cards */}
-      <div className="hidden sm:grid grid-cols-[1fr_1.3fr_1.3fr_1.3fr] gap-3 mb-3 px-1">
-        <div />
-        <VsLegendPill icon={X} color="red" label="Sin sistema" />
-        <VsLegendPill icon={AlertTriangle} color="amber" label="Otros sistemas" />
-        <VsLegendPill icon={Check} color="emerald" label="Con GemaSystem" highlight />
-      </div>
-
-      {/* Comparison cards */}
-      <div className="space-y-3">
-        {rows.map((row) => {
-          const CategoryIcon = VS_CATEGORIES.find(c => c.id === row.category)?.icon
-          return (
-            <div key={row.aspect}
-              className="fade-up grid grid-cols-1 sm:grid-cols-[1fr_1.3fr_1.3fr_1.3fr] gap-2 sm:gap-3 rounded-2xl border border-white/10 bg-[#0d1020] hover:bg-[#12162c] hover:border-white/15 transition-all duration-200 p-4">
-              <div className="flex items-center gap-2 mb-1 sm:mb-0">
-                {CategoryIcon && <CategoryIcon className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" />}
-                <span className="font-bold text-white text-sm sm:text-xs leading-snug">{row.aspect}</span>
-              </div>
-              <VsCell icon={X} color="red" text={row.without} label="Sin sistema" />
-              <VsCell icon={AlertTriangle} color="amber" text={row.other} label="Otros sistemas" />
-              <VsCell icon={Check} color="emerald" text={row.with} label="Con GemaSystem" highlight />
-            </div>
-          )
-        })}
-
-        {rows.length === 0 && (
-          <p className="text-center text-slate-500 text-sm py-10">No hay comparaciones en esta categoría.</p>
-        )}
-      </div>
-    </div>
-  )
-}
-
-const MEMBER_REVIEWS = [
-  {
-    author: 'Ana García', role: 'Le mostraron el sistema · Monterrey', rating: 5,
-    comment: 'No podía creer que con solo escanear un código QR ya quedara registrada la entrada. Es algo que nunca había visto en ningún gimnasio. Completamente innovador.',
-    highlight: 'Código QR instantáneo',
-  },
-  {
-    author: 'Luis Ramírez', role: 'Conoció el sistema en demo · CDMX', rating: 5,
-    comment: 'Lo que más me impresionó fue ver cómo el sistema manda un correo automático al Gmail del socio cuando su membresía está por vencer. Eso es pensar en el cliente de verdad.',
-    highlight: 'Alertas automáticas por Gmail',
-  },
-  {
-    author: 'Sofía Torres', role: 'Visitó un gym con GemaSystem · Guadalajara', rating: 5,
-    comment: 'Ver todo: miembros, pagos, asistencia y reportes en una sola pantalla, en tiempo real, desde una tablet es impresionante. Es lo que todos los gimnasios necesitan.',
-    highlight: 'Panel en tiempo real',
-  },
-]
-
-// ─── Style constants ──────────────────────────────────────────────────────────
-
-const grayInp    = 'w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 transition-all hover:border-gray-300'
-const grayInpErr = 'w-full px-4 py-3 rounded-xl border border-red-300 bg-red-50/40 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-400 transition-all'
-
-// ─── StarRating ───────────────────────────────────────────────────────────────
-
-function StarRating({ value, onChange, readOnly = false, size = 'md' }) {
-  const [hovered, setHovered] = useState(0)
-  const sz = size === 'sm' ? 'w-4 h-4' : 'w-5 h-5'
-  return (
-    <div className="flex gap-0.5">
-      {[1,2,3,4,5].map(n => (
-        <button key={n} type="button"
-          onClick={readOnly ? undefined : () => onChange(n)}
-          onMouseEnter={readOnly ? undefined : () => setHovered(n)}
-          onMouseLeave={readOnly ? undefined : () => setHovered(0)}
-          className={`focus:outline-none ${readOnly ? 'cursor-default' : 'cursor-pointer'}`}
-          disabled={readOnly}>
-          <Star className={`${sz} transition-colors ${(hovered || value) >= n ? 'text-amber-400 fill-amber-400' : 'text-gray-300'}`} />
-        </button>
-      ))}
-    </div>
-  )
-}
 
 // ─── AuthModal ────────────────────────────────────────────────────────────────
 
@@ -1026,6 +744,35 @@ function HeroPreviewImage() {
   )
 }
 
+// ─── FeatureShotImage (static screenshots for the módulos section) ───────────
+// Fills its wrapping card exactly like the live mock-UI components did —
+// same `object-cover`, same rounded/overflow-hidden container — just drop
+// the file at the given path and it replaces the placeholder automatically.
+
+function FeatureShotImage({ src, alt }) {
+  const [failed, setFailed] = useState(false)
+
+  if (failed) {
+    return (
+      <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-slate-500 bg-white/[0.02] px-4 text-center">
+        <Monitor className="w-6 h-6" />
+        <p className="text-xs font-medium">
+          Coloca <span className="text-indigo-300 font-mono">frontend/public{src}</span>
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className="w-full h-full object-cover object-top block"
+      onError={() => setFailed(true)}
+    />
+  )
+}
+
 // ─── Landing ──────────────────────────────────────────────────────────────────
 
 export default function Landing() {
@@ -1037,9 +784,6 @@ export default function Landing() {
     if (location.pathname === '/register') setRegisterOpen(true)
   }, [location.pathname])
   const [navOpen, setNavOpen]         = useState(false)
-  const [roadmapOpen, setRoadmapOpen] = useState(false)
-  const [emailOpen, setEmailOpen]     = useState('welcome')
-  const [waOpen, setWaOpen]           = useState('connect')
   const navigate                  = useNavigate()
 
   // The hero's stroke-draw title should only start once App's full-screen
@@ -1048,29 +792,10 @@ export default function Landing() {
   const [heroReady, setHeroReady] = useState(isPageLoaderDone)
   useEffect(() => onPageLoaderDone(() => setHeroReady(true)), [])
 
-  // Navbar wordmark + "Prueba gratis" stay hidden while the Hero (with its
-  // own big logo + CTA) is on screen, then type in once it's scrolled fully
-  // past — and hide again if the user scrolls back up into Hero, replaying
-  // the typing next time they scroll past it again.
-  const heroRef = useRef(null)
-  const [pastHero, setPastHero] = useState(false)
-  useEffect(() => {
-    const el = heroRef.current
-    if (!el) return undefined
-    const io = new IntersectionObserver(([entry]) => setPastHero(!entry.isIntersecting), { threshold: 0 })
-    io.observe(el)
-    return () => io.disconnect()
-  }, [])
-
   const [trialDone, setTrialDone]       = useState(false)
   const [trialLoading, setTrialLoading] = useState(false)
   const trialForm = useForm({ resolver: yupResolver(trialSchema) })
   const recaptchaRefTrial = useRef(null)
-
-  const [reviewRating, setReviewRating]     = useState(5)
-  const [reviewDone, setReviewDone]         = useState(false)
-  const [activeReviewTab, setActiveReviewTab] = useState('socios')
-  const reviewForm = useForm({ resolver: yupResolver(reviewSchema) })
 
   const goRegister = (planId = 'monthly') => { navigate(`/register?plan=${planId}`); setNavOpen(false) }
 
@@ -1101,31 +826,7 @@ export default function Landing() {
     }
   }
 
-  const onReviewSubmit = async (data) => {
-    if (reviewRating === 0) { toast.error('Selecciona una calificación'); return }
-    try {
-      // Se incluye el tipo de reseñante para que el admin los distinga en el panel
-      const reviewerPrefix = activeReviewTab === 'duenos' ? 'Dueño/Admin' : 'Socio'
-      const roleLabel = data.role
-        ? `${reviewerPrefix} · ${data.role}`
-        : reviewerPrefix
-
-      await api.post('/submissions', {
-        type:    'review',
-        name:    data.author,
-        role:    roleLabel,
-        rating:  reviewRating,
-        message: data.comment,
-      })
-      setReviewDone(true)
-      toast.success('¡Gracias! Tu reseña será revisada y publicada pronto.')
-    } catch {
-      toast.error('No se pudo enviar tu reseña. Intenta de nuevo.')
-    }
-  }
-
   const tf = trialForm
-  const rf = reviewForm
 
   // Only reveal the reCAPTCHA once the visitor has actually finished filling the
   // required fields + accepted the terms — keeps the form looking simple up front
@@ -1140,18 +841,21 @@ export default function Landing() {
         @keyframes modalIn { from { opacity:0; transform:scale(0.94) translateY(8px); } to { opacity:1; transform:scale(1) translateY(0); } }
         @keyframes fadeUp  { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
         .fade-up { animation: fadeUp 0.5s ease both; }
-        /* CardNav dropdown only expands on sm+ — below that, the hamburger
-           opens the full-screen MobileStaggeredMenu instead, so the white
-           bar itself must stay pinned at its collapsed height on mobile. */
-        .cardnav-shell { max-height: 60px; }
-        @media (min-width: 640px) {
-          .cardnav-shell.is-open { max-height: 520px; }
+        /* Traveling pulse dot for the #automatizaciones step-by-step pipeline —
+           position is keyframed as a % of the connector it sits in, color/glow
+           set per-instance via inline style so one keyframe serves every step. */
+        @keyframes flowMoveY {
+          0%   { top: 0%;   opacity: 0; }
+          15%  { opacity: 1; }
+          85%  { opacity: 1; }
+          100% { top: 100%; opacity: 0; }
         }
-        /* Anchor-linked sections (#correos, #whatsapp, #precios, ...) land
+        .flow-dot-v { position: absolute; left: -3px; width: 7px; height: 7px; border-radius: 9999px; animation: flowMoveY 2s ease-in-out infinite; }
+        /* Anchor-linked sections (#automatizaciones, #precios, ...) land
            flush at the very top of the viewport when jumped to, but the
-           CardNav above is fixed-positioned and floats over that same space
+           fixed header (logo + menu toggle) floats over that same space
            — without this, each section's heading lands hidden behind it. */
-        section[id] { scroll-margin-top: 88px; }
+        section[id] { scroll-margin-top: 96px; }
       `}</style>
 
       {/* Beams — animated light beams background */}
@@ -1166,154 +870,38 @@ export default function Landing() {
         />
       </div>
 
-      {/* ── CardNav ── */}
-      <div className="fixed top-0 left-0 right-0 z-40 flex justify-center px-4 pt-4 pointer-events-none">
-        <div className={`pointer-events-auto w-full max-w-[820px] cardnav-shell ${navOpen ? 'is-open' : ''}`}
-          style={{
-            background: 'white',
-            borderRadius: '12px',
-            boxShadow: navOpen
-              ? '0 20px 60px rgba(0,0,0,0.18), 0 4px 12px rgba(0,0,0,0.08)'
-              : '0 4px 24px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.05)',
-            overflow: 'hidden',
-            transition: 'max-height 0.45s cubic-bezier(0.4,0,0.2,1), box-shadow 0.3s ease',
-          }}>
-
-          {/* ── Top bar ── */}
-          <div style={{ height: '60px' }} className="flex items-center justify-between px-3 flex-shrink-0">
-            <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-md shadow-indigo-500/30 flex-shrink-0">
-                <GemaSystemLogo className="w-3.5 h-3.5" />
-              </div>
-              {/* Hidden while Hero (with its own big logo) is on screen — types in
-                  once scrolled fully past it (see pastHero above), and unmounts
-                  (resetting the typing) if the user scrolls back up into Hero, so
-                  it replays every time Hero is passed again. */}
-              {pastHero && (
-                <TextType
-                  texts={['GemaSystem']}
-                  loop={false}
-                  initialDelay={200}
-                  typingSpeed={55}
-                  className="font-extrabold text-base text-gray-900 tracking-tight"
-                />
-              )}
-              <span className="hidden sm:inline text-xs font-bold px-1.5 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700">BETA</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              {/* Below `sm` these collapse to icon-only — the full-text versions
-                  were `hidden` below sm/md with no equivalent anywhere else in the
-                  mobile nav, so on phones the buttons simply never appeared. */}
-              <button onClick={() => setLoginOpen(true)} aria-label="Iniciar sesión" title="Iniciar sesión"
-                className="sm:hidden w-8 h-8 flex items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 transition-colors flex-shrink-0">
-                <LogIn className="w-4 h-4" />
-              </button>
-              <button onClick={() => setLoginOpen(true)}
-                className="hidden sm:block text-sm font-semibold px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors">
-                Iniciar sesión
-              </button>
-
-              <button onClick={scrollToTrial} aria-label="Prueba gratis" title="Prueba gratis"
-                className="sm:hidden w-8 h-8 flex items-center justify-center rounded-lg text-white flex-shrink-0"
-                style={{ background: 'linear-gradient(135deg,#4F46E5,#7C3AED)' }}>
-                <Gift className="w-4 h-4" />
-              </button>
-              <button onClick={scrollToTrial}
-                className="hidden sm:flex items-center gap-1.5 text-sm font-bold px-3.5 py-1.5 rounded-lg text-white"
-                style={{ background: 'linear-gradient(135deg,#4F46E5,#7C3AED)' }}>
-                <Gift className="w-3.5 h-3.5" />
-                {pastHero && (
-                  <TextType
-                    texts={['Prueba gratis']}
-                    loop={false}
-                    initialDelay={700}
-                    typingSpeed={35}
-                    showCursor={false}
-                  />
-                )}
-              </button>
-              <button onClick={() => setNavOpen(o => !o)} aria-label="Menú"
-                className="w-9 h-9 flex flex-col items-center justify-center gap-[5px] rounded-lg hover:bg-gray-100 transition-colors ml-1 flex-shrink-0">
-                <span className={`block w-5 h-[1.5px] bg-gray-700 rounded-full transition-all duration-300 origin-center ${navOpen ? 'translate-y-[3.5px] rotate-45' : ''}`} />
-                <span className={`block w-5 h-[1.5px] bg-gray-700 rounded-full transition-all duration-300 ${navOpen ? '-translate-y-[3.5px] -rotate-45' : ''}`} />
-              </button>
-            </div>
+      {/* ── Header — reactbits.dev's "Staggered Menu" pattern
+          (https://reactbits.dev/components/staggered-menu): a permanently
+          transparent fixed header (just logo + toggle, no bar/background of
+          its own — this page is dark-themed top to bottom via the fixed
+          Beams canvas, so light text reads fine at any scroll position, no
+          scroll-driven morphing needed) that opens the full-screen panel
+          below. Login/trial actions live in that panel now, not here —
+          matches reactbits' own minimal header instead of the previous
+          CardNav's inline buttons + 3-column dropdown. */}
+      <div className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-5 sm:px-8 py-5 sm:py-6 pointer-events-none">
+        <div className="flex items-center gap-2.5 pointer-events-auto">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-md shadow-indigo-500/30 flex-shrink-0">
+            <GemaSystemLogo className="w-4 h-4" />
           </div>
+          <span className="font-extrabold text-base text-white tracking-tight">GemaSystem</span>
+          <span className="hidden sm:inline-block text-[9px] font-black uppercase tracking-wide text-black bg-amber-400 rounded px-1.5 py-0.5 -rotate-3 shadow-sm select-none">
+            en desarrollo
+          </span>
+        </div>
 
-          {/* ── Cards (sm+ only — mobile uses MobileStaggeredMenu instead) ── */}
-          <div className="hidden sm:grid px-2 pb-2 sm:grid-cols-3 gap-2"
-            style={{ opacity: navOpen ? 1 : 0, transition: 'opacity 0.25s ease 0.1s', pointerEvents: navOpen ? 'auto' : 'none' }}>
+        <div className="flex items-center gap-2 sm:gap-3">
+          <button onClick={() => setLoginOpen(true)} aria-label="Iniciar sesión" title="Iniciar sesión"
+            className="pointer-events-auto w-10 h-10 sm:w-auto sm:h-auto flex items-center justify-center gap-1.5 rounded-lg sm:px-4 sm:py-2 text-sm font-semibold text-white border border-white/20 hover:bg-white/10 transition-colors flex-shrink-0">
+            <LogIn className="w-4 h-4" />
+            <span className="hidden sm:inline">Iniciar sesión</span>
+          </button>
 
-            {/* Explorar */}
-            <div className="rounded-xl p-4 flex flex-col" style={{ background: '#18181b', minHeight: '190px' }}>
-              <span className="text-white/30 text-[10px] font-bold uppercase tracking-widest mb-2">01</span>
-              <p className="text-white text-xl font-semibold leading-tight tracking-tight mb-auto">Explorar<br/>GemaSystem</p>
-              <div className="mt-4 space-y-2">
-                {[
-                  { label: 'Características', href: '#características' },
-                  { label: 'Correos automáticos', href: '#correos' },
-                  { label: 'WhatsApp',         href: '#whatsapp' },
-                  { label: 'Precios',          href: '#precios' },
-                  { label: 'Prueba gratis',    href: '#prueba-gratis' },
-                  { label: 'Reseñas',          href: '#reseñas' },
-                  { label: 'Comparativa',      href: '#comparativa' },
-                  { label: 'Preguntas',        href: '#faq' },
-                ].map(({ label, href }) => (
-                  <a key={label} href={href} onClick={() => setNavOpen(false)}
-                    className="flex items-center gap-2 text-white/50 hover:text-white text-sm font-medium transition-colors group">
-                    <ArrowRight className="w-3 h-3 text-white/25 group-hover:text-white/60 transition-colors flex-shrink-0" />
-                    {label}
-                  </a>
-                ))}
-              </div>
-            </div>
-
-            {/* Soporte */}
-            <div className="rounded-xl p-4 flex flex-col" style={{ background: '#1e1b4b', minHeight: '190px' }}>
-              <span className="text-white/30 text-[10px] font-bold uppercase tracking-widest mb-2">02</span>
-              <p className="text-white text-xl font-semibold leading-tight tracking-tight mb-auto">Centro de<br/>Soporte</p>
-              <div className="mt-4 space-y-2">
-                {[
-                  { label: 'Preguntas frecuentes', to: '/support' },
-                  { label: 'Abrir ticket',          to: '/support' },
-                  { label: 'soporte@gemasystem.mx',      href: 'mailto:soporte@gemasystem.mx' },
-                  { label: 'Chat (próximamente)',    disabled: true },
-                ].map(({ label, to, href, disabled }) => {
-                  const cls = 'flex items-center gap-2 text-white/50 hover:text-white text-sm font-medium transition-colors group'
-                  const ico = <ArrowRight className="w-3 h-3 text-white/25 group-hover:text-white/60 transition-colors flex-shrink-0" />
-                  if (disabled) return <span key={label} className="flex items-center gap-2 text-white/20 text-sm">{ico}{label}</span>
-                  if (to)   return <Link key={label} to={to} onClick={() => setNavOpen(false)} className={cls}>{ico}{label}</Link>
-                  return <a key={label} href={href} className={cls}>{ico}{label}</a>
-                })}
-              </div>
-            </div>
-
-            {/* Proyectos y Contacto */}
-            <div className="rounded-xl p-4 flex flex-col" style={{ background: '#134e4a', minHeight: '190px' }}>
-              <span className="text-white/30 text-[10px] font-bold uppercase tracking-widest mb-2">03</span>
-              <p className="text-white text-xl font-semibold leading-tight tracking-tight mb-auto">Proyectos y<br/>Contacto</p>
-              <div className="mt-4 space-y-2">
-                {[
-                  { label: 'GemaSystem como tu marca',  to: '/proyectos' },
-                  { label: 'Desarrollo a medida',   to: '/proyectos' },
-                  { label: 'Otro proyecto',          to: '/proyectos' },
-                  { label: 'Contactar al creador',   href: 'mailto:brayantisidro05@gmail.com' },
-                ].map(({ label, to, href }) =>
-                  to
-                    ? <Link key={label} to={to} onClick={() => setNavOpen(false)}
-                        className="flex items-center gap-2 text-white/50 hover:text-white text-sm font-medium transition-colors group">
-                        <ArrowRight className="w-3 h-3 text-white/25 group-hover:text-white/60 transition-colors flex-shrink-0" />
-                        {label}
-                      </Link>
-                    : <a key={label} href={href}
-                        className="flex items-center gap-2 text-white/50 hover:text-white text-sm font-medium transition-colors group">
-                        <ArrowRight className="w-3 h-3 text-white/25 group-hover:text-white/60 transition-colors flex-shrink-0" />
-                        {label}
-                      </a>
-                )}
-              </div>
-            </div>
-          </div>
+          <button onClick={() => setNavOpen(o => !o)} aria-label={navOpen ? 'Cerrar menú' : 'Abrir menú'} aria-expanded={navOpen}
+            className="pointer-events-auto w-10 h-10 flex flex-col items-center justify-center gap-[5px] rounded-lg hover:bg-white/10 transition-colors flex-shrink-0">
+            <span className={`block w-5 h-[1.5px] bg-white rounded-full transition-all duration-300 origin-center ${navOpen ? 'translate-y-[3.5px] rotate-45' : ''}`} />
+            <span className={`block w-5 h-[1.5px] bg-white rounded-full transition-all duration-300 ${navOpen ? '-translate-y-[3.5px] -rotate-45' : ''}`} />
+          </button>
         </div>
       </div>
 
@@ -1325,8 +913,8 @@ export default function Landing() {
       />
 
       {/* ── Hero ── */}
-      <section ref={heroRef} className="relative z-10 overflow-hidden pt-20">
-        <div className="flex flex-col items-center justify-center text-center px-4 sm:px-6 pt-24 sm:pt-28 pb-10">
+      <section className="relative z-10 overflow-hidden pt-20">
+        <div className="flex flex-col items-center justify-center text-center px-4 sm:px-6 pt-24 sm:pt-55 pb-0">
           {heroReady ? (
             <h1 className="flex items-center justify-center gap-0.5 sm:gap-1">
               <StrokeLogoMark
@@ -1353,18 +941,11 @@ export default function Landing() {
             as="p"
             className="mt-5 sm:mt-6 text-sm sm:text-base md:text-lg font-semibold text-violet-300 min-h-[1.6em] px-2"
           />
-          <p className="mt-4 text-base sm:text-lg md:text-xl text-slate-400 max-w-2xl leading-relaxed">
-            Gestiona miembros, visitas, finanzas y clases desde un solo panel.
-            Moderno, potente y diseñado para crecer contigo.
-          </p>
-          <button onClick={scrollToTrial}
-            className="flex items-center gap-2.5 px-9 py-4 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold text-base transition-all shadow-2xl shadow-indigo-500/30 hover:shadow-indigo-500/50 hover:-translate-y-0.5 hover:scale-[1.03] ring-1 ring-white/15 duration-200 mt-10">
-            <Gift className="w-5 h-5" /> Prueba 10 días gratis
-          </button>
         </div>
 
-        {/* Product preview — positioned right below the hero CTA, à la wope.com */}
-        <div className="relative max-w-6xl mx-auto px-6 pt-16 pb-28">
+        {/* Product preview — pulled in close behind the two hero texts (no CTA
+            button between them anymore) — small gap, not flush. */}
+        <div className="relative max-w-6xl mx-auto px-6 pt-4 pb-28">
           <HeroPreviewImage />
         </div>
       </section>
@@ -1373,17 +954,81 @@ export default function Landing() {
       <div className="relative z-10">
 
         {/* Features */}
-        <section id="características" className="py-24">
-          <div className="max-w-6xl mx-auto px-6">
-            <Reveal as="div" className="text-center mb-16">
+        <section id="características" className="relative py-24 overflow-hidden">
+          {/* Glow background */}
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[520px] rounded-full opacity-20"
+              style={{ background: 'radial-gradient(ellipse,#6366F1,transparent 70%)', filter: 'blur(100px)' }} />
+          </div>
+
+          <div className="relative max-w-6xl mx-auto px-6">
+            <Reveal as="div" className="text-center mb-14">
               <p className="text-xs font-bold uppercase tracking-widest text-indigo-400 mb-3">Módulos</p>
-              <h2 className="text-[clamp(1.75rem,5vw,2.25rem)] font-extrabold text-white leading-tight">Todo lo que necesita tu gimnasio</h2>
+              <h2 className="text-[clamp(1.75rem,5vw,2.5rem)] font-extrabold text-white leading-tight">Todo lo que necesita tu gimnasio</h2>
               <p className="text-slate-400 mt-4 text-lg max-w-xl mx-auto">Herramientas profesionales diseñadas para la operación diaria de un gimnasio moderno.</p>
             </Reveal>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {FEATURES.map((f, i) => (
-                <Reveal key={i} delay={(i % 3) * 0.08}>
-                  <div className="group rounded-2xl border p-6 hover:-translate-y-1 transition-all duration-300 cursor-default"
+
+            {/* Bento row 1 — text+mockup / mockup+text */}
+            {(() => {
+              const F0 = FEATURES[0], F1 = FEATURES[1], F3 = FEATURES[3]
+              const Icon0 = F0.icon, Icon1 = F1.icon
+              return (
+                <>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <Reveal>
+                      <div className="h-full rounded-3xl border p-8 flex flex-col"
+                        style={{ background: `linear-gradient(180deg, ${F0.color}14, rgba(13,17,23,0.5))`, borderColor: `${F0.color}30` }}>
+                        <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-5" style={{ background: F0.color + '20', border: `1px solid ${F0.color}35` }}>
+                          <Icon0 className="w-5 h-5" style={{ color: F0.color }} />
+                        </div>
+                        <h3 className="text-xl font-bold text-white mb-2">{F0.title}</h3>
+                        <p className="text-sm text-slate-400 leading-relaxed mb-6 max-w-sm">{F0.desc}</p>
+                        <div className="relative mt-auto rounded-2xl overflow-hidden border border-white/10 shadow-2xl" style={{ height: 260 }}>
+                          <FeatureShotImage src="/images/feature-members.webp" alt="Panel de gestión de miembros de GemaSystem" />
+                          <div className="absolute inset-x-0 bottom-0 h-16 pointer-events-none" style={{ background: 'linear-gradient(to top, #0b0e14, transparent)' }} />
+                        </div>
+                      </div>
+                    </Reveal>
+
+                    <Reveal delay={0.1}>
+                      <div className="h-full rounded-3xl border p-8 flex flex-col"
+                        style={{ background: `linear-gradient(180deg, ${F1.color}14, rgba(13,17,23,0.5))`, borderColor: `${F1.color}30` }}>
+                        <div className="relative rounded-2xl overflow-hidden border border-white/10 shadow-2xl mb-6" style={{ height: 260 }}>
+                          <FeatureShotImage src="/images/feature-visits.webp" alt="Panel de control de visitas por QR de GemaSystem" />
+                          <div className="absolute inset-x-0 bottom-0 h-16 pointer-events-none" style={{ background: 'linear-gradient(to top, #0b0e14, transparent)' }} />
+                        </div>
+                        <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-5" style={{ background: F1.color + '20', border: `1px solid ${F1.color}35` }}>
+                          <Icon1 className="w-5 h-5" style={{ color: F1.color }} />
+                        </div>
+                        <h3 className="text-xl font-bold text-white mb-2">{F1.title}</h3>
+                        <p className="text-sm text-slate-400 leading-relaxed">{F1.desc}</p>
+                      </div>
+                    </Reveal>
+                  </div>
+
+                  {/* Bento row 2 — full-width big mockup */}
+                  <Reveal delay={0.15}>
+                    <div className="mt-6 rounded-3xl border p-8 sm:p-10"
+                      style={{ background: `linear-gradient(180deg, ${F3.color}14, rgba(13,17,23,0.5))`, borderColor: `${F3.color}30` }}>
+                      <div className="relative rounded-2xl overflow-hidden border border-white/10 shadow-2xl" style={{ height: 340 }}>
+                        <FeatureShotImage src="/images/feature-finances.webp" alt="Panel de análisis financiero de GemaSystem" />
+                        <div className="absolute inset-x-0 bottom-0 h-20 pointer-events-none" style={{ background: 'linear-gradient(to top, #0b0e14, transparent)' }} />
+                      </div>
+                      <div className="text-center mt-6 max-w-lg mx-auto">
+                        <p className="text-base sm:text-lg font-bold text-white">{F3.title}</p>
+                        <p className="text-sm text-slate-400 mt-1.5 leading-relaxed">{F3.desc}</p>
+                      </div>
+                    </div>
+                  </Reveal>
+                </>
+              )
+            })()}
+
+            {/* Remaining módulos — compact strip */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mt-6">
+              {[FEATURES[2], FEATURES[4], FEATURES[5]].map((f, i) => (
+                <Reveal key={f.title} delay={i * 0.08}>
+                  <div className="group h-full rounded-2xl border p-6 hover:-translate-y-1 transition-all duration-300 cursor-default"
                     style={{
                       background: '#0d1117',
                       borderColor: 'rgba(99,102,241,0.18)',
@@ -1401,450 +1046,216 @@ export default function Landing() {
                 </Reveal>
               ))}
             </div>
-            {/* Module previews — two side-by-side mock UIs */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-16">
-              {[
-                { Component: TrainersCard,    label: 'entrenadores', title: 'Gestión de entrenadores' },
-                { Component: MembershipsCard, label: 'membresias',   title: 'Control de membresías'   },
-              ].map(({ Component, label, title }, i) => (
-                <Reveal key={label} delay={i * 0.15}>
-                  <div className="flex flex-col gap-3">
-                    <div className="rounded-2xl overflow-hidden shadow-xl border border-white/10"
-                      style={{ perspective: '900px' }}>
-                      <div style={{ transform: 'rotateX(2deg)', transformOrigin: 'bottom center' }}>
-                        <div className="flex items-center gap-2 px-3 py-2 border-b border-white/10 bg-black/40">
-                          <div className="flex gap-1.5">
-                            <div className="w-2 h-2 rounded-full bg-red-400" />
-                            <div className="w-2 h-2 rounded-full bg-yellow-400" />
-                            <div className="w-2 h-2 rounded-full bg-green-400" />
-                          </div>
-                          <span className="text-[10px] font-mono text-slate-400">app.gemasystem.mx/{label}</span>
-                        </div>
-                        <div style={{ height: 300 }}>
-                          <Component />
-                        </div>
+          </div>
+        </section>
+
+        {/* ── Automatizaciones (correo + WhatsApp) Section ── */}
+        <section id="automatizaciones" className="relative z-10 py-28 overflow-hidden">
+          {/* Glow background */}
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[500px] rounded-full opacity-10"
+              style={{ background: 'radial-gradient(ellipse,#6366F1,transparent 70%)', filter: 'blur(90px)' }} />
+          </div>
+
+          <div className="relative max-w-2xl mx-auto px-6 text-center">
+            <Reveal as="div">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-300 text-xs font-bold mb-6">
+                <Zap className="w-3.5 h-3.5" /> Automatizaciones
+              </div>
+              <h2 className="text-[clamp(1.9rem,5vw,2.75rem)] font-extrabold text-white leading-tight">
+                Así se envía,{' '}
+                <span className="bg-gradient-to-r from-indigo-400 to-emerald-400 bg-clip-text text-transparent">paso a paso</span>
+              </h2>
+              <p className="text-slate-400 mt-5 text-base max-w-md mx-auto">
+                Desde que algo pasa en tu gimnasio hasta que tu socio lo recibe — sin que tú escribas ni envíes nada.
+              </p>
+            </Reveal>
+
+            {/* Step-by-step pipeline */}
+            <div className="mt-16 flex flex-col items-center">
+
+              {/* Step 1 — trigger */}
+              <Reveal className="flex flex-col items-center text-center">
+                <div className="w-16 h-16 rounded-full flex items-center justify-center"
+                  style={{ background: '#0d1117', border: '1.5px solid #F59E0B55', boxShadow: '0 8px 24px #F59E0B25' }}>
+                  <Zap className="w-6 h-6" style={{ color: '#F59E0B' }} />
+                </div>
+                <p className="mt-4 text-sm font-bold text-white">1. Algo pasa</p>
+                <p className="text-xs text-slate-500 mt-1 max-w-[16rem] leading-snug">Un socio se registra, paga, o su membresía está por vencer.</p>
+              </Reveal>
+
+              {/* Connector */}
+              <div className="relative w-px h-12" style={{ background: 'linear-gradient(180deg, #F59E0B55, #6366F155)' }}>
+                <span className="flow-dot-v" style={{ background: '#FBBF24', boxShadow: '0 0 8px #FBBF24' }} />
+              </div>
+
+              {/* Step 2 — engine */}
+              <Reveal delay={0.1} className="flex flex-col items-center text-center">
+                <div className="w-20 h-20 rounded-full flex items-center justify-center"
+                  style={{ background: 'linear-gradient(135deg,#6366F1,#8B5CF6)', boxShadow: '0 0 0 6px rgba(99,102,241,0.12), 0 8px 28px rgba(99,102,241,0.4)' }}>
+                  <GemaSystemLogo className="w-8 h-8" />
+                </div>
+                <p className="mt-4 text-sm font-bold text-white">2. GemaSystem lo detecta</p>
+                <p className="text-xs text-slate-500 mt-1 max-w-[16rem] leading-snug">Al instante, sin que tengas que hacer nada.</p>
+              </Reveal>
+
+              {/* Connector */}
+              <div className="relative w-px h-12" style={{ background: 'linear-gradient(180deg, #6366F155, #6366F155)' }}>
+                <span className="flow-dot-v" style={{ background: '#A5B4FC', boxShadow: '0 0 8px #A5B4FC' }} />
+              </div>
+
+              {/* Step 3 — dual channel dispatch */}
+              <Reveal delay={0.2} className="w-full">
+                <p className="text-sm font-bold text-white mb-4">3. Se envía por los dos canales</p>
+                <div className="rounded-3xl border border-white/10 overflow-hidden grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-white/10"
+                  style={{ background: '#0d1117' }}>
+                  {/* Correo half */}
+                  <div className="p-5 text-left">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: '#6366F120', border: '1px solid #6366F135' }}>
+                        <Mail className="w-3.5 h-3.5" style={{ color: '#6366F1' }} />
+                      </div>
+                      <span className="text-xs font-bold text-indigo-300">Correo</span>
+                    </div>
+                    <div className="flex items-start gap-3 px-3 py-3 rounded-xl" style={{ background: '#fff', border: '1px solid #EBEBF0' }}>
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(16,185,129,0.12)' }}>
+                        <MailCheck className="w-3.5 h-3.5" style={{ color: '#10B981' }} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold text-slate-800 truncate">¡Bienvenido a GemaSystem!</p>
+                        <p className="text-[11px] text-slate-500 truncate mt-0.5">Tu membresía fue registrada exitosamente...</p>
                       </div>
                     </div>
-                    <p className="text-center text-xs font-semibold text-slate-400">{title}</p>
                   </div>
-                </Reveal>
-              ))}
+                  {/* WhatsApp half */}
+                  <div className="p-5 text-left">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: '#25D36620', border: '1px solid #25D36635' }}>
+                        <MessageCircle className="w-3.5 h-3.5" style={{ color: '#25D366' }} />
+                      </div>
+                      <span className="text-xs font-bold text-emerald-300">WhatsApp</span>
+                    </div>
+                    <div className="px-4 py-3 text-xs text-slate-800 max-w-[16rem]"
+                      style={{ background: '#fff', border: '1px solid #EBEBF0', borderRadius: '14px 14px 14px 4px' }}>
+                      👋 ¡Hola, <strong>Carlos</strong>! Tu membresía fue registrada. 🆔 <strong>FP-0231</strong>
+                    </div>
+                  </div>
+                </div>
+              </Reveal>
+
+              {/* Connector */}
+              <div className="relative w-px h-12" style={{ background: 'linear-gradient(180deg, #6366F155, #10B98155)' }}>
+                <span className="flow-dot-v" style={{ background: '#6EE7B7', boxShadow: '0 0 8px #6EE7B7' }} />
+              </div>
+
+              {/* Step 4 — delivered */}
+              <Reveal delay={0.3} className="flex flex-col items-center text-center">
+                <div className="w-16 h-16 rounded-full flex items-center justify-center"
+                  style={{ background: '#0d1117', border: '1.5px solid #10B98155', boxShadow: '0 8px 24px #10B98125' }}>
+                  <CheckCircle2 className="w-6 h-6" style={{ color: '#10B981' }} />
+                </div>
+                <p className="mt-4 text-sm font-bold text-white">4. Recibido</p>
+                <p className="text-xs text-slate-500 mt-1 max-w-[16rem] leading-snug">Tu socio ya lo tiene, en segundos.</p>
+              </Reveal>
             </div>
           </div>
         </section>
 
-        {/* ── Correos automáticos Section ── */}
-        <section id="correos" className="relative z-10 py-28 overflow-hidden">
-          {/* Glow background */}
+        {/* ── Beta / roadmap — same split mockup+list grammar as Correos and
+            WhatsApp above, so it reads as one design system instead of a
+            bolted-on "we're in beta" disclaimer. Roadmap is always visible now
+            (no click-to-expand), consistent with the rest of the page. ── */}
+        <section id="beta" className="relative z-10 py-28 overflow-hidden">
           <div className="absolute inset-0 pointer-events-none">
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[400px] rounded-full opacity-10"
-              style={{ background: 'radial-gradient(ellipse,#6366F1,transparent 70%)', filter: 'blur(80px)' }} />
+              style={{ background: 'radial-gradient(ellipse,#F59E0B,transparent 70%)', filter: 'blur(80px)' }} />
           </div>
-
           <div className="relative max-w-6xl mx-auto px-6">
 
             {/* Header */}
             <Reveal as="div" className="text-center mb-20">
-              <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-300 text-xs font-bold mb-6">
-                <Mail className="w-3.5 h-3.5" /> Notificaciones automáticas · Correo electrónico
+              <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full border border-amber-400/30 bg-amber-400/10 text-amber-300 text-xs font-bold mb-6">
+                <Terminal className="w-3.5 h-3.5" /> Acceso anticipado · v1.0.0-beta.1
               </div>
               <h2 className="text-[clamp(2rem,6vw,3rem)] font-extrabold text-white leading-tight">
-                Correos que se envían{' '}
-                <span className="bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">solos</span>
+                Construido en{' '}
+                <span className="bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">público</span>
               </h2>
               <p className="text-slate-400 mt-5 text-lg max-w-2xl mx-auto leading-relaxed">
-                GemaSystem le escribe a tus socios en el momento exacto — bienvenida, recordatorios de vencimiento, recibos de pago y más — sin que tengas que redactar ni enviar nada tú mismo.
+                GemaSystem se actualiza semana a semana. Como usuario beta tu feedback decide qué se construye después, y tu precio queda congelado mientras dure el programa.
               </p>
             </Reveal>
 
-            {/* Main split layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center mb-20">
+            {/* Bento row — one big status tile + a 2×2 grid of quick facts,
+                instead of another split mockup+list (already used twice above
+                for Correos/WhatsApp) or the old click-to-expand roadmap. */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch mb-4">
+              <Reveal as="div" className="relative rounded-3xl border p-8 overflow-hidden flex flex-col justify-between min-h-[220px]"
+                style={{ background: 'linear-gradient(155deg,#1a1206 0%,#0d1020 60%)', borderColor: 'rgba(245,158,11,0.25)' }}>
+                <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full pointer-events-none"
+                  style={{ background: 'radial-gradient(circle,#F59E0B,transparent 70%)', opacity: 0.15 }} />
+                <div className="relative flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                  <span className="text-xs font-bold text-amber-300 uppercase tracking-widest">En desarrollo activo</span>
+                </div>
+                <p className="relative font-mono font-extrabold text-white tracking-tight mt-4" style={{ fontSize: 'clamp(1.75rem,4vw,2.75rem)' }}>
+                  v1.0.0<span className="text-amber-400">-beta.1</span>
+                </p>
+                <p className="relative text-slate-400 text-sm leading-relaxed mt-5 max-w-sm">
+                  Nada aquí es estático — sale algo nuevo cada semana, y tu opinión como usuario beta decide qué sigue.
+                </p>
+              </Reveal>
 
-              {/* Left — preview card */}
-              <Reveal as="div" className="relative">
-                {/* Inbox mockup */}
-                <div className="rounded-2xl overflow-hidden shadow-2xl border border-white/8"
-                  style={{ boxShadow: '0 0 0 1px rgba(99,102,241,0.12), 0 32px 80px rgba(0,0,0,0.6)' }}>
-                  {/* Dark panel header */}
-                  <div className="flex items-center gap-3 px-5 py-4" style={{ background: '#0D1526' }}>
+              <div className="grid grid-cols-2 gap-4">
+                {[
+                  { icon: Zap,           color: '#F59E0B', title: 'Semanal',    desc: 'Nuevas funciones' },
+                  { icon: BadgeCheck,    color: '#6366F1', title: 'Congelado',  desc: 'Tu precio beta' },
+                  { icon: Shield,        color: '#10B981', title: 'Protegido',  desc: 'Estándar de producción' },
+                  { icon: MessageSquare, color: '#EC4899', title: 'Directo',   desc: 'Tu feedback cuenta' },
+                ].map(({ icon: Icon, color, title, desc }, i) => (
+                  <Reveal key={title} delay={0.08 + i * 0.05}
+                    className="rounded-2xl border p-5 flex flex-col gap-3" style={{ background: '#0d1020', borderColor: 'rgba(255,255,255,0.1)' }}>
                     <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-                      style={{ background: 'linear-gradient(135deg,#6366F1,#8B5CF6)', boxShadow: '0 4px 12px rgba(99,102,241,0.4)' }}>
-                      <Mail style={{ width: 16, height: 16, color: '#fff' }} />
+                      style={{ background: color + '18', border: `1px solid ${color}30` }}>
+                      <Icon className="w-4 h-4" style={{ color }} />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-white leading-none">Bandeja de entrada</p>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
-                        <span className="text-[10px] font-medium" style={{ color: '#A5B4FC' }}>notificaciones@gemasystem.mx</span>
-                      </div>
+                      <p className="text-white font-extrabold text-base leading-none">{title}</p>
+                      <p className="text-slate-500 text-xs mt-1.5 leading-snug">{desc}</p>
                     </div>
-                  </div>
-                  {/* Email list */}
-                  <div className="p-3 space-y-2" style={{ background: '#F7F8FA' }}>
-                    {[
-                      { icon: CheckCircle2, color: '#10B981', bg: 'rgba(16,185,129,0.12)', subject: '¡Bienvenido a GemaSystem!', snippet: 'Tu membresía ha sido registrada exitosamente. Aquí tienes tus datos de acceso...', time: 'Ahora' },
-                      { icon: Clock,        color: '#F59E0B', bg: 'rgba(245,158,11,0.12)', subject: 'Tu membresía vence en 3 días',  snippet: 'Renueva antes del 21/08 para seguir entrenando sin interrupciones...', time: '9:00 a.m.' },
-                      { icon: CreditCard,   color: '#6366F1', bg: 'rgba(99,102,241,0.12)', subject: 'Recibo de tu pago — $417 MXN',   snippet: 'Gracias por tu pago. Tu membresía está vigente hasta...', time: 'Ayer' },
-                    ].map(({ icon: Icon, color, bg, subject, snippet, time }) => (
-                      <div key={subject} className="flex items-start gap-3 px-3 py-3 rounded-xl"
-                        style={{ background: '#fff', border: '1px solid #EBEBF0', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: bg }}>
-                          <Icon className="w-4 h-4" style={{ color }} />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center justify-between gap-2">
-                            <p className="text-sm font-bold text-slate-800 truncate">{subject}</p>
-                            <span className="text-[10px] text-slate-400 flex-shrink-0">{time}</span>
-                          </div>
-                          <p className="text-xs text-slate-500 truncate mt-0.5">{snippet}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Floating badge */}
-                <div className="absolute -top-4 -right-4 bg-indigo-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg"
-                  style={{ boxShadow: '0 4px 14px rgba(99,102,241,0.5)' }}>
-                  Incluido en GemaSystem
-                </div>
-              </Reveal>
-
-              {/* Right — accordion benefits */}
-              <Reveal as="div" className="space-y-2" delay={0.15}>
-                {[
-                  {
-                    id: 'welcome',
-                    icon: CheckCircle2,
-                    color: '#10B981',
-                    accentBg: '#091410',
-                    accentBorder: 'rgba(16,185,129,0.4)',
-                    badge: null,
-                    title: 'Bienvenida automática',
-                    desc: 'Cuando registras un nuevo socio, recibe al instante un correo de bienvenida con los datos de su membresía — sin que tengas que redactar nada.',
-                    extra: null,
-                  },
-                  {
-                    id: 'reminders',
-                    icon: Clock,
-                    color: '#F59E0B',
-                    accentBg: '#131008',
-                    accentBorder: 'rgba(245,158,11,0.4)',
-                    badge: 'Configurable',
-                    title: 'Recordatorios de vencimiento',
-                    desc: 'Elige con cuántos días de anticipación se avisa a tus socios antes de que venza su membresía, desde Configuración → Notificaciones. El correo se envía solo, cada día.',
-                    extra: null,
-                  },
-                  {
-                    id: 'receipts',
-                    icon: CreditCard,
-                    color: '#6366F1',
-                    accentBg: '#0f1022',
-                    accentBorder: 'rgba(99,102,241,0.4)',
-                    badge: null,
-                    title: 'Recibos y pagos',
-                    desc: 'Cada pago exitoso genera un recibo automático por correo con el monto, el plan y la vigencia. Si un cobro falla, tú y tu socio reciben un aviso para regularizarlo.',
-                    extra: null,
-                  },
-                  {
-                    id: 'birthday',
-                    icon: Gift,
-                    color: '#EC4899',
-                    accentBg: '#1a0f16',
-                    accentBorder: 'rgba(236,72,153,0.4)',
-                    badge: null,
-                    title: 'Cumpleaños y renovaciones',
-                    desc: 'GemaSystem también felicita a tus socios el día de su cumpleaños y les invita a renovar cuando su membresía está por expirar — con plantillas ya integradas en el sistema.',
-                    extra: null,
-                  },
-                ].map(({ id, icon: Icon, color, accentBg, accentBorder, badge, title, desc, extra }) => {
-                  const isOpen = emailOpen === id
-                  return (
-                    <div
-                      key={id}
-                      className="rounded-2xl border overflow-hidden transition-all duration-200"
-                      style={{
-                        background: isOpen ? accentBg : '#0d1117',
-                        borderColor: isOpen ? accentBorder : 'rgba(255,255,255,0.1)',
-                      }}
-                    >
-                      <button
-                        className="w-full flex items-center gap-3 px-4 py-3.5 text-left"
-                        onClick={() => setEmailOpen(isOpen ? null : id)}
-                      >
-                        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all"
-                          style={{ background: color + (isOpen ? '25' : '18'), border: `1px solid ${color}${isOpen ? '40' : '28'}` }}>
-                          <Icon className="w-4 h-4" style={{ color }} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="font-bold text-white text-sm leading-snug">{title}</p>
-                            {badge && (
-                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
-                                style={{ background: 'rgba(99,102,241,0.2)', color: '#A5B4FC', border: '1px solid rgba(99,102,241,0.3)' }}>
-                                {badge}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <ChevronDown
-                          className="w-4 h-4 flex-shrink-0 transition-transform duration-300"
-                          style={{ color: isOpen ? color : '#475569', transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}
-                        />
-                      </button>
-                      <div style={{
-                        maxHeight: isOpen ? '400px' : '0px',
-                        overflow: 'hidden',
-                        transition: 'max-height 0.35s cubic-bezier(0.4,0,0.2,1)',
-                      }}>
-                        <div className="px-4 pb-4">
-                          <p className="text-slate-400 text-sm leading-relaxed">{desc}</p>
-                          {extra}
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </Reveal>
+                  </Reveal>
+                ))}
+              </div>
             </div>
 
-            {/* Bottom stat pills */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {/* Roadmap — numbered tickets, 3-up */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {[
-                { val: '9',            lbl: 'Tipos de correo automático',   color: '#6366F1' },
-                { val: '0',            lbl: 'Correos que escribes a mano',  color: '#10B981' },
-                { val: 'Configurable', lbl: 'Días de anticipación',         color: '#F59E0B' },
-                { val: 'SSL',          lbl: 'Envío cifrado y seguro',       color: '#EC4899' },
-              ].map(({ val, lbl, color }, i) => (
-                <Reveal key={lbl} delay={(i % 4) * 0.08}>
-                  <div className="rounded-2xl border border-white/8 p-5 text-center hover:-translate-y-1 transition-all duration-200 cursor-default"
-                    style={{ background: '#0d1117' }}>
-                    <p className="text-2xl font-extrabold leading-none mb-1" style={{ color }}>{val}</p>
-                    <p className="text-xs text-slate-500 leading-snug">{lbl}</p>
+                { n: '01', version: 'v1.2.0', status: 'En desarrollo', Icon: Bot,               title: 'Chatbot de Soporte', desc: 'Asistente integrado en el panel que resuelve dudas de socios y de configuración en tiempo real.', accent: '#6366f1' },
+                { n: '02', version: 'v1.5.0', status: 'Planeado',      Icon: Store,              title: 'Portal del Socio',   desc: 'Tus miembros consultan su membresía, reservan clases y compran productos desde su propio portal.', accent: '#10b981' },
+                { n: '03', version: 'v2.0.0', status: 'Planeado',      Icon: MonitorSmartphone,  title: 'GemaSystem PWA',     desc: 'App instalable en cualquier dispositivo, como app nativa, con soporte básico sin conexión.', accent: '#8b5cf6' },
+              ].map((item, i) => (
+                <Reveal key={item.version} delay={0.1 + i * 0.08}
+                  className="rounded-2xl border p-5 flex flex-col gap-3" style={{ background: '#0d1020', borderColor: 'rgba(255,255,255,0.1)' }}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-mono font-bold text-slate-600">{item.n}</span>
+                    <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{ background: item.accent + '20', color: item.accent }}>
+                      {item.status}
+                    </span>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: item.accent + '18', border: `1px solid ${item.accent}30` }}>
+                    <item.Icon className="w-5 h-5" style={{ color: item.accent }} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-white font-bold text-sm leading-tight">{item.title}</p>
+                      <span className="text-[10px] font-mono font-bold" style={{ color: item.accent }}>{item.version}</span>
+                    </div>
+                    <p className="text-slate-400 text-xs leading-relaxed mt-1.5">{item.desc}</p>
                   </div>
                 </Reveal>
               ))}
             </div>
-
-          </div>
-        </section>
-
-        {/* ── WhatsApp Section ── */}
-        <section id="whatsapp" className="relative z-10 py-28 overflow-hidden">
-          {/* Glow background */}
-          <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[400px] rounded-full opacity-10"
-              style={{ background: 'radial-gradient(ellipse,#25D366,transparent 70%)', filter: 'blur(80px)' }} />
-          </div>
-
-          <div className="relative max-w-6xl mx-auto px-6">
-
-            {/* Header */}
-            <Reveal as="div" className="text-center mb-20">
-              <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 text-xs font-bold mb-6">
-                <MessageCircle className="w-3.5 h-3.5" /> Integración con WhatsApp · Nuevo
-              </div>
-              <h2 className="text-[clamp(2rem,6vw,3rem)] font-extrabold text-white leading-tight">
-                Tu gimnasio, también en{' '}
-                <span className="bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">WhatsApp</span>
-              </h2>
-              <p className="text-slate-400 mt-5 text-lg max-w-2xl mx-auto leading-relaxed">
-                Vincula el WhatsApp del gimnasio y deja que GemaSystem envíe automáticamente bienvenidas, recordatorios y avisos a tus socios por el canal que ya usan todos los días.
-              </p>
-            </Reveal>
-
-            {/* Main split layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center mb-20">
-
-              {/* Left — preview card */}
-              <Reveal as="div" className="relative">
-                {/* WhatsApp chat mockup */}
-                <div className="rounded-2xl overflow-hidden shadow-2xl border border-white/8"
-                  style={{ boxShadow: '0 0 0 1px rgba(37,211,102,0.12), 0 32px 80px rgba(0,0,0,0.6)' }}>
-                  {/* Dark panel header */}
-                  <div className="flex items-center gap-3 px-5 py-4" style={{ background: '#0D1526' }}>
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-                      style={{ background: 'linear-gradient(135deg,#25D366,#128C7E)', boxShadow: '0 4px 12px rgba(37,211,102,0.4)' }}>
-                      <MessageCircle style={{ width: 16, height: 16, color: '#fff' }} />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-white leading-none">WhatsApp del gimnasio</p>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                        <span className="text-[10px] font-medium" style={{ color: '#6EE7B7' }}>Conectado · Sesión activa</span>
-                      </div>
-                    </div>
-                  </div>
-                  {/* Chat area */}
-                  <div className="p-5 space-y-4" style={{ background: '#F7F8FA' }}>
-                    {/* Automated message 1 */}
-                    <div className="flex gap-2.5 items-start">
-                      <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                        style={{ background: 'linear-gradient(135deg,#25D366,#128C7E)' }}>
-                        <MessageCircle style={{ width: 12, height: 12, color: '#fff' }} />
-                      </div>
-                      <div className="px-4 py-3 rounded-2xl text-sm text-slate-800 max-w-xs"
-                        style={{ background: '#fff', border: '1px solid #EBEBF0', borderRadius: '16px 16px 16px 4px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                        👋 ¡Hola, <strong>Carlos</strong>! Bienvenido en <strong>Fitness Pro</strong>. Tu membresía fue registrada. 🆔 Socio: <strong>FP-0231</strong> 💪
-                      </div>
-                    </div>
-                    {/* Automated message 2 */}
-                    <div className="flex gap-2.5 items-start">
-                      <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                        style={{ background: 'linear-gradient(135deg,#25D366,#128C7E)' }}>
-                        <MessageCircle style={{ width: 12, height: 12, color: '#fff' }} />
-                      </div>
-                      <div className="px-4 py-3 rounded-2xl text-sm text-slate-800 max-w-xs"
-                        style={{ background: '#fff', border: '1px solid #EBEBF0', borderRadius: '16px 16px 16px 4px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                        ⏳ Hola, <strong>Carlos</strong> — tu membresía vence en <strong>3 días</strong> (el 21/08). Renuévala en recepción.
-                      </div>
-                    </div>
-                    {/* Delivered indicator */}
-                    <div className="flex items-center gap-1.5 justify-end pr-1">
-                      <CheckCircle2 className="w-3.5 h-3.5" style={{ color: '#25D366' }} />
-                      <span className="text-[10px] font-medium text-slate-400">Entregado automáticamente</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Floating badge */}
-                <div className="absolute -top-4 -right-4 bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg"
-                  style={{ boxShadow: '0 4px 14px rgba(37,211,102,0.5)' }}>
-                  Incluido en GemaSystem
-                </div>
-              </Reveal>
-
-              {/* Right — accordion benefits */}
-              <Reveal as="div" className="space-y-2" delay={0.15}>
-                {[
-                  {
-                    id: 'connect',
-                    icon: ScanLine,
-                    color: '#25D366',
-                    accentBg: '#091410',
-                    accentBorder: 'rgba(37,211,102,0.4)',
-                    badge: 'Sin número nuevo',
-                    title: 'Vincula tu WhatsApp en segundos',
-                    desc: 'Conecta el WhatsApp del gimnasio escaneando un código QR, igual que WhatsApp Web. No necesitas contratar una API externa ni pedir un número nuevo — usas el que ya tienes.',
-                    extra: (
-                      <div className="mt-3 space-y-2">
-                        {[
-                          { n: '1', text: 'Entra a la sección WhatsApp del sistema' },
-                          { n: '2', text: 'Escanea el código QR con tu teléfono' },
-                          { n: '3', text: 'Tu WhatsApp queda conectado y listo para enviar' },
-                          { n: '4', text: 'Si se desconecta, vuelve a escanear cuando quieras' },
-                        ].map(({ n, text }) => (
-                          <div key={n} className="flex items-start gap-2.5">
-                            <span className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-extrabold mt-0.5"
-                              style={{ background: 'rgba(37,211,102,0.25)', color: '#6EE7B7' }}>{n}</span>
-                            <p className="text-xs text-slate-400 leading-snug">{text}</p>
-                          </div>
-                        ))}
-                      </div>
-                    ),
-                  },
-                  {
-                    id: 'welcome-qr',
-                    icon: Scan,
-                    color: '#10B981',
-                    accentBg: '#0a1a12',
-                    accentBorder: 'rgba(16,185,129,0.4)',
-                    badge: null,
-                    title: 'Bienvenida con código QR de acceso',
-                    desc: 'Al registrar un nuevo socio, GemaSystem le envía por WhatsApp un mensaje de bienvenida junto con su código QR — listo para presentar en recepción desde el primer día.',
-                    extra: null,
-                  },
-                  {
-                    id: 'reminders',
-                    icon: Clock,
-                    color: '#F59E0B',
-                    accentBg: '#131008',
-                    accentBorder: 'rgba(245,158,11,0.4)',
-                    badge: null,
-                    title: 'Recordatorios de vencimiento',
-                    desc: 'Tus socios reciben un WhatsApp automático cuando su membresía está por vencer o ya venció, con el mismo lenguaje cercano que usarías tú.',
-                    extra: null,
-                  },
-                  {
-                    id: 'history',
-                    icon: MessageSquare,
-                    color: '#6366F1',
-                    accentBg: '#0f1022',
-                    accentBorder: 'rgba(99,102,241,0.4)',
-                    badge: null,
-                    title: 'Historial de cada mensaje enviado',
-                    desc: 'Todos los mensajes automáticos — bienvenidas, recordatorios, cumpleaños y pagos — quedan guardados en un historial que puedes revisar cuando quieras.',
-                    extra: null,
-                  },
-                ].map(({ id, icon: Icon, color, accentBg, accentBorder, badge, title, desc, extra }) => {
-                  const isOpen = waOpen === id
-                  return (
-                    <div
-                      key={id}
-                      className="rounded-2xl border overflow-hidden transition-all duration-200"
-                      style={{
-                        background: isOpen ? accentBg : '#0d1117',
-                        borderColor: isOpen ? accentBorder : 'rgba(255,255,255,0.1)',
-                      }}
-                    >
-                      <button
-                        className="w-full flex items-center gap-3 px-4 py-3.5 text-left"
-                        onClick={() => setWaOpen(isOpen ? null : id)}
-                      >
-                        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all"
-                          style={{ background: color + (isOpen ? '25' : '18'), border: `1px solid ${color}${isOpen ? '40' : '28'}` }}>
-                          <Icon className="w-4 h-4" style={{ color }} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="font-bold text-white text-sm leading-snug">{title}</p>
-                            {badge && (
-                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
-                                style={{ background: 'rgba(37,211,102,0.2)', color: '#6EE7B7', border: '1px solid rgba(37,211,102,0.3)' }}>
-                                {badge}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <ChevronDown
-                          className="w-4 h-4 flex-shrink-0 transition-transform duration-300"
-                          style={{ color: isOpen ? color : '#475569', transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}
-                        />
-                      </button>
-                      <div style={{
-                        maxHeight: isOpen ? '400px' : '0px',
-                        overflow: 'hidden',
-                        transition: 'max-height 0.35s cubic-bezier(0.4,0,0.2,1)',
-                      }}>
-                        <div className="px-4 pb-4">
-                          <p className="text-slate-400 text-sm leading-relaxed">{desc}</p>
-                          {extra}
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </Reveal>
-            </div>
-
-            {/* Bottom stat pills */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[
-                { val: 'QR',        lbl: 'Vinculación sin número nuevo', color: '#25D366' },
-                { val: '24/7',      lbl: 'Mensajes automáticos',         color: '#F59E0B' },
-                { val: 'Historial', lbl: 'Registro de cada envío',       color: '#6366F1' },
-                { val: 'Incluido',  lbl: 'Sin costo adicional',          color: '#10B981' },
-              ].map(({ val, lbl, color }, i) => (
-                <Reveal key={lbl} delay={(i % 4) * 0.08}>
-                  <div className="rounded-2xl border border-white/8 p-5 text-center hover:-translate-y-1 transition-all duration-200 cursor-default"
-                    style={{ background: '#0d1117' }}>
-                    <p className="text-2xl font-extrabold leading-none mb-1" style={{ color }}>{val}</p>
-                    <p className="text-xs text-slate-500 leading-snug">{lbl}</p>
-                  </div>
-                </Reveal>
-              ))}
-            </div>
-
           </div>
         </section>
 
@@ -2021,7 +1432,7 @@ export default function Landing() {
           <div className="relative max-w-6xl mx-auto px-6">
 
             {/* Header */}
-            <Reveal as="div" className="text-center mb-20">
+            <Reveal as="div" className="text-center mb-14">
               <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-indigo-400 mb-5">
                 <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse inline-block" />
                 Precios
@@ -2029,497 +1440,104 @@ export default function Landing() {
               <h2 className="text-[clamp(2rem,6vw,3rem)] font-extrabold text-white leading-tight">
                 Planes para cada etapa<br className="hidden md:block" /> de tu negocio
               </h2>
-              <p className="text-slate-400 mt-5 text-lg max-w-xl mx-auto">Sin permanencia. Cancela cuando quieras.</p>
-              <div className="mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-full border border-amber-500/25 bg-amber-500/10">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse flex-shrink-0" />
-                <span className="text-xs font-bold text-amber-400">Precios especiales de fase beta — garantizados mientras dure el acceso anticipado</span>
-              </div>
+              <p className="text-slate-400 mt-5 text-lg max-w-xl mx-auto">
+                Sin permanencia, cancela cuando quieras.{' '}
+                <span className="text-amber-400 font-semibold">Precio beta congelado</span> mientras dure el acceso anticipado.
+              </p>
             </Reveal>
 
-            {/* Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+            {/* Asymmetric layout — one large featured plan instead of three
+                equal-weight columns, with the other two options as compact
+                secondary cards beside it. Leads the eye to the recommended
+                plan first, instead of asking the visitor to compare three
+                equally-weighted choices. */}
+            <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-6 items-stretch">
 
-              {/* ── Semanal ── */}
-              <Reveal as="div">
-              <div className="relative flex flex-col rounded-3xl p-7 border border-white/10 backdrop-blur-sm
-                hover:-translate-y-2 transition-all duration-300 group"
-                style={{ background: 'rgba(255,255,255,0.04)' }}>
-                <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-4">Semanal</p>
-                <p className="text-sm text-slate-600 line-through leading-none mb-1.5">$699/semana</p>
-                <div className="mb-1 flex items-end gap-2 flex-wrap">
-                  <span className="text-5xl font-black text-white leading-none">$417</span>
-                  <span className="text-slate-400 text-sm mb-1.5">/semana</span>
-                  <span className="mb-1.5 text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Ahorras $282</span>
+              {/* Featured — Mensual */}
+              <Reveal as="div" className="relative rounded-3xl border overflow-hidden p-9 flex flex-col"
+                style={{ borderColor: 'rgba(139,92,246,0.35)', background: 'linear-gradient(160deg,#211c4d 0%,#0f0d24 65%)' }}>
+                <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full opacity-25 pointer-events-none"
+                  style={{ background: 'radial-gradient(circle,#8B5CF6,transparent 70%)' }} />
+                <div className="relative flex items-center gap-2 mb-6">
+                  <span className="text-xs font-bold uppercase tracking-widest text-violet-300">Mensual</span>
+                  <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-white/15 text-white">Recomendado</span>
                 </div>
-                <p className="text-xs text-slate-500 mb-8">MXN · sin contrato</p>
-                <ul className="space-y-3 flex-1 mb-8">
-                  {PLANS[0].features.map((f, i) => (
-                    <li key={i} className="flex items-start gap-2.5 text-sm">
-                      <Check className="w-4 h-4 text-slate-400 flex-shrink-0 mt-0.5" />
-                      <span className="text-slate-300">{f}</span>
+                <p className="relative text-sm text-violet-300/40 line-through leading-none mb-1.5">$2,499/mes</p>
+                <div className="relative flex items-end gap-2 flex-wrap">
+                  <span className="text-6xl font-black text-white leading-none">$1,622</span>
+                  <span className="text-violet-300 text-sm mb-2">/mes</span>
+                </div>
+                <span className="relative mt-2 text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 w-fit">
+                  Ahorras $877
+                </span>
+                <p className="relative text-xs text-violet-300/70 mt-3 mb-8">MXN · cancela cuando quieras</p>
+                <ul className="relative grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-2.5 flex-1 mb-8">
+                  {PLANS[1].features.map((f, j) => (
+                    <li key={j} className="flex items-start gap-2.5 text-sm">
+                      <Check className="w-4 h-4 text-violet-300 flex-shrink-0 mt-0.5" />
+                      <span className="text-white/90">{f}</span>
                     </li>
                   ))}
                 </ul>
-                <button onClick={() => goRegister('weekly')}
-                  className="w-full py-3.5 rounded-2xl font-bold text-sm text-white border border-white/15
-                    hover:bg-white/10 transition-all duration-200"
-                  style={{ background: 'rgba(255,255,255,0.06)' }}>
-                  Comenzar
+                <button onClick={() => goRegister('monthly')}
+                  className="relative w-full py-4 rounded-2xl font-bold text-base bg-white text-indigo-700 hover:bg-indigo-50 transition-all duration-200 shadow-xl">
+                  Comenzar ahora
                 </button>
-              </div>
               </Reveal>
 
-              {/* ── Mensual (destacado) ── */}
-              <Reveal as="div" delay={0.08}>
-              <div className="relative flex flex-col rounded-3xl p-[1.5px] transition-all duration-300 hover:-translate-y-2"
-                style={{ background: 'linear-gradient(135deg,#6366f1 0%,#8b5cf6 50%,#ec4899 100%)',
-                  boxShadow: '0 0 60px rgba(99,102,241,0.35), 0 30px 60px rgba(99,102,241,0.2)' }}>
-                {/* Badge */}
-                <div className="absolute -top-5 left-1/2 -translate-x-1/2 z-10">
-                  <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold px-4 py-1.5 rounded-full text-white shadow-lg"
-                    style={{ background: 'linear-gradient(90deg,#6366f1,#8b5cf6)' }}>
-                    ⭐ Más popular
-                  </span>
-                </div>
-                <div className="flex flex-col flex-1 rounded-[22px] p-7 pt-10"
-                  style={{ background: 'linear-gradient(160deg,#312e81,#4c1d95)' }}>
-                  <p className="text-[11px] font-bold uppercase tracking-widest text-indigo-300 mb-4">Mensual</p>
-                  <p className="text-sm text-indigo-300/40 line-through leading-none mb-1.5">$2,499/mes</p>
-                  <div className="mb-1 flex items-end gap-2 flex-wrap">
-                    <span className="text-5xl font-black text-white leading-none">$1,622</span>
-                    <span className="text-indigo-300 text-sm mb-1.5">/mes</span>
-                    <span className="mb-1.5 text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-white/15 text-white border border-white/25">Ahorras $877</span>
+              {/* Secondary — Semanal + Prueba gratis, stacked and compact */}
+              <div className="flex flex-col gap-6">
+                <Reveal delay={0.1} as="div" className="rounded-2xl border border-white/10 p-6 flex flex-col flex-1" style={{ background: '#0d1020' }}>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs font-bold uppercase tracking-widest text-slate-400">Semanal</span>
+                    <span className="text-[10px] font-bold text-emerald-400">Ahorras $282</span>
                   </div>
-                  <p className="text-xs text-indigo-300/70 mb-8">MXN · cancela cuando quieras</p>
-                  <ul className="space-y-3 flex-1 mb-8">
-                    {PLANS[1].features.map((f, i) => (
-                      <li key={i} className="flex items-start gap-2.5 text-sm">
-                        <Check className="w-4 h-4 text-indigo-300 flex-shrink-0 mt-0.5" />
-                        <span className="text-white/90">{f}</span>
-                      </li>
+                  <div className="flex items-end gap-2">
+                    <span className="text-3xl font-black text-white leading-none">$417</span>
+                    <span className="text-slate-400 text-xs mb-1">/semana</span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1.5 mb-4">MXN · sin contrato</p>
+                  <div className="flex flex-wrap gap-1.5 mb-5">
+                    {PLANS[0].features.slice(0, 3).map((f) => (
+                      <span key={f} className="text-[10px] px-2 py-1 rounded-full bg-white/5 text-slate-300 border border-white/10">{f}</span>
                     ))}
-                  </ul>
-                  <button onClick={() => goRegister('monthly')}
-                    className="w-full py-3.5 rounded-2xl font-bold text-sm bg-white text-indigo-700
-                      hover:bg-indigo-50 transition-all duration-200 shadow-xl">
-                    Comenzar ahora
+                  </div>
+                  <button onClick={() => goRegister('weekly')}
+                    className="mt-auto w-full py-2.5 rounded-xl font-bold text-xs text-white border border-white/15 hover:bg-white/10 transition-colors">
+                    Comenzar
                   </button>
-                </div>
-              </div>
-              </Reveal>
+                </Reveal>
 
-              {/* ── Prueba gratuita ── */}
-              <Reveal as="div" delay={0.16}>
-              <div className="relative flex flex-col rounded-3xl p-[1.5px] transition-all duration-300 hover:-translate-y-2"
-                style={{ background: 'linear-gradient(135deg,#10b981 0%,#059669 50%,#34d399 100%)',
-                  boxShadow: '0 0 40px rgba(16,185,129,0.2)' }}>
-                {/* Badge */}
-                <div className="absolute -top-5 left-1/2 -translate-x-1/2 z-10">
-                  <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold px-4 py-1.5 rounded-full text-white shadow-lg"
-                    style={{ background: 'linear-gradient(90deg,#059669,#10b981)' }}>
-                    <Gift className="w-3 h-3" /> Sin tarjeta
-                  </span>
-                </div>
-                <div className="flex flex-col flex-1 rounded-[22px] p-7 pt-10"
-                  style={{ background: 'linear-gradient(160deg,#052e16,#064e3b)' }}>
-                  <p className="text-[11px] font-bold uppercase tracking-widest text-emerald-400 mb-4">Prueba gratis</p>
-                  <div className="mb-1 flex items-end gap-2">
-                    <span className="text-5xl font-black text-white leading-none">$0</span>
-                    <span className="text-emerald-300 text-sm mb-1.5">/ 10 días</span>
+                <Reveal delay={0.18} as="div" className="rounded-2xl border p-6 flex flex-col flex-1"
+                  style={{ borderColor: 'rgba(16,185,129,0.3)', background: 'linear-gradient(160deg,#062a17 0%,#0d1020 75%)' }}>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs font-bold uppercase tracking-widest text-emerald-400">Prueba gratis</span>
+                    <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300">Sin tarjeta</span>
                   </div>
-                  <p className="text-xs text-emerald-400 mb-8">Sin tarjeta de crédito · acceso completo</p>
-                  <ul className="space-y-3 flex-1 mb-8">
-                    {[
-                      'Todas las funciones incluidas',
-                      'Miembros y visitas ilimitados',
-                      'Control QR desde el primer día',
-                      'Soporte en tiempo real',
-                      'Sin compromisos, cancela cuando quieras',
-                    ].map((f, i) => (
-                      <li key={i} className="flex items-start gap-2.5 text-sm">
-                        <Check className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
-                        <span className="text-slate-200">{f}</span>
-                      </li>
+                  <div className="flex items-end gap-2">
+                    <span className="text-3xl font-black text-white leading-none">$0</span>
+                    <span className="text-emerald-300 text-xs mb-1">/ 10 días</span>
+                  </div>
+                  <p className="text-xs text-emerald-400/80 mt-1.5 mb-4">Acceso completo desde el día uno</p>
+                  <div className="flex flex-wrap gap-1.5 mb-5">
+                    {['Todo incluido', 'Sin límites', 'Soporte real'].map((f) => (
+                      <span key={f} className="text-[10px] px-2 py-1 rounded-full bg-white/5 text-emerald-200 border border-emerald-500/20">{f}</span>
                     ))}
-                  </ul>
+                  </div>
                   <button onClick={scrollToTrial}
-                    className="w-full py-3.5 rounded-2xl font-bold text-sm text-white
-                      hover:brightness-110 transition-all duration-200 shadow-xl"
+                    className="mt-auto w-full py-2.5 rounded-xl font-bold text-xs text-white hover:brightness-110 transition-all duration-200"
                     style={{ background: 'linear-gradient(90deg,#10b981,#059669)' }}>
                     Comenzar gratis
                   </button>
-                </div>
+                </Reveal>
               </div>
-              </Reveal>
-
             </div>
 
-            <p className="text-center text-xs text-slate-600 mt-12">
+            <p className="text-center text-xs text-slate-600 mt-8">
               Precios en pesos mexicanos (MXN) · IVA no incluido · Sin contrato de permanencia · Cancela cuando quieras
             </p>
 
           </div>
-        </section>
-
-        {/* ── VS Comparison ── */}
-        <section id="comparativa" className="relative z-10 py-20 px-6">
-          <div className="max-w-6xl mx-auto">
-            <Reveal as="div" className="text-center mb-12">
-              <p className="text-xs font-bold uppercase tracking-widest text-indigo-400 mb-3">Comparativa</p>
-              <h2 className="text-3xl font-extrabold text-white">¿Por qué GemaSystem y no otra opción?</h2>
-              <p className="text-slate-400 mt-3 max-w-2xl mx-auto text-base">
-                Comparamos GemaSystem contra el caos del papel y contra sistemas overcomplicated que nadie termina usando.
-              </p>
-            </Reveal>
-            <Reveal as="div" delay={0.1}>
-              <VSComparison />
-            </Reveal>
-            <Reveal as="div" delay={0.2} className="mt-8 text-center">
-              <button onClick={scrollToTrial}
-                className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm transition-all shadow-lg shadow-indigo-500/25 hover:-translate-y-0.5">
-                <Gift className="w-4 h-4" /> Empieza gratis hoy — 10 días sin costo
-              </button>
-            </Reveal>
-          </div>
-        </section>
-
-        {/* ── Reviews ── */}
-        <section id="reseñas" className="relative z-10 py-24">
-          <div className="max-w-6xl mx-auto px-6">
-            <Reveal as="div" className="text-center mb-10">
-              <p className="text-xs font-bold uppercase tracking-widest text-indigo-400 mb-3">Reseñas</p>
-              <h2 className="text-3xl font-extrabold text-white">Lo que dicen nuestros usuarios</h2>
-              <p className="text-slate-400 mt-3 max-w-lg mx-auto">Opiniones reales de quienes ya usan GemaSystem en su día a día.</p>
-            </Reveal>
-
-            {/* Tabs */}
-            <div className="flex justify-center mb-10">
-              <div className="inline-flex border border-white/10 rounded-2xl p-1.5 gap-1" style={{ background: '#0d1020' }}>
-                {[
-                  { id: 'socios',  label: 'Personas que conocieron el sistema', icon: Users },
-                  { id: 'duenos', label: 'Dueños y Administrativos', icon: BadgeCheck },
-                ].map(tab => (
-                  <button key={tab.id} onClick={() => setActiveReviewTab(tab.id)}
-                    className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                      activeReviewTab === tab.id
-                        ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/30'
-                        : 'text-slate-400 hover:text-white hover:bg-white/5'
-                    }`}>
-                    <tab.icon className="w-4 h-4" />
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Tab: Personas que conocieron el sistema */}
-            {activeReviewTab === 'socios' && (
-              <>
-                <div className="flex justify-center mb-6">
-                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-semibold">
-                    <Zap className="w-3.5 h-3.5" />
-                    Opiniones de personas a quienes se les mostró o explicó el sistema
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-                  {MEMBER_REVIEWS.map((r, i) => (
-                    <Reveal key={i} delay={(i % 3) * 0.08}>
-                      <div className="rounded-2xl border border-white/10 p-6 hover:-translate-y-1 transition-all duration-300 flex flex-col" style={{ background: '#0d1020' }}>
-                        <div className="flex items-center justify-between mb-3">
-                          <StarRating value={r.rating} onChange={() => {}} readOnly size="sm" />
-                          <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-indigo-500/15 text-indigo-300 border border-indigo-500/25 whitespace-nowrap">
-                            {r.highlight}
-                          </span>
-                        </div>
-                        <p className="text-slate-300 text-sm leading-relaxed flex-1">"{r.comment}"</p>
-                        <div className="mt-5 pt-4 border-t border-white/10">
-                          <p className="font-bold text-white text-sm">{r.author}</p>
-                          <p className="text-xs text-slate-500 mt-0.5">{r.role}</p>
-                        </div>
-                      </div>
-                    </Reveal>
-                  ))}
-                </div>
-              </>
-            )}
-
-            {/* Tab: Dueños — empty state */}
-            {activeReviewTab === 'duenos' && (
-              <Reveal as="div" className="mb-12">
-                <div className="max-w-md mx-auto text-center py-14 rounded-2xl border border-dashed border-white/20" style={{ background: '#0d1020' }}>
-                  <div className="w-16 h-16 rounded-2xl bg-indigo-500/15 border border-indigo-500/25 flex items-center justify-center mx-auto mb-5">
-                    <MessageSquare className="w-7 h-7 text-indigo-400" />
-                  </div>
-                  <h3 className="font-extrabold text-white text-lg mb-2">Aún no hay reseñas</h3>
-                  <p className="text-slate-400 text-sm max-w-xs mx-auto leading-relaxed">
-                    ¿Ya tienes GemaSystem en tu gimnasio? Sé el primero en dejar tu opinión como propietario o administrativo.
-                  </p>
-                  <div className="mt-6 inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-amber-500/10 border border-amber-500/25 text-amber-400 text-xs font-bold">
-                    <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                    Sé el primero en calificar
-                  </div>
-                </div>
-              </Reveal>
-            )}
-
-            {/* Submit review form — shown in both tabs */}
-            <Reveal as="div" className="max-w-xl mx-auto rounded-2xl border border-white/10 p-8" style={{ background: '#0d1020' }}>
-              {reviewDone ? (
-                <div className="text-center py-4">
-                  <div className="w-14 h-14 rounded-full bg-emerald-500/20 flex items-center justify-center mx-auto mb-4">
-                    <Check className="w-7 h-7 text-emerald-400" />
-                  </div>
-                  <h3 className="font-extrabold text-white text-lg mb-2">¡Gracias por tu reseña!</h3>
-                  <p className="text-slate-400 text-sm">La revisaremos y publicaremos muy pronto.</p>
-                </div>
-              ) : (
-                <>
-                  <div className="mb-6">
-                    <h3 className="font-extrabold text-white text-lg">
-                      {activeReviewTab === 'duenos' ? '¿Administras un gimnasio con GemaSystem?' : '¿Asistes a un gimnasio que usa GemaSystem?'}
-                    </h3>
-                    <p className="text-slate-400 text-sm mt-1">
-                      {activeReviewTab === 'duenos'
-                        ? 'Comparte tu experiencia como propietario o administrativo'
-                        : 'Cuéntanos cómo ha sido tu experiencia como socio'}
-                    </p>
-                  </div>
-                  <form onSubmit={rf.handleSubmit(onReviewSubmit)} className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Tu calificación</label>
-                      <StarRating value={reviewRating} onChange={setReviewRating} />
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label htmlFor="review_author" className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Tu nombre</label>
-                        <input id="review_author" {...rf.register('author')}
-                          placeholder={activeReviewTab === 'duenos' ? 'Carlos M.' : 'Ana G.'}
-                          className={rf.formState.errors.author ? grayInpErr : grayInp} />
-                        {rf.formState.errors.author && <p className="mt-1 text-xs text-red-500">{rf.formState.errors.author.message}</p>}
-                      </div>
-                      <div>
-                        <label htmlFor="review_role" className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
-                          {activeReviewTab === 'duenos' ? 'Cargo' : 'Gimnasio'}{' '}
-                          <span className="text-gray-300 normal-case font-normal">(opcional)</span>
-                        </label>
-                        <input id="review_role" {...rf.register('role')}
-                          placeholder={activeReviewTab === 'duenos' ? 'Propietario' : 'GymFit Monterrey'}
-                          className={grayInp} />
-                      </div>
-                    </div>
-                    <div>
-                      <label htmlFor="review_comment" className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Tu comentario</label>
-                      <textarea id="review_comment" {...rf.register('comment')} rows={4}
-                        placeholder={activeReviewTab === 'duenos'
-                          ? 'Cuéntanos cómo GemaSystem cambió la operación de tu gimnasio...'
-                          : 'Cuéntanos tu experiencia como socio...'}
-                        className={`${rf.formState.errors.comment ? grayInpErr : grayInp} resize-none`} />
-                      {rf.formState.errors.comment && <p className="mt-1 text-xs text-red-500">{rf.formState.errors.comment.message}</p>}
-                    </div>
-                    <button type="submit"
-                      className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm text-white transition-all"
-                      style={{ background: 'linear-gradient(135deg,#4F46E5,#7C3AED)', boxShadow: '0 6px 20px rgba(99,102,241,0.3)' }}>
-                      <Send className="w-4 h-4" /> Enviar reseña
-                    </button>
-                  </form>
-                </>
-              )}
-            </Reveal>
-          </div>
-        </section>
-
-        {/* Beta section */}
-        <section id="beta" className="relative z-10 py-24 overflow-hidden">
-          <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute top-0 left-1/4 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl" />
-            <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-violet-600/10 rounded-full blur-3xl" />
-          </div>
-          <div className="relative max-w-5xl mx-auto px-6 text-center">
-            <Reveal as="div" className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-400/10 border border-amber-400/30 text-amber-300 text-sm font-bold mb-8">
-              <Zap className="w-4 h-4" /> Programa de Acceso Anticipado — v1.0.0-beta.1
-            </Reveal>
-            <h2 className="text-[clamp(1.75rem,7vw,3rem)] font-extrabold text-white mb-5 leading-tight">
-              Estás usando una versión <span className="text-amber-400">BETA</span>
-            </h2>
-            <p className="text-slate-400 text-lg max-w-2xl mx-auto mb-14 leading-relaxed">
-              GemaSystem está en desarrollo activo. Como usuario beta, eres parte del proceso. Tu feedback moldea directamente cada nueva versión del producto.
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 text-left">
-              {[
-                { icon: Zap,        title: 'Desarrollo activo',    desc: 'Nuevas funciones se agregan constantemente. Las actualizaciones son automáticas y sin costo adicional.' },
-                { icon: Shield,     title: 'Datos protegidos',     desc: 'Aunque es beta, tu información está protegida con los mismos estándares de un sistema en producción.' },
-                { icon: BadgeCheck, title: 'Precio especial beta', desc: 'Los usuarios beta reciben precio reducido mientras dure el programa de acceso anticipado. Precio garantizado.' },
-              ].map((item, i) => (
-                <Reveal as="div" key={i} delay={(i % 3) * 0.08} className="border border-white/10 rounded-2xl p-6 transition-colors" style={{ background: '#0d1020' }}>
-                  <div className="w-10 h-10 rounded-xl bg-indigo-500/15 flex items-center justify-center mb-4">
-                    <item.icon className="w-5 h-5 text-indigo-400" />
-                  </div>
-                  <h3 className="font-bold text-white mb-2">{item.title}</h3>
-                  <p className="text-slate-400 text-sm leading-relaxed">{item.desc}</p>
-                </Reveal>
-              ))}
-            </div>
-            {/* ── Roadmap ── */}
-            <Reveal as="div" className="mt-12 w-full max-w-2xl mx-auto text-left">
-
-              {/* Toggle header */}
-              <button onClick={() => setRoadmapOpen(o => !o)}
-                className="w-full flex items-center justify-between gap-4 px-5 py-4 rounded-2xl border border-white/10 transition-all duration-200 group" style={{ background: '#0d1020' }}>
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500/25 to-violet-500/25 border border-white/10 flex items-center justify-center flex-shrink-0">
-                    <Zap className="w-3.5 h-3.5 text-indigo-300" />
-                  </div>
-                  <div className="text-left">
-                    <p className="text-sm font-bold text-white leading-none">Próximas versiones</p>
-                    <p className="text-[10px] text-slate-500 mt-0.5">2026 · Hoja de ruta</p>
-                  </div>
-                  <span className="hidden sm:inline text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                    3 lanzamientos
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-slate-500 group-hover:text-slate-400 transition-colors">
-                    {roadmapOpen ? 'Ocultar' : 'Ver roadmap'}
-                  </span>
-                  <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform duration-300 ${roadmapOpen ? 'rotate-180' : ''}`} />
-                </div>
-              </button>
-
-              {/* Cards */}
-              <div style={{
-                maxHeight: roadmapOpen ? '1100px' : '0px',
-                overflow: 'hidden',
-                opacity: roadmapOpen ? 1 : 0,
-                transition: 'max-height 0.5s cubic-bezier(0.4,0,0.2,1), opacity 0.3s ease',
-              }}>
-                <div className="mt-4 relative flex flex-col gap-3">
-                  {/* Connector line */}
-                  <div className="absolute left-7 top-14 bottom-14 w-px pointer-events-none"
-                    style={{ background: 'linear-gradient(to bottom,rgba(99,102,241,0.45),rgba(139,92,246,0.25),transparent)' }} />
-
-                  {[
-                    {
-                      version: 'v1.2.0', year: '2026', status: 'En desarrollo',
-                      Icon: Bot,
-                      title: 'Chatbot de Soporte',
-                      subtitle: 'Asistente inteligente 24/7',
-                      desc: 'Asistente integrado directamente en el panel de GemaSystem. Responde preguntas de socios, guía la configuración y resuelve dudas operativas en tiempo real sin salir de la plataforma.',
-                      tags: ['Inteligencia Artificial', 'Automatización', 'Soporte'],
-                      grad: 'linear-gradient(135deg,#4f46e5,#2563eb)',
-                      glow: 'rgba(99,102,241,0.35)',
-                      accent: '#6366f1',
-                      tagStyle: { bg: 'rgba(99,102,241,0.12)', border: 'rgba(99,102,241,0.28)', text: '#a5b4fc' },
-                      statusStyle: { bg: 'rgba(99,102,241,0.15)', border: 'rgba(99,102,241,0.3)', text: '#a5b4fc' },
-                    },
-                    {
-                      version: 'v1.5.0', year: '2026', status: 'Planeado',
-                      Icon: Store,
-                      title: 'Portal del Socio',
-                      subtitle: 'Tu gimnasio en la palma de tu mano',
-                      desc: 'Los miembros del gimnasio tendrán acceso a su propio portal donde podrán consultar su membresía activa, historial de visitas y actividades, reservar clases y adquirir membresías o productos que el gimnasio gestione directamente desde GemaSystem — todo sin salir de casa.',
-                      tags: ['Portal Miembro', 'Tienda Online', 'Reserva de Clases', 'Autogestión'],
-                      grad: 'linear-gradient(135deg,#059669,#10b981)',
-                      glow: 'rgba(16,185,129,0.35)',
-                      accent: '#10b981',
-                      tagStyle: { bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.28)', text: '#6ee7b7' },
-                      statusStyle: { bg: 'rgba(16,185,129,0.15)', border: 'rgba(16,185,129,0.3)', text: '#6ee7b7' },
-                    },
-                    {
-                      version: 'v2.0.0', year: '2026', status: 'Planeado',
-                      Icon: MonitorSmartphone,
-                      title: 'GemaSystem PWA',
-                      subtitle: 'App instalable multiplataforma',
-                      desc: 'GemaSystem disponible como Progressive Web App instalable en cualquier dispositivo. Accede desde el celular, tablet o escritorio como app nativa, con soporte básico sin conexión.',
-                      tags: ['PWA', 'Móvil', 'Offline'],
-                      grad: 'linear-gradient(135deg,#7c3aed,#9333ea)',
-                      glow: 'rgba(139,92,246,0.35)',
-                      accent: '#8b5cf6',
-                      tagStyle: { bg: 'rgba(139,92,246,0.12)', border: 'rgba(139,92,246,0.28)', text: '#c4b5fd' },
-                      statusStyle: { bg: 'rgba(139,92,246,0.15)', border: 'rgba(139,92,246,0.3)', text: '#c4b5fd' },
-                    },
-                  ].map(item => (
-                    <div key={item.version} className="flex gap-4 items-start">
-                      {/* Icon box */}
-                      <div className="flex-shrink-0 w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg"
-                        style={{ background: item.grad, boxShadow: `0 8px 20px ${item.glow}` }}>
-                        <item.Icon className="w-7 h-7 text-white" />
-                      </div>
-
-                      {/* Card */}
-                      <div className="flex-1 min-w-0 rounded-2xl border border-white/10 overflow-hidden transition-colors" style={{ background: '#0d1020' }}>
-                        <div className="h-[2px]" style={{ background: `linear-gradient(90deg,${item.accent},transparent)` }} />
-                        <div className="p-4">
-                          <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
-                            <div>
-                              <p className="text-white font-bold text-sm leading-tight">{item.title}</p>
-                              <p className="text-slate-500 text-[11px] mt-0.5">{item.subtitle}</p>
-                            </div>
-                            <div className="flex items-center gap-2 flex-shrink-0">
-                              <span className="text-[10px] font-mono font-bold" style={{ color: item.accent }}>{item.version}</span>
-                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-lg border"
-                                style={{ background: item.statusStyle.bg, color: item.statusStyle.text, borderColor: item.statusStyle.border }}>
-                                {item.status}
-                              </span>
-                            </div>
-                          </div>
-                          <p className="text-slate-400 text-xs leading-relaxed mb-3">{item.desc}</p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {item.tags.map(tag => (
-                              <span key={tag} className="text-[10px] font-semibold px-2 py-0.5 rounded-full border"
-                                style={{ background: item.tagStyle.bg, color: item.tagStyle.text, borderColor: item.tagStyle.border }}>
-                                {tag}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </Reveal>
-          </div>
-        </section>
-
-        {/* ── FAQ ── */}
-        <section id="faq" className="relative z-10 py-24 px-6">
-          <div className="max-w-3xl mx-auto">
-            <Reveal as="div" className="text-center mb-12">
-              <p className="text-xs font-bold uppercase tracking-widest text-indigo-400 mb-3">FAQ</p>
-              <h2 className="text-3xl font-extrabold text-white">Preguntas frecuentes</h2>
-              <p className="text-slate-400 mt-3 max-w-lg mx-auto">Todo lo que necesitas saber antes de empezar.</p>
-            </Reveal>
-            <Reveal as="div" delay={0.1}>
-              <LandingFaq />
-            </Reveal>
-          </div>
-        </section>
-
-        {/* Final CTA */}
-        <section className="py-28 text-center px-6">
-          <Reveal as="div" className="max-w-3xl mx-auto">
-            <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-indigo-500/30">
-              <GemaSystemLogo className="w-10 h-10" />
-            </div>
-            <h2 className="text-[clamp(2rem,7vw,3rem)] font-extrabold text-white leading-tight mb-5">
-              ¿Listo para modernizar<br className="hidden sm:block" /> tu gimnasio?
-            </h2>
-            <p className="text-xl text-slate-400 mb-12 max-w-xl mx-auto leading-relaxed">
-              Empieza gratis hoy mismo. Sin tarjeta, sin permanencia, sin riesgos.
-            </p>
-            <div className="flex flex-wrap justify-center gap-4">
-              <button onClick={scrollToTrial}
-                className="flex items-center gap-2.5 px-10 py-4 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold text-lg transition-all shadow-2xl shadow-indigo-500/30 hover:-translate-y-1 duration-200">
-                <Gift className="w-5 h-5" /> Comenzar gratis
-              </button>
-            </div>
-            <p className="text-sm text-slate-500 mt-8 flex flex-wrap justify-center gap-4">
-              <span className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-400" />Sin tarjeta de crédito</span>
-              <span className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-400" />Configura en minutos</span>
-              <span className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-400" />Cancela cuando quieras</span>
-              <span className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-400" />Soporte incluido</span>
-            </p>
-          </Reveal>
         </section>
 
         {/* Footer — multi-column, à la wope.com */}
@@ -2550,10 +1568,8 @@ export default function Landing() {
                 <div className="flex flex-col gap-2.5">
                   {[
                     { label: 'Características',      href: '#características' },
-                    { label: 'Correos automáticos',   href: '#correos' },
-                    { label: 'WhatsApp',              href: '#whatsapp' },
+                    { label: 'Automatizaciones',      href: '#automatizaciones' },
                     { label: 'Precios',               href: '#precios' },
-                    { label: 'Comparativa',           href: '#comparativa' },
                   ].map(l => (
                     <a key={l.label} href={l.href} className="text-sm text-slate-400 hover:text-white transition-colors">{l.label}</a>
                   ))}
@@ -2573,8 +1589,6 @@ export default function Landing() {
               <div>
                 <p className="text-white text-sm font-bold mb-4">Recursos</p>
                 <div className="flex flex-col gap-2.5">
-                  <a href="#faq" className="text-sm text-slate-400 hover:text-white transition-colors">Preguntas frecuentes</a>
-                  <a href="#reseñas" className="text-sm text-slate-400 hover:text-white transition-colors">Reseñas</a>
                   <Link to="/support" className="text-sm text-slate-400 hover:text-white transition-colors">Centro de soporte</Link>
                 </div>
               </div>

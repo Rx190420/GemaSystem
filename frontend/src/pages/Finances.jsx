@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import api from '../api/axios'
 import toast from 'react-hot-toast'
+import { isSparseTrend, trimLeadingEmpty } from '../utils/charts'
 import { useSettingsStore } from '../store/settingsStore'
 import useLockBodyScroll from '../hooks/useLockBodyScroll'
 import ExportMenu from '../components/ExportMenu'
@@ -628,7 +629,7 @@ export default function Finances() {
 
   const s           = summary?.summary
   const monthChange = s ? pct(s.this_month, s.last_month) : null
-  const monthlyData = buildMonthly(summary?.by_month)
+  const monthlyData = trimLeadingEmpty(buildMonthly(summary?.by_month), 'total')
   const pieData     = (summary?.by_source ?? []).filter(d => d.value > 0)
   const transactions = txData?.data ?? []
   const pagination   = txData
@@ -675,7 +676,7 @@ export default function Finances() {
   return (
     <>
     <LoadingLogoOverlay show={isLoading || loadingTx} />
-    <div className="space-y-6">
+    <div className="space-y-8">
 
       {/* Modal */}
       {modal && (
@@ -706,7 +707,7 @@ export default function Finances() {
       </div>
 
       <Skeleton name="finances-page" loading={isLoading}>
-        <>
+        <div className="space-y-6">
           {/* ── KPI cards ── */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
 
@@ -784,7 +785,14 @@ export default function Finances() {
               </div>
               <ChartTypePicker value={chartType} onChange={setChartType} />
             </div>
-            <TrendChart data={monthlyData} chartType={chartType} color="#6366F1" privacyMode={privacyMode} />
+            {isSparseTrend(monthlyData, 'total') && !privacyMode ? (
+              <div className="flex flex-col items-center justify-center gap-2 h-64 text-gray-300">
+                <TrendingUp className="w-8 h-8 opacity-30" />
+                <p className="text-xs">Aún no hay suficiente historial para ver una tendencia</p>
+              </div>
+            ) : (
+              <TrendChart data={monthlyData} chartType={chartType} color="#6366F1" privacyMode={privacyMode} />
+            )}
           </div>
 
           {/* ── Row: Daily + Source ── */}
@@ -1147,7 +1155,7 @@ export default function Finances() {
             </div>
             </Skeleton>
           </div>
-        </>
+        </div>
       </Skeleton>
     </div>
     </>

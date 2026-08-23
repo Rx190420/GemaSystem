@@ -7,13 +7,9 @@ import useLockBodyScroll from '../hooks/useLockBodyScroll'
 // Primary nav — mirrors the "Explorar" column of the desktop CardNav dropdown.
 const LINKS = [
   { label: 'Características',      href: '#características' },
-  { label: 'Correos automáticos',  href: '#correos' },
-  { label: 'WhatsApp',             href: '#whatsapp' },
+  { label: 'Automatizaciones',     href: '#automatizaciones' },
   { label: 'Precios',              href: '#precios' },
   { label: 'Prueba gratis',        href: '#prueba-gratis' },
-  { label: 'Reseñas',              href: '#reseñas' },
-  { label: 'Comparativa',          href: '#comparativa' },
-  { label: 'Preguntas',            href: '#faq' },
 ]
 
 const SECONDARY = [
@@ -21,17 +17,27 @@ const SECONDARY = [
   { label: 'Proyectos',         to: '/proyectos' },
 ]
 
-// Layer strips reveal in sequence just ahead of the main panel — same
-// depth trick as reactbits' StaggeredMenu — before settling on the last,
-// darkest shade that the panel itself is painted with.
-const LAYER_COLORS = ['#22314F', '#131B2E', '#050608']
+// reactbits.dev's own StaggeredMenu defaults (colors=['#B497CF','#5227FF'],
+// accentColor='#5227FF', bg-white panel) — kept as-is rather than the earlier
+// dark-navy reskin, per "los colores como están predeterminados en el diseño
+// que te pasé".
+const LAYER_COLORS = ['#B497CF', '#5227FF']
+const ACCENT = '#5227FF'
+
+// Panel/layers are full-width below lg (reactbits' own breakpoint — its CSS
+// forces width:100% under max-width:1024px) and a clamped side panel at
+// lg and up, same as the component's default @1024px+ behavior — "en la
+// vista de pc no quiero que se vea en toda la pantalla".
+const PANEL_WIDTH_CLASS = 'w-full lg:w-[clamp(260px,38vw,420px)]'
 
 /**
- * Full-screen animated mobile nav, styled after reactbits.dev's
- * "Staggered Menu": a purple panel slides in from the right behind a
- * couple of colored layers, then nav items stagger up into place.
- * Desktop/tablet keeps the existing CardNav dropdown — this only
- * ever renders (via `sm:hidden` on the root) below the `sm` breakpoint.
+ * Full-screen animated nav panel, adapted from reactbits.dev's
+ * "Staggered Menu" (https://reactbits.dev/components/staggered-menu): a
+ * panel slides in from the right behind a couple of colored layers, then
+ * nav items stagger up into place. This is now the ONLY nav — it used to
+ * be mobile-only (Landing kept a separate CardNav dropdown for desktop),
+ * but that's gone; a lightweight fixed header (logo + toggle) triggers this
+ * at every screen size now, same as reactbits' own header+panel pattern.
  */
 export default function MobileStaggeredMenu({ open, onClose, onLogin, onTrial }) {
   const rootRef   = useRef(null)
@@ -93,7 +99,7 @@ export default function MobileStaggeredMenu({ open, onClose, onLogin, onTrial })
   return (
     <div
       ref={rootRef}
-      className="sm:hidden fixed inset-0 z-[60]"
+      className="fixed inset-0 z-[60]"
       style={{ pointerEvents: 'none' }}
       role="dialog"
       aria-modal="true"
@@ -104,24 +110,21 @@ export default function MobileStaggeredMenu({ open, onClose, onLogin, onTrial })
         <div
           key={c}
           ref={(el) => { layerRefs.current[i] = el }}
-          className="absolute inset-0"
+          className={`absolute inset-y-0 right-0 ${PANEL_WIDTH_CLASS}`}
           style={{ background: c }}
         />
       ))}
 
       <div
         ref={panelRef}
-        className="absolute inset-0 flex flex-col"
-        style={{
-          background: 'linear-gradient(160deg, #16233F 0%, #0B1120 55%, #020204 100%)',
-        }}
+        className={`absolute inset-y-0 right-0 ${PANEL_WIDTH_CLASS} bg-white flex flex-col`}
       >
         <div className="flex items-center justify-between px-6 pt-6 flex-shrink-0">
-          <span className="text-white/60 text-xs font-bold uppercase tracking-widest">Menú</span>
+          <span className="text-gray-400 text-xs font-bold uppercase tracking-widest">Menú</span>
           <button
             onClick={onClose}
             aria-label="Cerrar menú"
-            className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -131,32 +134,32 @@ export default function MobileStaggeredMenu({ open, onClose, onLogin, onTrial })
             it this flex-1 child grows to fit all 8 links instead of scrolling,
             pushing the footer (login/trial buttons) off the bottom of the
             screen on shorter phones. */}
-        <nav className="flex-1 min-h-0 overflow-y-auto px-6 pt-8 pb-4">
-          <ul className="space-y-1">
+        <nav className="flex-1 min-h-0 overflow-y-auto px-6 sm:px-10 pt-8 sm:pt-10 pb-4">
+          <ul className="space-y-1 sm:space-y-2">
             {LINKS.map((l, i) => (
               <li key={l.label} className="overflow-hidden">
                 <a
                   ref={(el) => { itemRefs.current[i] = el }}
                   href={l.href}
                   onClick={onClose}
-                  className="flex items-baseline gap-3 py-3 text-white"
+                  className="flex items-baseline gap-3 sm:gap-4 py-3 text-black group"
                 >
-                  <span className="text-xs font-bold text-white/40 tabular-nums">{String(i + 1).padStart(2, '0')}</span>
-                  <span className="text-2xl font-extrabold tracking-tight">{l.label}</span>
+                  <span className="text-xs sm:text-sm font-bold tabular-nums" style={{ color: ACCENT }}>{String(i + 1).padStart(2, '0')}</span>
+                  <span className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight transition-colors group-hover:text-[#5227FF]">{l.label}</span>
                 </a>
               </li>
             ))}
           </ul>
         </nav>
 
-        <div ref={footerRef} className="px-6 pb-8 pt-4 border-t border-white/15 space-y-3 flex-shrink-0">
+        <div ref={footerRef} className="px-6 sm:px-10 pb-8 pt-4 border-t border-gray-200 space-y-3 flex-shrink-0">
           <div className="flex gap-2">
             {SECONDARY.map((s) => (
               <Link
                 key={s.label}
                 to={s.to}
                 onClick={onClose}
-                className="flex-1 flex items-center justify-center gap-1.5 text-center text-sm font-semibold text-white/80 bg-white/10 rounded-lg py-2.5 hover:bg-white/15 transition-colors"
+                className="flex-1 flex items-center justify-center gap-1.5 text-center text-sm font-semibold text-gray-700 bg-gray-100 rounded-lg py-2.5 hover:bg-gray-200 transition-colors"
               >
                 {s.label}
                 <ArrowRight className="w-3.5 h-3.5 opacity-60" />
@@ -166,13 +169,14 @@ export default function MobileStaggeredMenu({ open, onClose, onLogin, onTrial })
           <div className="flex gap-2">
             <button
               onClick={() => go(onLogin)}
-              className="flex-1 flex items-center justify-center gap-2 text-sm font-semibold text-white border border-white/25 rounded-lg py-2.5"
+              className="flex-1 flex items-center justify-center gap-2 text-sm font-semibold text-gray-700 border border-gray-300 rounded-lg py-2.5 hover:bg-gray-50 transition-colors"
             >
               <LogIn className="w-4 h-4" /> Iniciar sesión
             </button>
             <button
               onClick={() => go(onTrial)}
-              className="flex-1 flex items-center justify-center gap-2 text-sm font-bold text-blue-700 bg-white rounded-lg py-2.5"
+              className="flex-1 flex items-center justify-center gap-2 text-sm font-bold text-white rounded-lg py-2.5"
+              style={{ background: ACCENT }}
             >
               <Gift className="w-4 h-4" /> Prueba gratis
             </button>

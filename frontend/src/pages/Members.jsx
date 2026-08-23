@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import ChipSelect from '../components/ChipSelect'
 import { FixedPanel, PanelHeader, EmptyState } from '../components/Panel'
+import { isSparseTrend, trimLeadingEmpty } from '../utils/charts'
 import MembershipTypeBadge from '../components/MembershipTypeBadge'
 import useMembershipTypeColors from '../hooks/useMembershipTypeColors'
 import useSort from '../hooks/useSort'
@@ -682,7 +683,7 @@ export default function Members() {
   const pagination = data ? { current: data.current_page, last: data.last_page, total: data.total } : null
   const s = summary?.summary
 
-  const monthlyData = buildMonthly(summary?.by_month)
+  const monthlyData = trimLeadingEmpty(buildMonthly(summary?.by_month))
 
   const typeData = (summary?.by_type ?? []).map(r => ({
     name:  TYPE_LABEL[r.type] ?? r.type,
@@ -762,7 +763,7 @@ export default function Members() {
   return (
     <>
     <LoadingLogoOverlay show={isLoading || loadingSummary} />
-    <div className="space-y-5">
+    <div className="space-y-8">
 
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -779,6 +780,7 @@ export default function Members() {
       </div>
 
       <Skeleton name="members-summary" loading={loadingSummary}>
+      <div className="space-y-6">
       {/* ── Stat cards ── */}
       {s && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -837,12 +839,17 @@ export default function Members() {
               action={<ChartTypePicker value={trendType} onChange={setTrendType} />}
             />
             <div className="flex-1 min-h-0">
-              <TrendChart />
+              {isSparseTrend(monthlyData) ? (
+                <EmptyState icon={TrendingUp} text="Aún no hay suficiente historial para ver una tendencia" />
+              ) : (
+                <TrendChart />
+              )}
             </div>
           </FixedPanel>
 
         </div>
       )}
+      </div>
       </Skeleton>
 
       {/* ── Filters ── */}

@@ -6,6 +6,11 @@ import GemaSystemLogo from '../../components/GemaSystemLogo'
  * dashboard itself (same surface/text tokens, dot-grid background, Sora
  * type, .btn-primary/.btn-secondary) rather than the dark Landing page,
  * since these are reached from inside — or trying to get into — the app.
+ *
+ * Editorial layout: content sits left/center, with the GemaSystem mark
+ * rendered huge and faded as a watermark bleeding off the right edge —
+ * vertically centered, monochrome, gradient-masked so it fades rather than
+ * sitting there as a flat block.
  */
 export default function ErrorPage({ code, title, message, actions, tone = 'primary' }) {
   const toneColors = {
@@ -15,50 +20,72 @@ export default function ErrorPage({ code, title, message, actions, tone = 'prima
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center p-6"
+      className="relative min-h-screen overflow-hidden flex items-center"
       style={{
         background: 'var(--surface-base)',
         backgroundImage: 'radial-gradient(circle, rgba(127,127,127,0.06) 1px, transparent 1px)',
         backgroundSize: '28px 28px',
       }}
     >
+      {/* Watermark — huge, faded GemaSystem mark bleeding off the right edge */}
       <div
-        className="w-full max-w-md rounded-2xl p-8 text-center"
+        aria-hidden="true"
+        className="hidden md:block absolute top-1/2 -translate-y-1/2 pointer-events-none select-none"
         style={{
-          background: 'var(--surface-1)',
-          border: '1px solid var(--surface-border)',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.12)',
+          right: '-8%',
+          width: 'clamp(420px, 46vw, 820px)',
+          WebkitMaskImage: 'linear-gradient(135deg, black 15%, transparent 82%)',
+          maskImage: 'linear-gradient(135deg, black 15%, transparent 82%)',
         }}
       >
-        <div
-          className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6"
-          style={{
-            background: `linear-gradient(135deg, ${toneColors.from}, ${toneColors.to})`,
-            boxShadow: `0 0 32px ${toneColors.glow}`,
-          }}
-        >
-          <GemaSystemLogo className="w-7 h-7" />
+        <GemaSystemLogo className="w-full h-auto" color="var(--text-muted)" />
+      </div>
+
+      <div className="relative z-10 w-full max-w-xl px-6 sm:px-10 lg:px-6 py-16 mx-auto md:mx-0 md:ml-[8vw]">
+        <div className="flex items-center gap-3 mb-8">
+          <div
+            className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{
+              background: `linear-gradient(135deg, ${toneColors.from}, ${toneColors.to})`,
+              boxShadow: `0 0 32px ${toneColors.glow}`,
+            }}
+          >
+            <GemaSystemLogo className="w-5 h-5" />
+          </div>
+          <p
+            className="font-extrabold"
+            style={{ fontSize: '13px', letterSpacing: '0.2em', color: 'var(--text-muted)' }}
+          >
+            ERROR
+          </p>
         </div>
 
-        <p
-          className="font-extrabold tracking-tight mb-1"
-          style={{ fontSize: '13px', letterSpacing: '0.18em', color: 'var(--text-muted)' }}
+        <h1
+          className="font-extrabold leading-[0.95] tracking-tight mb-5"
+          style={{
+            fontSize: 'clamp(4rem, 12vw, 8rem)',
+            background: `linear-gradient(135deg, var(--text-primary), ${toneColors.to})`,
+            WebkitBackgroundClip: 'text',
+            backgroundClip: 'text',
+            color: 'transparent',
+          }}
         >
-          ERROR {code}
-        </p>
-        <h1 className="text-2xl font-extrabold tracking-tight mb-2" style={{ color: 'var(--text-primary)' }}>
-          {title}
+          {code}
         </h1>
-        <p className="text-sm leading-relaxed mb-8" style={{ color: 'var(--text-secondary)' }}>
+
+        <h2 className="text-2xl font-extrabold tracking-tight mb-3" style={{ color: 'var(--text-primary)' }}>
+          {title}
+        </h2>
+        <p className="text-base leading-relaxed mb-10 max-w-md" style={{ color: 'var(--text-secondary)' }}>
           {message}
         </p>
 
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+        <div className="flex flex-col sm:flex-row gap-3">
           {actions}
         </div>
 
         <p
-          className="mt-8 flex items-center justify-center gap-1.5 text-xs font-semibold"
+          className="mt-14 flex items-center gap-1.5 text-xs font-semibold"
           style={{ color: 'var(--text-muted)' }}
         >
           <GemaSystemLogo className="w-3 h-3" color="currentColor" />

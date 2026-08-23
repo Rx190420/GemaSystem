@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import api from '../api/axios'
+import { isSparseTrend, trimLeadingEmpty } from '../utils/charts'
 import ChipSelect from '../components/ChipSelect'
 import ConfirmModal from '../components/ConfirmModal'
 import ExportMenu from '../components/ExportMenu'
@@ -917,7 +918,7 @@ export default function Visits() {
   const pagination = data ? { current: data.current_page, last: data.last_page, total: data.total } : null
   const s = summary?.summary
 
-  const monthlyData = buildMonthly(summary?.by_month)
+  const monthlyData = trimLeadingEmpty(buildMonthly(summary?.by_month))
   const typeData = (summary?.by_type ?? []).map(r => ({
     name:  VISIT_LABELS[r.type] ?? r.type,
     count: r.count,
@@ -995,7 +996,7 @@ export default function Visits() {
   return (
     <>
     <LoadingLogoOverlay show={isLoading || loadingSummary} />
-    <div className="space-y-5">
+    <div className="space-y-8">
 
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -1079,6 +1080,7 @@ export default function Visits() {
 
           {/* Visit type breakdown + monthly trend */}
           <Skeleton name="visits-summary-panels" loading={loadingSummary}>
+          <div className="space-y-4">
           {typeData.length > 0 && (
             <div className="card p-5">
               <h3 className="text-sm font-semibold text-gray-700 mb-4">Tipos de visita</h3>
@@ -1115,9 +1117,17 @@ export default function Visits() {
                 <h3 className="text-sm font-semibold text-gray-700">Tendencia — 12 meses</h3>
                 <ChartTypePicker value={trendType} onChange={setTrendType} />
               </div>
-              <TrendChart />
+              {isSparseTrend(monthlyData) ? (
+                <div className="flex flex-col items-center justify-center gap-2 h-[180px] text-gray-300">
+                  <TrendingUp className="w-8 h-8 opacity-30" />
+                  <p className="text-xs">Aún no hay suficiente historial para ver una tendencia</p>
+                </div>
+              ) : (
+                <TrendChart />
+              )}
             </div>
           )}
+          </div>
           </Skeleton>
         </div>
 

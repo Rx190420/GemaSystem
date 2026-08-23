@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import api from '../api/axios'
+import { isSparseTrend, trimLeadingEmpty } from '../utils/charts'
 import ConfirmModal from '../components/ConfirmModal'
 import SaleCartModal from '../components/SaleCartModal'
 import useLockBodyScroll from '../hooks/useLockBodyScroll'
@@ -306,8 +307,12 @@ function ProductDetailModal({ product, onClose, onEdit }) {
     queryFn: () => api.get(`/products/${product.id}/stats`).then(r => r.data),
   })
 
-  const monthly = buildLast6Months(stats?.by_month)
-  const hasRevenue = monthly.some(m => m.revenue > 0)
+  const monthly = trimLeadingEmpty(buildLast6Months(stats?.by_month), 'revenue', 3)
+  // Zero non-zero months (never sold) and exactly one (all revenue crammed
+  // into the current month) both get the empty state — a single bar
+  // stranded at the right edge of an otherwise-blank 6-month chart reads as
+  // broken, not just "quiet".
+  const hasRevenue = !isSparseTrend(monthly, 'revenue')
   const margin = stats?.margin_percent ?? marginPercent(product)
   const marginColor = margin >= 40 ? 'emerald' : margin >= 20 ? 'amber' : 'red'
 
@@ -360,7 +365,7 @@ function ProductDetailModal({ product, onClose, onEdit }) {
               <div className="card p-4">
                 <h3 className="text-sm font-semibold text-gray-700 mb-3">Ingresos — últimos 6 meses</h3>
                 {!hasRevenue ? (
-                  <div className="flex items-center justify-center h-32 text-gray-300 text-sm">Sin ventas registradas todavía</div>
+                  <div className="flex items-center justify-center h-32 text-gray-300 text-sm">Aún no hay suficiente historial para ver una tendencia</div>
                 ) : (
                   <ResponsiveContainer width="100%" height={160}>
                     <BarChart data={monthly} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
@@ -513,7 +518,7 @@ export default function Products() {
   return (
     <>
     <LoadingLogoOverlay show={isLoading || loadingProductsSummary || loadingSales} />
-    <div className="space-y-5">
+    <div className="space-y-8">
 
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
