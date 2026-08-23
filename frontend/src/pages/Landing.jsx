@@ -62,6 +62,17 @@ const FEATURES = [
   { icon: Download,   color: '#EF4444', title: 'Reportes Exportables',     desc: 'Genera y descarga reportes en PDF o Excel de cualquier módulo con un solo clic.' },
 ]
 
+// One screenshot per module, same order as FEATURES — drop the files (see
+// FeatureShotImage) and each spotlight panel picks them up automatically.
+const MODULE_IMAGES = [
+  '/images/feature-members.webp',
+  '/images/feature-visits.webp',
+  '/images/feature-memberships.webp',
+  '/images/feature-finances.webp',
+  '/images/feature-classes.webp',
+  '/images/feature-reports.webp',
+]
+
 const PLANS = [
   {
     id: 'weekly', name: 'Semanal', price: '$417', period: '/semana',
@@ -773,6 +784,137 @@ function FeatureShotImage({ src, alt }) {
   )
 }
 
+// ─── ModuleSpotlight (módulos section) ────────────────────────────────────────
+// One "app window" — real browser chrome, a tab per module — instead of a
+// card grid or a sidebar list. Switching tabs crossfades the screenshot;
+// small floating glass chips and a color-shifting ambient glow give it
+// depth. Auto-advances on a timer (paused on hover, skipped for
+// prefers-reduced-motion), with a dot-progress rail underneath doubling as
+// manual navigation.
+
+function slugify(s) {
+  return s.toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+}
+
+function ModuleSpotlight({ features, images }) {
+  const [active, setActive] = useState(0)
+  const [paused, setPaused] = useState(false)
+  const reduceMotion = typeof window !== 'undefined'
+    && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+
+  useEffect(() => {
+    if (paused || reduceMotion) return
+    const t = setInterval(() => setActive(i => (i + 1) % features.length), 4800)
+    return () => clearInterval(t)
+  }, [paused, reduceMotion, features.length])
+
+  const current = features[active]
+  const CurrentIcon = current.icon
+  const shot = images[active]
+
+  return (
+    <div
+      className="relative"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+    >
+      <style>{`
+        @keyframes moduleFade { from { opacity: 0; transform: scale(1.015) } to { opacity: 1; transform: scale(1) } }
+        .ms-tabs::-webkit-scrollbar { display: none }
+        .ms-tabs { scrollbar-width: none }
+      `}</style>
+
+      {/* Ambient glow — shifts to the active module's color */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none -z-10" aria-hidden="true">
+        <div className="w-[85%] h-[75%] rounded-full transition-colors duration-700"
+          style={{ background: current.color, opacity: 0.16, filter: 'blur(110px)' }} />
+      </div>
+
+      {/* App window */}
+      <div className="relative max-w-4xl mx-auto rounded-3xl overflow-hidden border shadow-2xl transition-colors duration-500"
+        style={{ borderColor: `${current.color}35` }}>
+
+        {/* Chrome bar — traffic lights, url, tabs */}
+        <div className="flex items-center gap-3 px-4 sm:px-5 py-3 border-b flex-wrap sm:flex-nowrap"
+          style={{ background: '#0b0e14', borderColor: 'rgba(255,255,255,0.06)' }}>
+          <div className="flex gap-1.5 flex-shrink-0">
+            <span className="w-2.5 h-2.5 rounded-full bg-red-400/70" />
+            <span className="w-2.5 h-2.5 rounded-full bg-yellow-400/70" />
+            <span className="w-2.5 h-2.5 rounded-full bg-green-400/70" />
+          </div>
+          <div className="hidden sm:flex items-center gap-1.5 bg-white/5 rounded-lg px-3 py-1.5 text-[11px] font-mono text-slate-500 min-w-0 order-3 sm:order-none w-full sm:w-auto sm:flex-1">
+            <Lock className="w-3 h-3 text-slate-600 flex-shrink-0" />
+            <span className="truncate">app.gemasystem.mx/{slugify(current.title)}</span>
+          </div>
+          <div className="ms-tabs flex items-center gap-1 overflow-x-auto ml-auto flex-shrink-0">
+            {features.map((f, i) => {
+              const FIcon = f.icon
+              const isActive = i === active
+              return (
+                <button key={f.title} onClick={() => setActive(i)} title={f.title} aria-label={f.title}
+                  className="relative flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-300"
+                  style={{
+                    background: isActive ? f.color + '22' : 'transparent',
+                    border: `1px solid ${isActive ? f.color + '55' : 'transparent'}`,
+                  }}>
+                  <FIcon className="w-3.5 h-3.5" style={{ color: isActive ? f.color : '#64748b' }} />
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Screenshot */}
+        <div className="relative" style={{ minHeight: 420 }}>
+          <div key={shot ?? active} className="w-full h-full" style={{ minHeight: 420, animation: reduceMotion ? 'none' : 'moduleFade 0.45s ease both' }}>
+            {shot
+              ? <FeatureShotImage src={shot} alt={current.title} />
+              : (
+                <div className="w-full h-full flex items-center justify-center" style={{ minHeight: 420 }}>
+                  <CurrentIcon className="w-16 h-16" style={{ color: current.color, opacity: 0.3 }} />
+                </div>
+              )}
+          </div>
+
+          {/* Floating glass chip — active module */}
+          <div className="hidden sm:flex absolute left-5 top-6 items-center gap-2 pl-2 pr-3.5 py-2 rounded-xl border shadow-xl backdrop-blur-md transition-colors duration-500"
+            style={{ background: 'rgba(13,17,23,0.82)', borderColor: `${current.color}40`, transform: 'rotate(-3deg)' }}>
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: current.color + '25' }}>
+              <CurrentIcon className="w-3.5 h-3.5" style={{ color: current.color }} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[11px] font-bold text-white leading-none truncate max-w-[160px]">{current.title}</p>
+              <p className="text-[9px] text-slate-500 mt-0.5">Módulo activo</p>
+            </div>
+          </div>
+
+          {/* Floating glass chip — live pulse */}
+          <div className="hidden sm:flex absolute right-5 bottom-6 items-center gap-1.5 px-3 py-1.5 rounded-full border shadow-xl backdrop-blur-md"
+            style={{ background: 'rgba(13,17,23,0.82)', borderColor: 'rgba(16,185,129,0.4)' }}>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-[10px] font-bold text-emerald-300">En vivo</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Caption + dot progress */}
+      <div className="text-center mt-8 max-w-lg mx-auto px-4">
+        <h3 className="text-xl font-bold text-white">{current.title}</h3>
+        <p className="text-sm text-slate-400 mt-2 leading-relaxed">{current.desc}</p>
+        <div className="flex items-center justify-center gap-1.5 mt-6">
+          {features.map((f, i) => (
+            <button key={f.title} onClick={() => setActive(i)} aria-label={f.title}
+              className="h-1.5 rounded-full transition-all duration-300"
+              style={{ width: i === active ? 26 : 8, background: i === active ? f.color : 'rgba(255,255,255,0.15)' }} />
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Landing ──────────────────────────────────────────────────────────────────
 
 export default function Landing() {
@@ -968,84 +1110,9 @@ export default function Landing() {
               <p className="text-slate-400 mt-4 text-lg max-w-xl mx-auto">Herramientas profesionales diseñadas para la operación diaria de un gimnasio moderno.</p>
             </Reveal>
 
-            {/* Bento row 1 — text+mockup / mockup+text */}
-            {(() => {
-              const F0 = FEATURES[0], F1 = FEATURES[1], F3 = FEATURES[3]
-              const Icon0 = F0.icon, Icon1 = F1.icon
-              return (
-                <>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <Reveal>
-                      <div className="h-full rounded-3xl border p-8 flex flex-col"
-                        style={{ background: `linear-gradient(180deg, ${F0.color}14, rgba(13,17,23,0.5))`, borderColor: `${F0.color}30` }}>
-                        <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-5" style={{ background: F0.color + '20', border: `1px solid ${F0.color}35` }}>
-                          <Icon0 className="w-5 h-5" style={{ color: F0.color }} />
-                        </div>
-                        <h3 className="text-xl font-bold text-white mb-2">{F0.title}</h3>
-                        <p className="text-sm text-slate-400 leading-relaxed mb-6 max-w-sm">{F0.desc}</p>
-                        <div className="relative mt-auto rounded-2xl overflow-hidden border border-white/10 shadow-2xl" style={{ height: 260 }}>
-                          <FeatureShotImage src="/images/feature-members.webp" alt="Panel de gestión de miembros de GemaSystem" />
-                          <div className="absolute inset-x-0 bottom-0 h-16 pointer-events-none" style={{ background: 'linear-gradient(to top, #0b0e14, transparent)' }} />
-                        </div>
-                      </div>
-                    </Reveal>
-
-                    <Reveal delay={0.1}>
-                      <div className="h-full rounded-3xl border p-8 flex flex-col"
-                        style={{ background: `linear-gradient(180deg, ${F1.color}14, rgba(13,17,23,0.5))`, borderColor: `${F1.color}30` }}>
-                        <div className="relative rounded-2xl overflow-hidden border border-white/10 shadow-2xl mb-6" style={{ height: 260 }}>
-                          <FeatureShotImage src="/images/feature-visits.webp" alt="Panel de control de visitas por QR de GemaSystem" />
-                          <div className="absolute inset-x-0 bottom-0 h-16 pointer-events-none" style={{ background: 'linear-gradient(to top, #0b0e14, transparent)' }} />
-                        </div>
-                        <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-5" style={{ background: F1.color + '20', border: `1px solid ${F1.color}35` }}>
-                          <Icon1 className="w-5 h-5" style={{ color: F1.color }} />
-                        </div>
-                        <h3 className="text-xl font-bold text-white mb-2">{F1.title}</h3>
-                        <p className="text-sm text-slate-400 leading-relaxed">{F1.desc}</p>
-                      </div>
-                    </Reveal>
-                  </div>
-
-                  {/* Bento row 2 — full-width big mockup */}
-                  <Reveal delay={0.15}>
-                    <div className="mt-6 rounded-3xl border p-8 sm:p-10"
-                      style={{ background: `linear-gradient(180deg, ${F3.color}14, rgba(13,17,23,0.5))`, borderColor: `${F3.color}30` }}>
-                      <div className="relative rounded-2xl overflow-hidden border border-white/10 shadow-2xl" style={{ height: 340 }}>
-                        <FeatureShotImage src="/images/feature-finances.webp" alt="Panel de análisis financiero de GemaSystem" />
-                        <div className="absolute inset-x-0 bottom-0 h-20 pointer-events-none" style={{ background: 'linear-gradient(to top, #0b0e14, transparent)' }} />
-                      </div>
-                      <div className="text-center mt-6 max-w-lg mx-auto">
-                        <p className="text-base sm:text-lg font-bold text-white">{F3.title}</p>
-                        <p className="text-sm text-slate-400 mt-1.5 leading-relaxed">{F3.desc}</p>
-                      </div>
-                    </div>
-                  </Reveal>
-                </>
-              )
-            })()}
-
-            {/* Remaining módulos — compact strip */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mt-6">
-              {[FEATURES[2], FEATURES[4], FEATURES[5]].map((f, i) => (
-                <Reveal key={f.title} delay={i * 0.08}>
-                  <div className="group h-full rounded-2xl border p-6 hover:-translate-y-1 transition-all duration-300 cursor-default"
-                    style={{
-                      background: '#0d1117',
-                      borderColor: 'rgba(99,102,241,0.18)',
-                      boxShadow: '0 2px 16px rgba(0,0,0,0.4)',
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = f.color + '55'; e.currentTarget.style.boxShadow = `0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px ${f.color}33` }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(99,102,241,0.18)'; e.currentTarget.style.boxShadow = '0 2px 16px rgba(0,0,0,0.4)' }}
-                  >
-                    <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-5 transition-transform group-hover:scale-110 duration-300" style={{ background: f.color + '20', border: `1px solid ${f.color}35` }}>
-                      <f.icon className="w-6 h-6" style={{ color: f.color }} />
-                    </div>
-                    <h3 className="text-base font-bold text-white mb-2">{f.title}</h3>
-                    <p className="text-sm text-slate-400 leading-relaxed">{f.desc}</p>
-                  </div>
-                </Reveal>
-              ))}
-            </div>
+            <Reveal delay={0.1}>
+              <ModuleSpotlight features={FEATURES} images={MODULE_IMAGES} />
+            </Reveal>
           </div>
         </section>
 
