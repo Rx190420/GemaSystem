@@ -25,6 +25,22 @@ const CHROME_PATH = process.env.PUPPETEER_EXECUTABLE_PATH || undefined
 
 const sessions = new Map() // sessionId -> SessionState
 
+// Chromium refuses to launch against a profile whose SingletonLock still
+// points at a different hostname — "profile in use by another Chromium
+// process on another computer". This happens whenever the container is
+// replaced (redeploy, OOM-kill, crash) without Chromium getting a chance to
+// clean up: the WhatsApp session lives on a Railway Volume that survives
+// the container swap, but the hostname baked into the lock doesn't. Only
+// one instance of this process ever touches a given profile, so it's
+// always safe to clear a leftover lock before a fresh launch.
+function clearStaleSingletonLock(sessionId) {
+    const dir = path.join(DATA_PATH, `session-${sessionId}`)
+    for (const name of ['SingletonLock', 'SingletonCookie', 'SingletonSocket']) {
+        try { fs.rmSync(path.join(dir, name), { force: true }) }
+        catch (err) { console.warn(`⚠️  [${sessionId}] no se pudo limpiar ${name}:`, err.message) }
+    }
+}
+
 function SessionState(id) {
     this.id         = id
     this.client     = null
@@ -58,6 +74,8 @@ async function initSession(sessionId) {
 
     const state = new SessionState(sessionId)
     sessions.set(sessionId, state)
+
+    clearStaleSingletonLock(sessionId)
 
     const client = new Client({
         authStrategy: new LocalAuth({ clientId: sessionId, dataPath: DATA_PATH }),

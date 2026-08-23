@@ -6,7 +6,7 @@ import * as yup from 'yup'
 import ReCAPTCHA from 'react-google-recaptcha'
 import {
   Users, CreditCard, TrendingUp, Calendar,
-  Shield, Download, Eye, EyeOff, Loader2, Check, X,
+  Shield, Eye, EyeOff, Loader2, Check, X,
   Lock, ArrowRight, Zap, BadgeCheck, Monitor,
   Scan, Gift, MessageSquare, Clock,
   Building2, User, Phone, Send,
@@ -59,7 +59,6 @@ const FEATURES = [
   { icon: CreditCard, color: '#3B82F6', title: 'Membresías Inteligentes',  desc: 'Gestiona planes semanales, mensuales y anuales con renovaciones y notificaciones automáticas.' },
   { icon: TrendingUp, color: '#8B5CF6', title: 'Análisis Financiero',      desc: 'Dashboard con gráficas de ingresos, mapa de actividad tipo GitHub, top pagadores y exportación.' },
   { icon: Calendar,   color: '#F59E0B', title: 'Clases y Entrenadores',    desc: 'Programa clases grupales, asigna entrenadores y gestiona horarios desde un panel centralizado.' },
-  { icon: Download,   color: '#EF4444', title: 'Reportes Exportables',     desc: 'Genera y descarga reportes en PDF o Excel de cualquier módulo con un solo clic.' },
 ]
 
 // One screenshot per module, same order as FEATURES — drop the files (see
@@ -70,7 +69,6 @@ const MODULE_IMAGES = [
   '/images/feature-memberships.webp',
   '/images/feature-finances.webp',
   '/images/feature-classes.webp',
-  '/images/feature-reports.webp',
 ]
 
 const PLANS = [
@@ -846,7 +844,7 @@ function ModuleSpotlight({ features, images }) {
           </div>
           <div className="hidden sm:flex items-center gap-1.5 bg-white/5 rounded-lg px-3 py-1.5 text-[11px] font-mono text-slate-500 min-w-0 order-3 sm:order-none w-full sm:w-auto sm:flex-1">
             <Lock className="w-3 h-3 text-slate-600 flex-shrink-0" />
-            <span className="truncate">app.gemasystem.mx/{slugify(current.title)}</span>
+            <span className="truncate">app.gemasystem.app/{slugify(current.title)}</span>
           </div>
           <div className="ms-tabs flex items-center gap-1 overflow-x-auto ml-auto flex-shrink-0">
             {features.map((f, i) => {
@@ -867,12 +865,12 @@ function ModuleSpotlight({ features, images }) {
         </div>
 
         {/* Screenshot */}
-        <div className="relative" style={{ minHeight: 420 }}>
-          <div key={shot ?? active} className="w-full h-full" style={{ minHeight: 420, animation: reduceMotion ? 'none' : 'moduleFade 0.45s ease both' }}>
+        <div className="relative min-h-[240px] sm:min-h-[320px] md:min-h-[420px]">
+          <div key={shot ?? active} className="w-full h-full min-h-[240px] sm:min-h-[320px] md:min-h-[420px]" style={{ animation: reduceMotion ? 'none' : 'moduleFade 0.45s ease both' }}>
             {shot
               ? <FeatureShotImage src={shot} alt={current.title} />
               : (
-                <div className="w-full h-full flex items-center justify-center" style={{ minHeight: 420 }}>
+                <div className="w-full h-full min-h-[240px] sm:min-h-[320px] md:min-h-[420px] flex items-center justify-center">
                   <CurrentIcon className="w-16 h-16" style={{ color: current.color, opacity: 0.3 }} />
                 </div>
               )}
@@ -1055,39 +1053,41 @@ export default function Landing() {
       />
 
       {/* ── Hero ── */}
-      <section className="relative z-10 overflow-hidden pt-20">
-        <div className="flex flex-col items-center justify-center text-center px-4 sm:px-6 pt-24 sm:pt-55 pb-0">
-          {heroReady ? (
-            <h1 className="flex items-center justify-center gap-0.5 sm:gap-1">
-              <StrokeLogoMark
-                className="h-[clamp(52px,9vw,140px)]"
-                delay={0}
-                duration={0.8}
-              />
-              <StrokeText
-                text="emaSystem"
-                className="h-[clamp(52px,9vw,140px)]"
-                delay={0.55}
-              />
-            </h1>
-          ) : (
-            <div className="h-[clamp(52px,9vw,140px)]" aria-hidden="true" />
-          )}
-          <TextType
-            texts={[
-              'La plataforma que tu gimnasio necesita',
-              'Miembros, pagos y visitas en un solo lugar',
-              'Tu gimnasio, siempre bajo control',
-              'Moderniza tu gimnasio en minutos',
-            ]}
-            as="p"
-            className="mt-5 sm:mt-6 text-sm sm:text-base md:text-lg font-semibold text-violet-300 min-h-[1.6em] px-2"
-          />
-        </div>
+      {/* min-h-screen is the fallback for browsers without svh support;
+          min-h-[100svh] (small viewport height) wins where available so
+          mobile browser chrome showing/hiding doesn't leave the title+image
+          group looking off-center on first load. */}
+      <section className="relative z-10 overflow-hidden min-h-screen min-h-[100svh] flex flex-col items-center justify-center text-center px-4 sm:px-6 py-16 pt-32">
+        {heroReady ? (
+          <h1 className="flex items-center justify-center gap-0.5 sm:gap-1">
+            <StrokeLogoMark
+              className="h-[clamp(52px,9vw,140px)]"
+              delay={0}
+              duration={0.8}
+            />
+            <StrokeText
+              text="emaSystem"
+              className="h-[clamp(52px,9vw,140px)]"
+              delay={0.55}
+            />
+          </h1>
+        ) : (
+          <div className="h-[clamp(52px,9vw,140px)]" aria-hidden="true" />
+        )}
+        <TextType
+          texts={[
+            'La plataforma que tu gimnasio necesita',
+            'Miembros, pagos y visitas en un solo lugar',
+            'Tu gimnasio, siempre bajo control',
+            'Moderniza tu gimnasio en minutos',
+          ]}
+          as="p"
+          className="mt-5 sm:mt-6 text-sm sm:text-base md:text-lg font-semibold text-violet-300 min-h-[1.6em] px-2"
+        />
 
         {/* Product preview — pulled in close behind the two hero texts (no CTA
             button between them anymore) — small gap, not flush. */}
-        <div className="relative max-w-6xl mx-auto px-6 pt-4 pb-28">
+        <div className="relative w-full max-w-6xl mx-auto px-2 sm:px-6 mt-8 sm:mt-10">
           <HeroPreviewImage />
         </div>
       </section>
