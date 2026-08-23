@@ -164,9 +164,27 @@ return [
             // and reuses it across requests. HandleDatabaseConnection already
             // pings and reconnects this connection at the top of every /api
             // request, so a stale/dropped persistent socket self-heals.
+            //
+            // IMPORTANT: this ONLY works safely against Supabase's port 6543
+            // ("Transaction" pooler), never port 5432 ("Session" pooler) —
+            // session mode dedicates one real backend connection per client
+            // for its whole lifetime and Supabase caps that at a mere 15
+            // TOTAL clients (shared across Railway + every local dev machine
+            // + migrations/tinker). Persistent connections holding those
+            // slots open forever caused "max clients reached in session
+            // mode" crashes. Transaction mode multiplexes many clients over
+            // a much larger pool instead, so persistent PHP-side sockets are
+            // exactly what it's designed for — see DB_PORT in .env.
+            //
+            // PDO::ATTR_EMULATE_PREPARES forces client-side prepare/execute
+            // instead of a real server-side PREPARE — required under
+            // transaction pooling, where consecutive statements on the same
+            // logical connection can land on different backend connections
+            // (a server-side prepared statement wouldn't exist there).
             'options' => extension_loaded('pdo_pgsql') ? [
                 PDO::ATTR_PERSISTENT => true,
                 PDO::ATTR_TIMEOUT => 8,
+                PDO::ATTR_EMULATE_PREPARES => true,
             ] : [],
         ],
 
