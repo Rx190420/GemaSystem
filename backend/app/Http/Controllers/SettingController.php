@@ -16,6 +16,7 @@ class SettingController extends Controller
         'price_membership_monthly', 'price_membership_quarterly', 'price_membership_biannual', 'price_membership_annual',
         'send_welcome_email', 'expiry_alert_days',
         'currency', 'timezone', 'trial_days',
+        'require_access_code',
     ];
 
     public function index()

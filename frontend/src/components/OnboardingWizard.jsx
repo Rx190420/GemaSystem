@@ -300,8 +300,9 @@ function WelcomeStep({ accessCode, showCode, setShowCode, onNext, user }) {
           <div>
             <p className="text-sm font-bold text-amber-800 mb-0.5">Guarda este código en un lugar seguro</p>
             <p className="text-xs text-amber-700 leading-relaxed">
-              Es obligatorio en cada inicio de sesión junto con tu contraseña.
-              Puedes cambiarlo hasta <strong>5 veces en total</strong>.
+              Por seguridad, viene <strong>activado por defecto</strong> y se pide en cada inicio de sesión junto con tu contraseña.
+              Puedes cambiarlo hasta <strong>5 veces en total</strong>, y si prefieres desactivar este paso para todo el gimnasio,
+              hay un interruptor en <strong>Configuración → Seguridad</strong>.
             </p>
           </div>
         </div>
@@ -503,7 +504,8 @@ function SystemStep({ settings, onSave, saving, onBack }) {
           <Lock className="w-4 h-4 text-indigo-500 flex-shrink-0 mt-0.5" />
           <p className="text-xs text-indigo-700 leading-relaxed">
             <strong>Recuerda:</strong> tu código de acceso siempre está en
-            <strong> Configuración → Seguridad</strong>. Si lo olvidas, encuéntralo ahí.
+            <strong> Configuración → Seguridad</strong>. Si lo olvidas, encuéntralo ahí — y ahí mismo
+            puedes activar o desactivar si el sistema lo pide al iniciar sesión (viene activado por defecto).
           </p>
         </div>
 
