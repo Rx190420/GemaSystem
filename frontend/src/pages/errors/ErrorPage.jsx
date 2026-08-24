@@ -12,10 +12,11 @@ import GemaSystemLogo from '../../components/GemaSystemLogo'
  * vertically centered, monochrome, gradient-masked so it fades rather than
  * sitting there as a flat block.
  */
-export default function ErrorPage({ code, title, message, actions, tone = 'primary' }) {
+export default function ErrorPage({ code, icon: Icon, title, message, actions, tone = 'primary', badge = 'ERROR' }) {
   const toneColors = {
     primary: { from: '#8B5CF6', to: '#6366F1', glow: 'rgba(139,92,246,0.4)' },
     danger:  { from: '#F87171', to: '#DC2626', glow: 'rgba(239,68,68,0.35)' },
+    warning: { from: '#FBBF24', to: '#F59E0B', glow: 'rgba(245,158,11,0.35)' },
   }[tone]
 
   return (
@@ -56,22 +57,32 @@ export default function ErrorPage({ code, title, message, actions, tone = 'prima
             className="font-extrabold"
             style={{ fontSize: '13px', letterSpacing: '0.2em', color: 'var(--text-muted)' }}
           >
-            ERROR
+            {badge}
           </p>
         </div>
 
-        <h1
-          className="font-extrabold leading-[0.95] tracking-tight mb-5"
-          style={{
-            fontSize: 'clamp(4rem, 12vw, 8rem)',
-            background: `linear-gradient(135deg, var(--text-primary), ${toneColors.to})`,
-            WebkitBackgroundClip: 'text',
-            backgroundClip: 'text',
-            color: 'transparent',
-          }}
-        >
-          {code}
-        </h1>
+        {/* Either a huge HTTP-style code (404/403/500) or, when there's no
+            status code to show (e.g. offline), a big icon in its place —
+            same slot, same proportions, so the page still reads as part of
+            the same family. */}
+        {Icon ? (
+          <div className="mb-5" style={{ color: toneColors.to }}>
+            <Icon style={{ width: 'clamp(4rem, 10vw, 6.5rem)', height: 'clamp(4rem, 10vw, 6.5rem)' }} strokeWidth={1.75} />
+          </div>
+        ) : (
+          <h1
+            className="font-extrabold leading-[0.95] tracking-tight mb-5"
+            style={{
+              fontSize: 'clamp(4rem, 12vw, 8rem)',
+              background: `linear-gradient(135deg, var(--text-primary), ${toneColors.to})`,
+              WebkitBackgroundClip: 'text',
+              backgroundClip: 'text',
+              color: 'transparent',
+            }}
+          >
+            {code}
+          </h1>
+        )}
 
         <h2 className="text-2xl font-extrabold tracking-tight mb-3" style={{ color: 'var(--text-primary)' }}>
           {title}

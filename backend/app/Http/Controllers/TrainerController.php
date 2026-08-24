@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Trainer;
+use App\Support\SqlPortability;
 use Illuminate\Http\Request;
 
 class TrainerController extends Controller
@@ -16,10 +17,11 @@ class TrainerController extends Controller
         }
 
         if ($search = $request->get('search')) {
-            $query->where(function ($q) use ($search) {
-                $q->where('first_name', 'like', "%{$search}%")
-                  ->orWhere('last_name', 'like', "%{$search}%")
-                  ->orWhere('specialty', 'like', "%{$search}%");
+            $like = SqlPortability::likeOperator();
+            $query->where(function ($q) use ($search, $like) {
+                $q->where('first_name', $like, "%{$search}%")
+                  ->orWhere('last_name', $like, "%{$search}%")
+                  ->orWhere('specialty', $like, "%{$search}%");
             });
         }
 

@@ -28,14 +28,20 @@ class Gym extends Model
 
     /**
      * Whether this gym's plan includes the given feature key (one of
-     * self::GATED_FEATURES). Legacy plans (weekly/monthly/annual — includes
-     * free trials, which are created with plan='weekly') and 'full' always
-     * return true, unchanged from how the app has always behaved for them.
-     * 'basic' always returns false. 'custom' reads its own toggle state from
-     * plan_features. Anything else fails closed (false).
+     * self::GATED_FEATURES).
+     *
+     * Free/trial gyms (plan_type='free') always get full access — checked by
+     * plan_type, not by the 'plan' string, so this can't silently break if a
+     * trial ever gets created/approved with a different plan value than
+     * today's 'weekly' default. Legacy paid plans (weekly/monthly/annual)
+     * and 'full' also always return true, unchanged from how the app has
+     * always behaved for them. 'basic' always returns false. 'custom' reads
+     * its own toggle state from plan_features. Anything else fails closed
+     * (false).
      */
     public function hasFeature(string $key): bool
     {
+        if ($this->plan_type === 'free') return true;
         if (in_array($this->plan, self::LEGACY_PLANS, true)) return true;
         if ($this->plan === 'full')  return true;
         if ($this->plan === 'basic') return false;

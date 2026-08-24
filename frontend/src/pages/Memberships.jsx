@@ -15,6 +15,7 @@ import {
 import toast from 'react-hot-toast'
 import api from '../api/axios'
 import ConfirmModal from '../components/ConfirmModal'
+import MemberQuickViewModal from '../components/members/MemberQuickViewModal'
 import { FixedPanel, PanelHeader, EmptyState } from '../components/Panel'
 import { isSparseTrend, trimLeadingEmpty } from '../utils/charts'
 import ExportMenu from '../components/ExportMenu'
@@ -408,6 +409,7 @@ export default function Memberships() {
   const [statusFilter, setStatus]       = useState('')
   const [search, setSearch]             = useState('')
   const [deleteTarget, setDeleteTarget] = useState(null)
+  const [detailMemberId, setDetailMemberId] = useState(null)
   const [trendType, setTrendType]       = useState('bar')
   const [typeView, setTypeView]         = useState('pie')
   const [exporting, setExporting]       = useState(false)
@@ -685,16 +687,25 @@ export default function Memberships() {
                 </thead>
                 <tbody>
                   {memberships.map((m, idx) => (
-                    <tr key={m.id} className={`border-b border-gray-50 hover:bg-violet-50/30 transition-colors group ${idx % 2 === 1 ? 'bg-gray-50/40' : ''}`}>
+                    <tr
+                      key={m.id}
+                      className={`border-b border-gray-50 hover:bg-violet-50/30 transition-colors group ${idx % 2 === 1 ? 'bg-gray-50/40' : ''} ${m.member ? 'cursor-pointer' : ''}`}
+                      onClick={m.member ? () => setDetailMemberId(m.member.id) : undefined}
+                      title={m.member ? 'Ver información del miembro' : undefined}
+                    >
                       <td className="px-4 py-3.5 align-top">
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 text-xs font-bold flex-shrink-0">
-                            {m.member?.first_name?.[0]}{m.member?.last_name?.[0]}
+                        {m.member ? (
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 text-xs font-bold flex-shrink-0">
+                              {m.member.first_name?.[0]}{m.member.last_name?.[0]}
+                            </div>
+                            <span className="font-medium text-gray-800 truncate max-w-[140px]">
+                              {m.member.first_name} {m.member.last_name}
+                            </span>
                           </div>
-                          <span className="font-medium text-gray-800 truncate max-w-[140px]">
-                            {m.member ? `${m.member.first_name} ${m.member.last_name}` : '—'}
-                          </span>
-                        </div>
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
                       </td>
                       <td className="px-4 py-3.5 align-top">
                         <span className={`badge ${TYPE_COLORS[m.type] ?? 'badge-gray'}`}>{TYPE_LABELS[m.type]}</span>
@@ -714,7 +725,7 @@ export default function Memberships() {
                       <td className="px-4 py-3.5 align-top text-right">
                         {m.status === 'active' && (
                           <button
-                            onClick={() => setDeleteTarget(m)}
+                            onClick={e => { e.stopPropagation(); setDeleteTarget(m) }}
                             className="text-xs text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity"
                           >
                             Cancelar
@@ -730,21 +741,34 @@ export default function Memberships() {
             {/* Mobile — stacked cards, no horizontal scroll */}
             <div className="lg:hidden divide-y divide-gray-100">
               {memberships.map(m => (
-                <div key={m.id} className="p-4">
+                <div
+                  key={m.id}
+                  className={`p-4 ${m.member ? 'cursor-pointer hover:bg-violet-50/40 transition-colors' : ''}`}
+                  onClick={m.member ? () => setDetailMemberId(m.member.id) : undefined}
+                >
                   <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 text-xs font-bold flex-shrink-0">
-                        {m.member?.first_name?.[0]}{m.member?.last_name?.[0]}
+                    {m.member ? (
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 text-xs font-bold flex-shrink-0">
+                          {m.member.first_name?.[0]}{m.member.last_name?.[0]}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-medium text-gray-800 truncate">
+                            {m.member.first_name} {m.member.last_name}
+                          </p>
+                          <p className="text-xs text-gray-500 tabular-nums">
+                            {new Date(m.start_date).toLocaleDateString('es-MX')} → {new Date(m.end_date).toLocaleDateString('es-MX')}
+                          </p>
+                        </div>
                       </div>
+                    ) : (
                       <div className="min-w-0">
-                        <p className="font-medium text-gray-800 truncate">
-                          {m.member ? `${m.member.first_name} ${m.member.last_name}` : '—'}
-                        </p>
+                        <p className="font-medium text-gray-400 truncate">—</p>
                         <p className="text-xs text-gray-500 tabular-nums">
                           {new Date(m.start_date).toLocaleDateString('es-MX')} → {new Date(m.end_date).toLocaleDateString('es-MX')}
                         </p>
                       </div>
-                    </div>
+                    )}
                     <span className={`${STATUS_CLASS[m.status] ?? 'badge-gray'} flex-shrink-0`}>{STATUS_LABEL[m.status]}</span>
                   </div>
 
@@ -760,7 +784,7 @@ export default function Memberships() {
 
                   {m.status === 'active' && (
                     <button
-                      onClick={() => setDeleteTarget(m)}
+                      onClick={e => { e.stopPropagation(); setDeleteTarget(m) }}
                       className="mt-2.5 text-xs text-red-500 hover:text-red-700"
                     >
                       Cancelar membresía
@@ -779,6 +803,9 @@ export default function Memberships() {
       </Skeleton>
 
       {showModal && <NewMembershipModal onClose={() => setShowModal(false)} />}
+      {detailMemberId && (
+        <MemberQuickViewModal memberId={detailMemberId} focus="memberships" onClose={() => setDetailMemberId(null)} />
+      )}
       {deleteTarget && (
         <ConfirmModal
           title="¿Cancelar membresía?"

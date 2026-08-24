@@ -342,8 +342,9 @@ function ProductDetailModal({ product, onClose, onEdit }) {
         </div>
 
         <Skeleton name="product-detail-modal" loading={isLoading}>
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
-          {(
+        <div className={`flex-1 overflow-y-auto px-6 py-5 space-y-5 ${isLoading ? 'min-h-[280px]' : ''}`}>
+          <LoadingLogoOverlay show={isLoading} />
+          {stats && (
             <>
               {/* Pricing tiles */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -355,10 +356,10 @@ function ProductDetailModal({ product, onClose, onEdit }) {
 
               {/* Sales tiles */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <MiniStat label="Unidades vendidas" value={stats.units_sold} icon={ShoppingCart} />
-                <MiniStat label="Ingresos totales"  value={fmt(stats.total_revenue)} icon={DollarSign} />
-                <MiniStat label="Ganancia total"    value={fmt(stats.total_profit)} icon={TrendingUp} color="emerald" />
-                <MiniStat label="Venta promedio"    value={fmt(stats.avg_sale_amount)} icon={BarChart3} />
+                <MiniStat label="Unidades vendidas" value={stats?.units_sold ?? 0} icon={ShoppingCart} />
+                <MiniStat label="Ingresos totales"  value={fmt(stats?.total_revenue)} icon={DollarSign} />
+                <MiniStat label="Ganancia total"    value={fmt(stats?.total_profit)} icon={TrendingUp} color="emerald" />
+                <MiniStat label="Venta promedio"    value={fmt(stats?.avg_sale_amount)} icon={BarChart3} />
               </div>
 
               {/* Monthly revenue chart */}

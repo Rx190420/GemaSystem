@@ -26,6 +26,7 @@ import ExportMenu from '../components/ExportMenu'
 import { QuickMembershipBody } from '../components/QuickMembershipModal'
 import PaymentPanel from '../components/PaymentPanel'
 import MembershipDecisionPanel, { MembershipStatusBanner } from '../components/MembershipDecisionPanel'
+import MemberQuickViewModal from '../components/members/MemberQuickViewModal'
 import useSort from '../hooks/useSort'
 import SortableTh from '../components/SortableTh'
 import Pagination from '../components/Pagination'
@@ -882,6 +883,7 @@ export default function Visits() {
   const [dateFilter, setDateFilter]     = useState('')
   const [search, setSearch]             = useState('')
   const [deleteTarget, setDeleteTarget] = useState(null)
+  const [detailMemberId, setDetailMemberId] = useState(null)
   const [trendType, setTrendType]       = useState('bar')
   const [exporting, setExporting]       = useState(false)
   const [sort, onSort]                  = useSort('visit_date', 'desc')
@@ -1197,16 +1199,25 @@ export default function Visits() {
                     </thead>
                     <tbody>
                       {visits.map((v, idx) => (
-                        <tr key={v.id} className={`border-b border-gray-50 hover:bg-emerald-50/30 transition-colors group ${idx % 2 === 1 ? 'bg-gray-50/40' : ''}`}>
+                        <tr
+                          key={v.id}
+                          className={`border-b border-gray-50 hover:bg-emerald-50/30 transition-colors group ${idx % 2 === 1 ? 'bg-gray-50/40' : ''} ${v.member ? 'cursor-pointer' : ''}`}
+                          onClick={v.member ? () => setDetailMemberId(v.member.id) : undefined}
+                          title={v.member ? 'Ver información del miembro' : undefined}
+                        >
                           <td className="px-4 py-3.5 align-top w-full max-w-0">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 text-xs font-bold flex-shrink-0">
-                                {v.member?.first_name?.[0]}{v.member?.last_name?.[0]}
+                            {v.member ? (
+                              <div className="flex items-center gap-2 min-w-0">
+                                <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 text-xs font-bold flex-shrink-0">
+                                  {v.member.first_name?.[0]}{v.member.last_name?.[0]}
+                                </div>
+                                <span className="font-medium text-gray-800 truncate">
+                                  {v.member.first_name} {v.member.last_name}
+                                </span>
                               </div>
-                              <span className="font-medium text-gray-800 truncate">
-                                {v.member ? `${v.member.first_name} ${v.member.last_name}` : '—'}
-                              </span>
-                            </div>
+                            ) : (
+                              <span className="text-gray-400">—</span>
+                            )}
                           </td>
                           <td className="px-4 py-3.5 align-top text-gray-600 tabular-nums text-xs">
                             {new Date(v.visit_date).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })}
@@ -1230,11 +1241,11 @@ export default function Visits() {
                           <td className="px-4 py-3.5 align-top text-gray-500 text-xs hidden lg:table-cell">
                             {v.trainer ? `${v.trainer.first_name} ${v.trainer.last_name}` : '—'}
                           </td>
-                          <td className="px-4 py-3.5 align-top hidden lg:table-cell">
+                          <td className="px-4 py-3.5 align-top hidden lg:table-cell" onClick={e => e.stopPropagation()}>
                             <PriceCell visit={v} />
                           </td>
                           <td className="px-4 py-3.5 align-top text-right">
-                            <button onClick={() => setDeleteTarget(v)}
+                            <button onClick={e => { e.stopPropagation(); setDeleteTarget(v) }}
                               className="p-1.5 rounded-lg hover:bg-red-50 text-red-400 opacity-0 group-hover:opacity-100 transition-opacity">
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -1248,22 +1259,35 @@ export default function Visits() {
                 {/* Mobile — stacked cards, no horizontal scroll */}
                 <div className="lg:hidden divide-y divide-gray-100">
                   {visits.map(v => (
-                    <div key={v.id} className="p-4">
+                    <div
+                      key={v.id}
+                      className={`p-4 ${v.member ? 'cursor-pointer hover:bg-emerald-50/40 transition-colors' : ''}`}
+                      onClick={v.member ? () => setDetailMemberId(v.member.id) : undefined}
+                    >
                       <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 text-xs font-bold flex-shrink-0">
-                            {v.member?.first_name?.[0]}{v.member?.last_name?.[0]}
+                        {v.member ? (
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 text-xs font-bold flex-shrink-0">
+                              {v.member.first_name?.[0]}{v.member.last_name?.[0]}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-medium text-gray-800 truncate">
+                                {v.member.first_name} {v.member.last_name}
+                              </p>
+                              <p className="text-xs text-gray-500 tabular-nums">
+                                {new Date(v.visit_date).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })}
+                              </p>
+                            </div>
                           </div>
+                        ) : (
                           <div className="min-w-0">
-                            <p className="font-medium text-gray-800 truncate">
-                              {v.member ? `${v.member.first_name} ${v.member.last_name}` : '—'}
-                            </p>
+                            <p className="font-medium text-gray-400 truncate">—</p>
                             <p className="text-xs text-gray-500 tabular-nums">
                               {new Date(v.visit_date).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })}
                             </p>
                           </div>
-                        </div>
-                        <button onClick={() => setDeleteTarget(v)}
+                        )}
+                        <button onClick={e => { e.stopPropagation(); setDeleteTarget(v) }}
                           className="p-1.5 rounded-lg hover:bg-red-50 text-red-400 flex-shrink-0">
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -1289,7 +1313,7 @@ export default function Visits() {
                         )}
                       </div>
 
-                      <div className="mt-2.5">
+                      <div className="mt-2.5" onClick={e => e.stopPropagation()}>
                         <PriceCell visit={v} />
                       </div>
                     </div>
@@ -1307,6 +1331,9 @@ export default function Visits() {
       </div>
 
       {showModal && <RegisterVisitModal onClose={() => setShowModal(false)} initialTab={modalTab} />}
+      {detailMemberId && (
+        <MemberQuickViewModal memberId={detailMemberId} focus="visits" onClose={() => setDetailMemberId(null)} />
+      )}
       {deleteTarget && (
         <ConfirmModal
           title="¿Eliminar visita?"

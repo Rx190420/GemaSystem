@@ -15,6 +15,15 @@ api.interceptors.response.use(
       sessionStorage.clear()
       if (window.location.pathname !== '/') window.location.href = '/'
     }
+    // err.response is only set once a server actually answered — its
+    // absence (paired with axios' own network-failure code) means the
+    // request never got anywhere, which is a stronger "we're offline"
+    // signal than navigator.onLine alone. useOnlineStatus() listens for
+    // this to show the offline takeover even when the browser still
+    // thinks the network interface is up.
+    if (!err.response && (err.code === 'ERR_NETWORK' || err.message === 'Network Error')) {
+      window.dispatchEvent(new Event('app:network-error'))
+    }
     return Promise.reject(err)
   }
 )

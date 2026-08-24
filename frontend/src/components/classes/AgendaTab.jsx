@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Skeleton } from 'boneyard-js/react'
 import {
   ChevronLeft, ChevronRight, CalendarDays, Sparkles, MoreVertical,
   Eye, CheckCircle2, XCircle, Circle, Edit2, Clock, X, Users, UserCheck, AlertTriangle,
@@ -7,6 +8,7 @@ import {
 import toast from 'react-hot-toast'
 import { FixedPanel, PanelHeader, EmptyState } from '../Panel'
 import api from '../../api/axios'
+import { LoadingLogoOverlay } from '../SkeletonLogoMark'
 import { avatarColor } from '../../utils/avatarColor'
 import { classColor } from '../../utils/classColors'
 import useLockBodyScroll from '../../hooks/useLockBodyScroll'
@@ -291,28 +293,67 @@ function OccurrenceInfoCard({ occ, onClose }) {
   )
 }
 
+// Minimum horizontal drag (px) before a pointer gesture counts as a swipe
+// rather than a tap/click.
+const SWIPE_THRESHOLD = 24
+
 // ── One cell in the month grid. Shows one activity at a time, filling the
-// cell — small dots underneath page through the rest when a day has
-// several (click a dot to jump straight to that activity; the active dot
-// matches that activity's color). Double-click/double-tap opens the full
-// read-only info card for whichever activity is currently showing — a
-// single press just selects the day.
+// cell — swipe left/right (mouse drag or touch) to page through the rest
+// when a day has several, or tap a dot to jump straight to one (the active
+// dot matches that activity's color). Double-click/double-tap opens the
+// full read-only info card for whichever activity is currently showing —
+// a single press/tap that isn't a swipe just selects the day.
 function DayCell({ day, dayOccs, inMonth, isToday, isSelected, onSelect, onShowInfo }) {
   const [previewIndex, setPreviewIndex] = useState(0)
   const clampedIndex = Math.min(previewIndex, Math.max(0, dayOccs.length - 1))
   const current = dayOccs[clampedIndex]
+  const dragRef = useRef({ x: 0, y: 0, swiped: false })
+
+  function stepPreview(dir) {
+    if (dayOccs.length < 2) return
+    setPreviewIndex(i => {
+      const clamped = Math.min(i, dayOccs.length - 1)
+      return (clamped + dir + dayOccs.length) % dayOccs.length
+    })
+  }
+
+  function handlePointerDown(e) {
+    dragRef.current = { x: e.clientX, y: e.clientY, swiped: false }
+    e.currentTarget.setPointerCapture?.(e.pointerId)
+  }
+
+  function handlePointerMove(e) {
+    if (dayOccs.length < 2) return
+    const dx = e.clientX - dragRef.current.x
+    const dy = e.clientY - dragRef.current.y
+    if (Math.abs(dx) > SWIPE_THRESHOLD && Math.abs(dx) > Math.abs(dy)) {
+      stepPreview(dx < 0 ? 1 : -1)
+      dragRef.current.swiped = true
+      dragRef.current.x = e.clientX // rebase so one long drag can page through several
+      dragRef.current.y = e.clientY
+    }
+  }
+
+  function handleClick() {
+    if (dragRef.current.swiped) { dragRef.current.swiped = false; return }
+    onSelect()
+  }
 
   function handleDoubleClick() {
+    if (dragRef.current.swiped) return
     if (current) onShowInfo(current)
   }
 
   return (
     <button
       type="button"
-      onClick={onSelect}
+      onClick={handleClick}
       onDoubleClick={handleDoubleClick}
-      title={current ? `${current.gymClass.name} — doble clic para ver detalles` : undefined}
-      className={`aspect-square rounded-lg p-1 flex flex-col items-stretch gap-1 border transition-colors overflow-hidden
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      style={{ touchAction: 'pan-y' }}
+      title={current ? `${current.gymClass.name} — desliza para ver más, doble clic para detalles` : undefined}
+      className={`aspect-square rounded-lg p-1 flex flex-col items-stretch gap-1 border transition-colors overflow-hidden select-none
         ${inMonth ? '' : 'opacity-30'}
         ${isSelected ? 'border-indigo-500 bg-indigo-50' : 'border-transparent hover:bg-gray-50'}
         ${isToday && !isSelected ? 'ring-1 ring-inset ring-indigo-300' : ''}`}
@@ -324,16 +365,21 @@ function DayCell({ day, dayOccs, inMonth, isToday, isSelected, onSelect, onShowI
       {current && <DayOccCard occ={current} />}
 
       {dayOccs.length > 1 && (
-        <div className="flex items-center justify-center gap-0.5 flex-shrink-0">
+        <div className="flex items-center justify-center gap-1 flex-shrink-0">
           {dayOccs.map((o, i) => (
-            <span
+            <button
               key={i}
-              role="button"
+              type="button"
               title={`Ver actividad ${i + 1} de ${dayOccs.length}`}
               onClick={e => { e.stopPropagation(); setPreviewIndex(i) }}
-              className={`rounded-full transition-all cursor-pointer ${i === clampedIndex ? 'w-2.5 h-1' : 'w-1 h-1 bg-gray-300 hover:bg-gray-400'}`}
-              style={i === clampedIndex ? { background: classColor(o.gymClass) } : undefined}
-            />
+              onPointerDown={e => e.stopPropagation()}
+              className="p-1 -m-1 flex items-center justify-center"
+            >
+              <span
+                className={`block rounded-full transition-all ${i === clampedIndex ? 'w-2.5 h-1' : 'w-1 h-1 bg-gray-300 hover:bg-gray-400'}`}
+                style={i === clampedIndex ? { background: classColor(o.gymClass) } : undefined}
+              />
+            </button>
           ))}
         </div>
       )}
@@ -403,6 +449,8 @@ export default function AgendaTab({ onOpenProgress, onOpenAttendance, onEditClas
   }
 
   return (
+    <>
+    <LoadingLogoOverlay show={isLoading} />
     <div className="space-y-5">
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -431,7 +479,7 @@ export default function AgendaTab({ onOpenProgress, onOpenAttendance, onEditClas
         </div>
       </div>
 
-      {isLoading ? null : (
+      <Skeleton name="agenda-view" loading={isLoading}>
         <>
           {/* Reminders — altura fija: ambas tarjetas miden lo mismo tenga o no
               clases, y la lista larga hace scroll interno en vez de crecer. */}
@@ -546,9 +594,10 @@ export default function AgendaTab({ onOpenProgress, onOpenAttendance, onEditClas
             )}
           </div>
         </>
-      )}
+      </Skeleton>
 
       {infoOcc && <OccurrenceInfoCard occ={infoOcc} onClose={() => setInfoOcc(null)} />}
     </div>
+    </>
   )
 }

@@ -1,13 +1,15 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Skeleton } from 'boneyard-js/react'
 import {
-  Plus, Edit2, Trash2, Calendar, Users, Clock, Loader2,
+  Plus, Edit2, Trash2, Calendar, Users, Clock,
   Filter, Search, AlertTriangle, UserCheck, Target, CalendarClock,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import api from '../../api/axios'
 import ConfirmModal from '../ConfirmModal'
 import ClassModal from './ClassModal'
+import { LoadingLogoOverlay } from '../SkeletonLogoMark'
 import { avatarColor } from '../../utils/avatarColor'
 
 const DIFFICULTY   = { beginner: 'Principiante', intermediate: 'Intermedio', advanced: 'Avanzado' }
@@ -63,6 +65,8 @@ export default function ClassesTab({ onOpenProgress, onOpenAttendance }) {
     })
 
   return (
+    <>
+    <LoadingLogoOverlay show={isLoading} />
     <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -75,6 +79,8 @@ export default function ClassesTab({ onOpenProgress, onOpenAttendance }) {
         </button>
       </div>
 
+      <Skeleton name="classes-list" loading={isLoading}>
+      <div className="space-y-5">
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
@@ -156,9 +162,7 @@ export default function ClassesTab({ onOpenProgress, onOpenAttendance }) {
       </div>
 
       {/* Grid */}
-      {isLoading ? (
-        <div className="flex justify-center items-center h-40"><Loader2 className="w-6 h-6 animate-spin text-indigo-600" /></div>
-      ) : filtered.length === 0 ? (
+      {filtered.length === 0 ? (
         <div className="card flex flex-col items-center justify-center py-16 text-gray-400">
           <Calendar className="w-10 h-10 mb-2 opacity-30" />
           <p className="text-sm">{diffFilter || typeFilter || search ? 'No hay clases que coincidan' : 'No hay clases registradas'}</p>
@@ -302,6 +306,8 @@ export default function ClassesTab({ onOpenProgress, onOpenAttendance }) {
           })}
         </div>
       )}
+      </div>
+      </Skeleton>
 
       {modal && (
         <ClassModal gymClass={modal === 'create' ? null : modal} onClose={() => setModal(null)} />
@@ -315,5 +321,6 @@ export default function ClassesTab({ onOpenProgress, onOpenAttendance }) {
         />
       )}
     </div>
+    </>
   )
 }

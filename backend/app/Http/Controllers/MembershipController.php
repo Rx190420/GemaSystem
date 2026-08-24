@@ -58,10 +58,11 @@ class MembershipController extends Controller
         }
 
         if ($search = $request->get('search')) {
-            $query->whereHas('member', function ($q) use ($search) {
-                $q->where('first_name', 'like', "%{$search}%")
-                  ->orWhere('last_name',  'like', "%{$search}%")
-                  ->orWhere('member_code','like', "%{$search}%");
+            $like = SqlPortability::likeOperator();
+            $query->whereHas('member', function ($q) use ($search, $like) {
+                $q->where('first_name', $like, "%{$search}%")
+                  ->orWhere('last_name',  $like, "%{$search}%")
+                  ->orWhere('member_code',$like, "%{$search}%");
             });
         }
 

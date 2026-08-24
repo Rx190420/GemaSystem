@@ -49,4 +49,21 @@ class SqlPortability
             ? "TO_CHAR({$column}, 'YYYY-MM') = ?"
             : "DATE_FORMAT({$column}, '%Y-%m') = ?";
     }
+
+    /**
+     * Case-insensitive "contains" operator for the active driver — used as
+     * the operator argument in where()/orWhere() calls, e.g.
+     * ->where('first_name', SqlPortability::likeOperator(), "%{$term}%").
+     *
+     * MySQL's `like` is already case-insensitive under the default
+     * utf8mb4_general_ci/utf8mb4_0900_ai_ci collation, but Postgres's `like`
+     * is always case-sensitive — a search for "juan" silently missed
+     * "Juan"/"JUAN" for every gym once its database lived on Supabase.
+     * `ilike` is Postgres's built-in case-insensitive equivalent; MySQL has
+     * no separate operator, so `like` stays correct there.
+     */
+    public static function likeOperator(): string
+    {
+        return self::isPgsql() ? 'ilike' : 'like';
+    }
 }

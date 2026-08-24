@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Search, Edit2, Trash2, Mail, Phone, Loader2, User } from 'lucide-react'
+import { Skeleton } from 'boneyard-js/react'
+import { Plus, Search, Edit2, Trash2, Mail, Phone, User } from 'lucide-react'
 import toast from 'react-hot-toast'
 import api from '../../api/axios'
 import ConfirmModal from '../ConfirmModal'
 import TrainerModal from './TrainerModal'
+import { LoadingLogoOverlay } from '../SkeletonLogoMark'
 import { avatarColor } from '../../utils/avatarColor'
 import useSort from '../../hooks/useSort'
 import SortableTh from '../SortableTh'
@@ -64,6 +66,8 @@ export default function TrainerTable() {
   const paged = sorted.slice((page - 1) * pageSize, page * pageSize)
 
   return (
+    <>
+    <LoadingLogoOverlay show={isLoading} />
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
@@ -99,10 +103,9 @@ export default function TrainerTable() {
         </div>
       </div>
 
+      <Skeleton name="trainers-table" loading={isLoading}>
       <div className="card overflow-hidden">
-        {isLoading ? (
-          <div className="flex justify-center items-center h-40"><Loader2 className="w-6 h-6 animate-spin text-indigo-600" /></div>
-        ) : filtered.length === 0 ? (
+        {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-gray-400">
             <User className="w-10 h-10 mb-2 opacity-30" />
             <p className="text-sm">No se encontraron entrenadores</p>
@@ -210,6 +213,7 @@ export default function TrainerTable() {
           </>
         )}
       </div>
+      </Skeleton>
 
       {modal && <TrainerModal trainer={modal === 'create' ? null : modal} onClose={() => setModal(null)} />}
       {deleteTarget && (
@@ -223,5 +227,6 @@ export default function TrainerTable() {
         />
       )}
     </div>
+    </>
   )
 }

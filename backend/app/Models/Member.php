@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\SqlPortability;
 use App\Traits\BelongsToGym;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -72,12 +73,13 @@ class Member extends Model
 
     public function scopeSearch($query, string $term)
     {
-        return $query->where(function ($q) use ($term) {
-            $q->where('first_name', 'like', "%{$term}%")
-              ->orWhere('last_name', 'like', "%{$term}%")
-              ->orWhere('email', 'like', "%{$term}%")
-              ->orWhere('phone', 'like', "%{$term}%")
-              ->orWhere('member_code', 'like', "%{$term}%");
+        $like = SqlPortability::likeOperator();
+        return $query->where(function ($q) use ($term, $like) {
+            $q->where('first_name', $like, "%{$term}%")
+              ->orWhere('last_name', $like, "%{$term}%")
+              ->orWhere('email', $like, "%{$term}%")
+              ->orWhere('phone', $like, "%{$term}%")
+              ->orWhere('member_code', $like, "%{$term}%");
         });
     }
 }

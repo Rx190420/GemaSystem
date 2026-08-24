@@ -16,6 +16,18 @@ class RouteServiceProvider extends ServiceProvider
     {
         $this->configureRateLimiting();
 
+        // Route-model-bound numeric IDs (e.g. GET /products/{product}) hit the
+        // DB with whatever string arrives in the URL before Eloquent ever gets
+        // a chance to say "not found". On Postgres, a non-numeric value like
+        // /products/undefined blows up as an uncaught QueryException — SQLSTATE
+        // 22P02 "invalid input syntax for type bigint" — which surfaces as a
+        // raw 500 (stack trace and SQL included, with APP_DEBUG on) instead of
+        // a clean 404. Constraining these to digits-only makes the router
+        // reject non-numeric values itself, before any query runs.
+        foreach (['product', 'member', 'gym', 'user', 'submission', 'ticket', 'gymNotification', 'trial'] as $param) {
+            Route::pattern($param, '[0-9]+');
+        }
+
         $this->routes(function () {
             Route::prefix('api')
                 ->middleware('api')

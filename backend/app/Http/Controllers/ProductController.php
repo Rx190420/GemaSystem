@@ -22,9 +22,10 @@ class ProductController extends Controller
         $query = Product::query();
 
         if ($search = $request->get('search')) {
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('sku', 'like', "%{$search}%");
+            $like = SqlPortability::likeOperator();
+            $query->where(function ($q) use ($search, $like) {
+                $q->where('name', $like, "%{$search}%")
+                  ->orWhere('sku', $like, "%{$search}%");
             });
         }
 

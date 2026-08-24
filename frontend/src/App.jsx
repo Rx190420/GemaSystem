@@ -9,6 +9,8 @@ import OnboardingWizard from './components/OnboardingWizard'
 import ErrorBoundary from './components/ErrorBoundary'
 import NotFound from './pages/errors/NotFound'
 import Forbidden from './pages/errors/Forbidden'
+import Offline from './pages/errors/Offline'
+import useOnlineStatus from './hooks/useOnlineStatus'
 
 // ── Route-level code splitting ──────────────────────────────────────────────
 // Previously every page (Landing's three.js/WebGL background, PDF/Excel
@@ -134,6 +136,17 @@ function AuthLoader({ show }) {
   return null
 }
 
+// Full takeover the moment connectivity drops — takes priority over
+// everything else (a crashed render, a stale route) since none of that
+// matters if the device has no network path to reach the app at all.
+// Resolves itself: useOnlineStatus() keeps probing in the background and
+// this just re-renders the real app once it reports back online.
+function OfflineGate({ children }) {
+  const online = useOnlineStatus()
+  if (!online) return <Offline />
+  return children
+}
+
 // ── App ───────────────────────────────────────────────────────────────────────
 
 export default function App() {
@@ -144,6 +157,7 @@ export default function App() {
       <BrowserRouter>
         <AuthLoader show={show} />
 
+        <OfflineGate>
         <ErrorBoundary>
           <Suspense fallback={<RouteFallback />}>
           <Routes>
@@ -182,6 +196,7 @@ export default function App() {
           </Routes>
           </Suspense>
         </ErrorBoundary>
+        </OfflineGate>
 
         <OnboardingGate />
       </BrowserRouter>
