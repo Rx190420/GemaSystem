@@ -30,6 +30,7 @@ import toast from 'react-hot-toast'
 import api from '../api/axios'
 import useLockBodyScroll from '../hooks/useLockBodyScroll'
 import { useSettingsStore } from '../store/settingsStore'
+import { useAuthStore } from '../store/authStore'
 import ConfirmModal from '../components/ConfirmModal'
 import ExportMenu from '../components/ExportMenu'
 import { exportToExcel, exportToPDF } from '../utils/exportUtils'
@@ -637,6 +638,8 @@ export default function Members() {
   const { hash } = useParams()
   const qc = useQueryClient()
   const { systemSettings } = useSettingsStore()
+  const { user } = useAuthStore()
+  const canExport = user?.plan_features?.export !== false
   const [search, setSearch]       = useState('')
   const [statusFilter, setStatus] = useState('')
   const [typeFilter, setType]     = useState('')
@@ -772,7 +775,7 @@ export default function Members() {
           <p className="text-sm text-gray-500 mt-0.5">{pagination?.total ?? 0} miembros registrados</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <ExportMenu onExportExcel={handleExportExcel} onExportPDF={handleExportPDF} loading={exporting} />
+          {canExport && <ExportMenu onExportExcel={handleExportExcel} onExportPDF={handleExportPDF} loading={exporting} />}
           <button onClick={() => setFormModal('create')} className="btn-primary flex items-center gap-2">
             <Plus className="w-4 h-4" /> Nuevo miembro
           </button>

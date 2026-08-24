@@ -11,23 +11,9 @@ import {
 } from 'lucide-react'
 import api from '../api/axios'
 import useLockBodyScroll from '../hooks/useLockBodyScroll'
+import usePlans, { customTotal, BASIC_INCLUDES, fullIncludes } from '../hooks/usePlans'
 
 const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY
-
-// ─── Plans ────────────────────────────────────────────────────────────────────
-
-const PLANS = {
-  weekly: {
-    id: 'weekly', name: 'Semanal', price: '$417', originalPrice: '$699', period: '/semana',
-    subtext: 'MXN · sin contrato', badge: null, saving: 'Ahorras $282',
-    features: ['Miembros ilimitados', 'Control de visitas QR', 'Membresías flexibles', 'Exportar básico', 'Soporte estándar'],
-  },
-  monthly: {
-    id: 'monthly', name: 'Mensual', price: '$1,622', originalPrice: '$2,499', period: '/mes',
-    subtext: 'MXN · cancela cuando quieras', badge: 'Más popular', saving: 'Ahorras $877/mes',
-    features: ['Todo lo de Semanal', 'Análisis financiero completo', 'Mapa de actividad', 'Exportar PDF y Excel', 'Clases y entrenadores', 'Modo privacidad', 'Soporte prioritario'],
-  },
-}
 
 // ─── Password rules ───────────────────────────────────────────────────────────
 
@@ -199,10 +185,15 @@ function TermsCheckbox({ register, error, accentColor = '#4F46E5' }) {
 
 // ─── Plan Tabs ────────────────────────────────────────────────────────────────
 
-function PlanTabs({ current, onChange }) {
+function PlanTabs({ plans, current, onChange, customFeatures }) {
+  const tabs = [
+    { id: 'basic', name: plans.basic.label, price: plans.basic.price, badge: null },
+    { id: 'full',  name: plans.full.label,  price: plans.full.price,  badge: 'Más popular' },
+    { id: 'custom', name: 'Custom', price: customTotal(plans, customFeatures), badge: null },
+  ]
   return (
-    <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-gray-100">
-      {Object.values(PLANS).map(p => {
+    <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl bg-gray-100">
+      {tabs.map(p => {
         const active = current === p.id
         return (
           <button key={p.id} type="button" onClick={() => onChange(p.id)}
@@ -219,9 +210,9 @@ function PlanTabs({ current, onChange }) {
               {p.name}
             </p>
             <p className={`text-lg font-black leading-none transition-colors ${active ? 'text-indigo-600' : 'text-gray-300'}`}>
-              {p.price}
+              ${p.price.toLocaleString('es-MX')}
             </p>
-            <p className={`text-[9px] mt-0.5 transition-colors ${active ? 'text-gray-400' : 'text-gray-300'}`}>{p.period}</p>
+            <p className={`text-[9px] mt-0.5 transition-colors ${active ? 'text-gray-400' : 'text-gray-300'}`}>/mes</p>
           </button>
         )
       })}
@@ -234,8 +225,14 @@ function PlanTabs({ current, onChange }) {
 export default function RegisterModal({ onClose }) {
   useLockBodyScroll()
   const [searchParams, setSearchParams] = useSearchParams()
-  const [planId, setPlanId] = useState(searchParams.get('plan') || 'monthly')
-  const plan = PLANS[planId] || PLANS.monthly
+  const [planId, setPlanId] = useState(() => {
+    const p = searchParams.get('plan')
+    return ['basic', 'full', 'custom'].includes(p) ? p : 'full'
+  })
+  const [customFeatures, setCustomFeatures] = useState(() =>
+    (searchParams.get('features') || '').split(',').filter(Boolean)
+  )
+  const { plans, isLoading: plansLoading } = usePlans()
 
   const [mode, setMode] = useState(searchParams.get('reactivate') === '1' ? 'reactivate' : 'new')
 
@@ -277,15 +274,35 @@ export default function RegisterModal({ onClose }) {
   const close = onClose
 
   const selectPlan = (id) => {
-    setSearchParams({ plan: id, ...(mode === 'reactivate' ? { reactivate: '1' } : {}) }, { replace: true })
+    setSearchParams({
+      plan: id,
+      ...(id === 'custom' && customFeatures.length ? { features: customFeatures.join(',') } : {}),
+      ...(mode === 'reactivate' ? { reactivate: '1' } : {}),
+    }, { replace: true })
     setPlanId(id)
+  }
+
+  const toggleCustomFeature = (key) => {
+    setCustomFeatures(prev => {
+      const next = prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+      setSearchParams({
+        plan: planId,
+        ...(next.length ? { features: next.join(',') } : {}),
+        ...(mode === 'reactivate' ? { reactivate: '1' } : {}),
+      }, { replace: true })
+      return next
+    })
   }
 
   const switchMode = (m) => {
     setMode(m)
     setApiErrorN(null)
     setApiErrorR(null)
-    setSearchParams({ plan: planId, ...(m === 'reactivate' ? { reactivate: '1' } : {}) }, { replace: true })
+    setSearchParams({
+      plan: planId,
+      ...(planId === 'custom' && customFeatures.length ? { features: customFeatures.join(',') } : {}),
+      ...(m === 'reactivate' ? { reactivate: '1' } : {}),
+    }, { replace: true })
   }
 
   // "This email already has an account" nudge under the email field links here —
@@ -300,7 +317,11 @@ export default function RegisterModal({ onClose }) {
     setLoadingN(true)
     setApiErrorN(null)
     try {
-      const res = await api.post('/stripe/create-session', { ...data, plan_id: plan.id })
+      const res = await api.post('/stripe/create-session', {
+        ...data,
+        plan_id: planId,
+        ...(planId === 'custom' ? { features: customFeatures } : {}),
+      })
       window.location.href = res.data.url
     } catch (err) {
       const errs = err.response?.data?.errors
@@ -321,7 +342,11 @@ export default function RegisterModal({ onClose }) {
         password: data.password,
         password_confirmation: data.password,
         recaptcha_token: data.recaptcha_token,
-        plan_id: plan.id,
+        // Reactivation only ever resumes a legacy weekly/monthly subscription
+        // (backend rejects basic/full/custom here) — the backend keeps
+        // whatever billing_status/plan_type the account already had either
+        // way, so 'monthly' is just a safe default price tier to bill at.
+        plan_id: 'monthly',
       })
       window.location.href = res.data.url
     } catch (err) {
@@ -380,49 +405,76 @@ export default function RegisterModal({ onClose }) {
                   <span className="font-extrabold text-gray-900 text-base tracking-tight">GemaSystem</span>
                 </div>
 
-                {/* Plan tabs */}
-                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Selecciona tu plan</p>
-                <PlanTabs current={planId} onChange={selectPlan} />
+                {mode === 'new' ? (
+                  plansLoading || !plans ? (
+                    <div className="h-64 rounded-xl bg-gray-100 animate-pulse mb-4" />
+                  ) : (
+                    <>
+                      {/* Plan tabs */}
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Selecciona tu plan</p>
+                      <PlanTabs plans={plans} current={planId} onChange={selectPlan} customFeatures={customFeatures} />
 
-                {/* Beta banner */}
-                <div className="flex items-center gap-2 mt-3.5 mb-4 px-3 py-2 rounded-xl border border-amber-200/80 bg-gradient-to-r from-amber-50 to-yellow-50">
-                  <Zap className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
-                  <p className="text-[10px] text-amber-700 font-semibold leading-snug">Precio especial beta, garantizado.</p>
-                </div>
-
-                {/* Plan detail */}
-                <div className="mb-4">
-                  {plan.badge && (
-                    <span className="inline-flex items-center gap-1.5 mb-2.5 px-2.5 py-1 rounded-full text-[10px] font-bold"
-                      style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.3)', color: '#6366F1' }}>
-                      <Zap className="w-2.5 h-2.5" /> {plan.badge}
-                    </span>
-                  )}
-                  <p className="text-gray-400 text-[11px] mb-0.5">Suscripción al</p>
-                  <h2 className="text-lg font-extrabold text-gray-900 mb-2 tracking-tight">Plan {plan.name}</h2>
-                  <div className="flex items-end gap-2 mb-3">
-                    <div>
-                      <p className="text-[10px] text-gray-400 line-through mb-0.5">{plan.originalPrice}<span className="text-gray-300">{plan.period}</span></p>
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-2xl font-black text-indigo-600 tracking-tight">{plan.price}</span>
-                        <span className="text-gray-400 text-xs">{plan.period}</span>
-                      </div>
-                    </div>
-                    <span className="mb-0.5 text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex-shrink-0">
-                      {plan.saving}
-                    </span>
-                  </div>
-                  <div className="space-y-1.5">
-                    {plan.features.map((f, i) => (
-                      <div key={i} className="flex items-center gap-2">
-                        <div className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 bg-indigo-50">
-                          <Check className="w-2.5 h-2.5 text-indigo-500" />
+                      {/* Plan detail */}
+                      <div className="mt-4 mb-4">
+                        {planId === 'full' && (
+                          <span className="inline-flex items-center gap-1.5 mb-2.5 px-2.5 py-1 rounded-full text-[10px] font-bold"
+                            style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.3)', color: '#6366F1' }}>
+                            <Zap className="w-2.5 h-2.5" /> Más popular
+                          </span>
+                        )}
+                        <p className="text-gray-400 text-[11px] mb-0.5">Suscripción al</p>
+                        <h2 className="text-lg font-extrabold text-gray-900 mb-2 tracking-tight">
+                          Plan {planId === 'basic' ? plans.basic.label : planId === 'full' ? plans.full.label : 'Custom'}
+                        </h2>
+                        <div className="flex items-baseline gap-1 mb-3">
+                          <span className="text-2xl font-black text-indigo-600 tracking-tight">
+                            ${(planId === 'basic' ? plans.basic.price : planId === 'full' ? plans.full.price : customTotal(plans, customFeatures)).toLocaleString('es-MX')}
+                          </span>
+                          <span className="text-gray-400 text-xs">/mes MXN</span>
                         </div>
-                        <span className="text-gray-600 text-[11px]">{f}</span>
+
+                        {planId === 'custom' ? (
+                          <div className="space-y-1.5">
+                            {Object.entries(plans.addons).map(([key, addon]) => {
+                              const checked = customFeatures.includes(key)
+                              return (
+                                <label key={key}
+                                  className={`flex items-center justify-between gap-2 px-2.5 py-2 rounded-lg border cursor-pointer transition-colors ${checked ? 'border-indigo-300 bg-indigo-50/60' : 'border-gray-100 hover:border-gray-200'}`}>
+                                  <span className="flex items-center gap-2 text-[11px] text-gray-700">
+                                    <input type="checkbox" checked={checked} onChange={() => toggleCustomFeature(key)}
+                                      className="w-3.5 h-3.5 rounded accent-indigo-500 flex-shrink-0" />
+                                    {addon.label}
+                                  </span>
+                                  <span className="text-[10px] text-gray-400 flex-shrink-0">+${addon.price}</span>
+                                </label>
+                              )
+                            })}
+                          </div>
+                        ) : (
+                          <div className="space-y-1.5">
+                            {(planId === 'basic' ? BASIC_INCLUDES : fullIncludes(plans)).map((f, i) => (
+                              <div key={i} className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 bg-indigo-50">
+                                  <Check className="w-2.5 h-2.5 text-indigo-500" />
+                                </div>
+                                <span className="text-gray-600 text-[11px]">{f}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                    ))}
+                    </>
+                  )
+                ) : (
+                  <div className="mb-4">
+                    <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-xl bg-amber-50 border border-amber-200">
+                      <RefreshCcw className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+                      <p className="text-[10px] text-amber-700 font-medium leading-snug">Reactivamos tu cuenta con tu plan actual.</p>
+                    </div>
+                    <p className="text-gray-400 text-[11px] mb-0.5">Reactivación de</p>
+                    <h2 className="text-lg font-extrabold text-gray-900 tracking-tight">Suscripción existente</h2>
                   </div>
-                </div>
+                )}
 
                 {/* Trust badges */}
                 <div className="border-t border-gray-100 pt-3 space-y-1.5">

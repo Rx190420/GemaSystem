@@ -10,6 +10,7 @@ import { useAuthStore } from '../store/authStore'
 import api from '../api/axios'
 import toast from 'react-hot-toast'
 import useLockBodyScroll from '../hooks/useLockBodyScroll'
+import usePlans, { customTotal, BASIC_INCLUDES, fullIncludes } from '../hooks/usePlans'
 
 // ── helpers ────────────────────────────────────────────────────────────────────
 
@@ -37,9 +38,12 @@ const subProgress = (s, e) => {
   return Math.min(100, Math.max(0, ((new Date() - new Date(s)) / total) * 100))
 }
 
-const planLabel = (plan, type) => {
+const planLabel = (plan, type, plans) => {
   if (type === 'free')  return 'Gratuito'
   if (type === 'trial') return 'Prueba'
+  if (plan === 'basic') return plans?.basic?.label ?? 'Basic'
+  if (plan === 'full')  return plans?.full?.label ?? 'Full'
+  if (plan === 'custom') return 'Custom'
   return { weekly: 'Semanal', monthly: 'Mensual', annual: 'Anual' }[plan] ?? plan ?? '—'
 }
 
@@ -53,10 +57,6 @@ const billingText = s => ({
   cancelled: 'Cancelada', trialing: 'Período de prueba',
 }[s] ?? s ?? '—')
 
-const PLAN_OPTIONS = [
-  { id: 'weekly',  label: 'Semanal', price: '$417',   period: '/semana', desc: 'Sin contrato, cancela cuando quieras' },
-  { id: 'monthly', label: 'Mensual', price: '$1,622', period: '/mes',    desc: 'Más popular, cancela cuando quieras' },
-]
 
 // ── PasswordStrength ────────────────────────────────────────────────────────────
 
@@ -190,6 +190,8 @@ export default function Profile() {
   const [cancelLoading, setCancelLoading] = useState(false)
   const [changingPlan, setChangingPlan]   = useState(false)
   const [planBusy, setPlanBusy]           = useState(false)
+  const [customFeatures, setCustomFeatures] = useState([])
+  const { plans } = usePlans()
   useLockBodyScroll(showCancelModal)
 
   useEffect(() => {
@@ -220,7 +222,10 @@ export default function Profile() {
     if (planId === profile?.plan || planBusy) return
     setPlanBusy(planId)
     try {
-      const { data } = await api.post('/stripe/plan-change-checkout', { plan_id: planId })
+      const { data } = await api.post('/stripe/plan-change-checkout', {
+        plan_id: planId,
+        ...(planId === 'custom' ? { features: customFeatures } : {}),
+      })
       window.location.href = data.url
     } catch (e) {
       toast.error(e.response?.data?.message ?? 'No se pudo iniciar el cambio de plan.')
@@ -308,7 +313,7 @@ export default function Profile() {
         <div className="flex items-start justify-between mb-6">
           <div>
             <h2 className="text-base font-semibold text-gray-900">Suscripción</h2>
-            <p className="text-sm text-gray-400 mt-0.5">Plan {planLabel(profile?.plan, profile?.plan_type)}</p>
+            <p className="text-sm text-gray-400 mt-0.5">Plan {planLabel(profile?.plan, profile?.plan_type, plans)}</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap justify-end">
             {warn && days !== null && (
@@ -362,7 +367,7 @@ export default function Profile() {
         {/* 3-column detail grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-8 gap-y-5">
           {[
-            { label: 'Plan',          value: planLabel(profile?.plan, profile?.plan_type) },
+            { label: 'Plan',          value: planLabel(profile?.plan, profile?.plan_type, plans) },
             { label: 'Estado',        value: billingText(profile?.billing_status) },
             { label: 'Inicio',        value: fmt(profile?.subscription_starts_at) },
             { label: 'Vencimiento',   value: fmt(profile?.subscription_ends_at) },
@@ -382,39 +387,93 @@ export default function Profile() {
             <p className="text-xs text-gray-500 mb-1">
               El tiempo restante de tu plan actual se aplica como crédito en tu próxima factura.
             </p>
-            {PLAN_OPTIONS.map(p => {
-              const isCurrent = p.id === profile?.plan
-              const isBusy    = planBusy === p.id
-              return (
-                <button key={p.id} type="button"
-                  disabled={isCurrent || !!planBusy}
-                  onClick={() => handleChangePlan(p.id)}
-                  className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl border text-left transition-all ${
-                    isCurrent
-                      ? 'bg-indigo-50 border-indigo-300 cursor-default'
-                      : 'bg-white border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/50 disabled:opacity-50 disabled:cursor-not-allowed'
-                  }`}>
-                  <div>
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <p className="text-sm font-bold text-gray-800">{p.label}</p>
-                      {isCurrent && (
+
+            {!plans ? (
+              <div className="space-y-3">
+                {[0, 1, 2].map(i => <div key={i} className="h-16 rounded-xl bg-gray-100 animate-pulse" />)}
+              </div>
+            ) : (
+              <>
+                {[
+                  { id: 'basic', label: plans.basic.label, price: plans.basic.price, desc: BASIC_INCLUDES.join(' · ') },
+                  { id: 'full',  label: plans.full.label,  price: plans.full.price,  desc: fullIncludes(plans).slice(1).join(' · ') },
+                ].map(p => {
+                  const isCurrent = p.id === profile?.plan
+                  const isBusy    = planBusy === p.id
+                  return (
+                    <button key={p.id} type="button"
+                      disabled={isCurrent || !!planBusy}
+                      onClick={() => handleChangePlan(p.id)}
+                      className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl border text-left transition-all ${
+                        isCurrent
+                          ? 'bg-indigo-50 border-indigo-300 cursor-default'
+                          : 'bg-white border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/50 disabled:opacity-50 disabled:cursor-not-allowed'
+                      }`}>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <p className="text-sm font-bold text-gray-800">{p.label}</p>
+                          {isCurrent && (
+                            <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wide bg-indigo-100 px-1.5 py-0.5 rounded">
+                              Actual
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-gray-400 truncate">{p.desc}</p>
+                      </div>
+                      <div className="flex items-center gap-2.5 flex-shrink-0 ml-4">
+                        <div className="text-right">
+                          <p className="text-base font-extrabold text-gray-900">${p.price.toLocaleString('es-MX')}</p>
+                          <p className="text-[10px] text-gray-400">/mes</p>
+                        </div>
+                        {isBusy && <Loader2 className="w-4 h-4 text-indigo-500 animate-spin" />}
+                      </div>
+                    </button>
+                  )
+                })}
+
+                {/* Custom — its own row with the 5-toggle picker inline */}
+                <div className={`rounded-xl border p-4 ${profile?.plan === 'custom' ? 'bg-indigo-50 border-indigo-300' : 'bg-white border-gray-200'}`}>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-bold text-gray-800">Custom</p>
+                      {profile?.plan === 'custom' && (
                         <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wide bg-indigo-100 px-1.5 py-0.5 rounded">
                           Actual
                         </span>
                       )}
                     </div>
-                    <p className="text-[11px] text-gray-400">{p.desc}</p>
+                    <p className="text-base font-extrabold text-gray-900">
+                      ${customTotal(plans, customFeatures).toLocaleString('es-MX')}<span className="text-[10px] font-normal text-gray-400">/mes</span>
+                    </p>
                   </div>
-                  <div className="flex items-center gap-2.5 flex-shrink-0 ml-4">
-                    <div className="text-right">
-                      <p className="text-base font-extrabold text-gray-900">{p.price}</p>
-                      <p className="text-[10px] text-gray-400">{p.period}</p>
-                    </div>
-                    {isBusy && <Loader2 className="w-4 h-4 text-indigo-500 animate-spin" />}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 mb-3">
+                    {Object.entries(plans.addons).map(([key, addon]) => {
+                      const checked = customFeatures.includes(key)
+                      return (
+                        <label key={key}
+                          className={`flex items-center justify-between gap-2 px-2.5 py-2 rounded-lg border cursor-pointer text-xs transition-colors ${checked ? 'border-indigo-300 bg-indigo-50' : 'border-gray-200 bg-white hover:border-gray-300'}`}>
+                          <span className="flex items-center gap-2 text-gray-700">
+                            <input type="checkbox" checked={checked}
+                              onChange={() => setCustomFeatures(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key])}
+                              className="w-3.5 h-3.5 rounded accent-indigo-500 flex-shrink-0" />
+                            {addon.label}
+                          </span>
+                          <span className="text-gray-400 flex-shrink-0">+${addon.price}</span>
+                        </label>
+                      )
+                    })}
                   </div>
-                </button>
-              )
-            })}
+                  <button type="button"
+                    disabled={profile?.plan === 'custom' || !!planBusy}
+                    onClick={() => handleChangePlan('custom')}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                    {planBusy === 'custom' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CreditCard className="w-3.5 h-3.5" />}
+                    Elegir Custom
+                  </button>
+                </div>
+              </>
+            )}
+
             <div className="flex items-start gap-2 pt-1 text-[11px] text-gray-400 leading-relaxed">
               <Info className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
               Serás redirigido a la página de pago de Stripe. El tiempo restante de tu plan actual se aplica como crédito.

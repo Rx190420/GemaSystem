@@ -20,6 +20,7 @@ import { isSparseTrend, trimLeadingEmpty } from '../utils/charts'
 import ExportMenu from '../components/ExportMenu'
 import { exportToExcel, exportToPDF } from '../utils/exportUtils'
 import { useSettingsStore } from '../store/settingsStore'
+import { useAuthStore } from '../store/authStore'
 import useLockBodyScroll from '../hooks/useLockBodyScroll'
 import useSort from '../hooks/useSort'
 import SortableTh from '../components/SortableTh'
@@ -399,6 +400,8 @@ function NewMembershipModal({ onClose }) {
 export default function Memberships() {
   const qc = useQueryClient()
   const { systemSettings } = useSettingsStore()
+  const { user } = useAuthStore()
+  const canExport = user?.plan_features?.export !== false
   const [showModal, setShowModal]       = useState(false)
   const [page, setPage]                 = useState(1)
   const [pageSize, setPageSize]         = useState(12)
@@ -528,7 +531,7 @@ export default function Memberships() {
           <p className="text-sm text-gray-500 mt-0.5">{pagination?.total ?? 0} registradas</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <ExportMenu onExportExcel={handleExportExcel} onExportPDF={handleExportPDF} loading={exporting} />
+          {canExport && <ExportMenu onExportExcel={handleExportExcel} onExportPDF={handleExportPDF} loading={exporting} />}
           <button onClick={() => setShowModal(true)} className="btn-primary flex items-center gap-2">
             <Plus className="w-4 h-4" /> Nueva membresía
           </button>

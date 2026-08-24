@@ -32,6 +32,11 @@
 --    Trainer:    trainer@fitlife.demo  / password123 / FIT-TRNR
 --    Reception:  reception@fitlife.demo / password123 / FIT-RECP
 --
+--  Si ya tienes una DB de producción corriendo (con datos reales), NO vuelvas
+--  a correr este archivo completo — solo aplica a mano la columna nueva:
+--    ALTER TABLE gyms ADD COLUMN plan_features JSONB;
+--    ALTER TABLE pending_checkouts ADD COLUMN plan_features JSONB;
+--
 --  Gaps de esquema reales encontrados en la DB compartida de
 --  PRODUCCIÓN (gemasystem) al armar este export — NO corregidos
 --  ahí, solo aquí — ver detalle completo en el mensaje/chat:
@@ -59,6 +64,7 @@ CREATE TABLE gyms (
   plan                    VARCHAR(255) NOT NULL,
   plan_type               VARCHAR(10) NOT NULL DEFAULT 'free'
                             CHECK (plan_type IN ('free','paid')),
+  plan_features           JSONB, -- solo para plan='custom': {"whatsapp":bool,"products":bool,"classes":bool,"import":bool,"export":bool}. NULL para planes viejos (weekly/monthly/annual, acceso total) y para basic/full (derivado del plan).
   db_name                 VARCHAR(255),
   stripe_subscription_id  VARCHAR(255),
   stripe_customer_id      VARCHAR(255),
@@ -522,6 +528,7 @@ CREATE TABLE pending_checkouts (
   email               VARCHAR(255) NOT NULL,
   password            VARCHAR(255) NOT NULL,
   plan_id             VARCHAR(255) NOT NULL,
+  plan_features       JSONB, -- selección de extras si plan_id='custom' — mismo formato que gyms.plan_features
   status              VARCHAR(255) NOT NULL DEFAULT 'pending',
   created_at          TIMESTAMP,
   updated_at          TIMESTAMP

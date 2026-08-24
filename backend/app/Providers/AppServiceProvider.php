@@ -2,8 +2,10 @@
 
 namespace App\Providers;
 
+use App\Database\EmulatedPgsqlConnection;
 use App\Mail\Transport\ResendTransport;
 use App\Support\MailIcons;
+use Illuminate\Database\Connection;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
@@ -27,6 +29,14 @@ class AppServiceProvider extends ServiceProvider
         // to CREATE TABLE a table that's already there and crashing the
         // deploy with "already exists".
         Sanctum::ignoreMigrations();
+
+        // See App\Database\EmulatedPgsqlConnection — fixes boolean columns
+        // ("column X is of type boolean but expression is of type integer")
+        // under the PDO::ATTR_EMULATE_PREPARES => true our Supabase
+        // transaction-pooler connections require (config/database.php).
+        Connection::resolverFor('pgsql', function ($connection, $database, $prefix, $config) {
+            return new EmulatedPgsqlConnection($connection, $database, $prefix, $config);
+        });
     }
 
     public function boot()

@@ -5,6 +5,7 @@ import {
   ChevronLeft, ChevronRight, Package, X,
 } from 'lucide-react'
 import { useSettingsStore } from '../../store/settingsStore'
+import { useAuthStore } from '../../store/authStore'
 import GemaSystemLogo from '../GemaSystemLogo'
 
 // `onClose`/`mobile`/`open` are only passed by the mobile drawer instance in
@@ -29,15 +30,24 @@ export default function Sidebar({ collapsed, onToggle, onClose, mobile = false, 
   const { hash } = useParams()
   const base = `/g/${hash}`
 
+  // `plan_features` comes from AuthController::userPayload() (via Gym::featureMap()) —
+  // null for a gym with no gym record (shouldn't happen here, but don't hide
+  // everything if it does), otherwise a {whatsapp,products,classes,import,export}
+  // bool map already resolved server-side (legacy plans/full → all true, basic →
+  // all false, custom → its own toggles). undefined key = not a gated item at all.
+  const { user } = useAuthStore()
+  const features = user?.plan_features
+  const has = key => !key || features?.[key] !== false
+
   const navItems = [
     { to: `${base}/panel`,        icon: LayoutDashboard, label: 'Dashboard' },
     { to: `${base}/socios`,       icon: Users,           label: 'Miembros' },
-    { to: `${base}/clases`,       icon: Calendar,        label: 'Clases' },
+    { to: `${base}/clases`,       icon: Calendar,        label: 'Clases',      gate: 'classes' },
     { to: `${base}/membresias`,   icon: CreditCard,      label: 'Membresías' },
     { to: `${base}/visitas`,      icon: Clock,           label: 'Visitas' },
-    { to: `${base}/productos`,    icon: Package,         label: 'Productos' },
+    { to: `${base}/productos`,    icon: Package,         label: 'Productos',   gate: 'products' },
     { to: `${base}/finanzas`,     icon: TrendingUp,      label: 'Finanzas' },
-  ]
+  ].filter(item => has(item.gate))
 
   const bottomItems = [
     { to: `${base}/soporte`, icon: LifeBuoy, label: 'Soporte' },
@@ -148,7 +158,7 @@ export default function Sidebar({ collapsed, onToggle, onClose, mobile = false, 
           room (see the <aside> comment above); flex-shrink-0 keeps it at its
           natural size instead of getting squeezed when the drawer scrolls. */}
       <div className="px-2.5 py-3 space-y-0.5 flex-shrink-0 mt-auto" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-        <NavLink
+        {has('whatsapp') && <NavLink
           to={`${base}/whatsapp`}
           title={collapsed ? 'WhatsApp' : undefined}
           className={({ isActive }) =>
@@ -173,7 +183,7 @@ export default function Sidebar({ collapsed, onToggle, onClose, mobile = false, 
         >
           <MessageCircle style={{ width: '18px', height: '18px', flexShrink: 0 }} />
           {!collapsed && <span>WhatsApp</span>}
-        </NavLink>
+        </NavLink>}
 
         {bottomItems.map(({ to, icon: Icon, label }) => (
           <NavLink

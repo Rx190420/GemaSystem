@@ -31,6 +31,7 @@ import SortableTh from '../components/SortableTh'
 import Pagination from '../components/Pagination'
 import { exportToExcel, exportToPDF } from '../utils/exportUtils'
 import { useSettingsStore } from '../store/settingsStore'
+import { useAuthStore } from '../store/authStore'
 import useLockBodyScroll from '../hooks/useLockBodyScroll'
 
 const MONTH_NAMES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
@@ -872,6 +873,8 @@ function RegisterVisitModal({ onClose, initialTab = 'search' }) {
 export default function Visits() {
   const qc = useQueryClient()
   const { systemSettings } = useSettingsStore()
+  const { user } = useAuthStore()
+  const canExport = user?.plan_features?.export !== false
   const [showModal, setShowModal]       = useState(false)
   const [modalTab, setModalTab]         = useState('search')
   const [page, setPage]                 = useState(1)
@@ -1005,7 +1008,7 @@ export default function Visits() {
           <p className="text-sm text-gray-500 mt-0.5">{pagination?.total ?? 0} visitas registradas</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <ExportMenu onExportExcel={handleExportExcel} onExportPDF={handleExportPDF} loading={exporting} />
+          {canExport && <ExportMenu onExportExcel={handleExportExcel} onExportPDF={handleExportPDF} loading={exporting} />}
           <button onClick={() => openModal('search')} className="btn-primary flex items-center gap-2">
             <Plus className="w-4 h-4" /> Registrar visita
           </button>

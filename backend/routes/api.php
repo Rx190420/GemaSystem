@@ -21,6 +21,7 @@ use App\Http\Controllers\SettingController;
 use App\Http\Controllers\StripeController;
 use App\Http\Controllers\TrainerController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PlanController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductSaleController;
 use App\Http\Controllers\WhatsAppController;
@@ -49,6 +50,9 @@ Route::post('/trial-requests', [SuperAdminController::class,    'submitTrial'])-
 Route::post('/support/tickets/public',  [SupportTicketController::class, 'store'])        ->middleware('throttle:10,1');
 Route::post('/support/tickets/lookup',  [SupportTicketController::class, 'publicLookup']) ->middleware('throttle:10,1');
 Route::post('/support/tickets/reply',   [SupportTicketController::class, 'publicReply'])  ->middleware('throttle:15,1');
+
+// ── Plans — public (feeds the pricing UI on Landing/Register/Profile) ────────
+Route::get('/plans', [PlanController::class, 'index'])->middleware('throttle:60,1');
 
 // ── Stripe — public endpoints (webhook verifies its own signature) ────────────
 Route::post('/stripe/create-session',       [StripeController::class, 'createCheckoutSession'])->middleware('throttle:10,1');
@@ -92,7 +96,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Notification sends — throttled to prevent member spam
     Route::post('/members/{member}/send-notification',  [MemberController::class, 'sendNotification'])->middleware('throttle:wa-notify');
     Route::post('/members/{member}/notify-membership',  [MemberController::class, 'notifyMembership'])->middleware('throttle:wa-notify');
-    Route::post('/members/{member}/send-whatsapp',      [MemberController::class, 'sendWhatsApp'])    ->middleware('throttle:wa-notify');
+    Route::post('/members/{member}/send-whatsapp',      [MemberController::class, 'sendWhatsApp'])    ->middleware(['throttle:wa-notify', 'feature:whatsapp']);
     Route::post('/members/{member}/notify',             [MemberController::class, 'notify'])           ->middleware('throttle:wa-notify');
 
     Route::apiResource('/members', MemberController::class);
@@ -101,12 +105,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/members/{member}/labels',              [LabelController::class, 'attachToMember']);
     Route::delete('/members/{member}/labels/{label}',    [LabelController::class, 'detachFromMember']);
 
-    // Trainers
-    Route::apiResource('/trainers', TrainerController::class);
-
-    // Classes
-    Route::apiResource('/classes', ClassController::class);
-    Route::patch('/classes/{class}/sessions/{session}', [ClassSessionController::class, 'update']);
+    // Trainers & Classes — one bundle ("Clases y Entrenadores" on the pricing page)
+    Route::middleware('feature:classes')->group(function () {
+        Route::apiResource('/trainers', TrainerController::class);
+        Route::apiResource('/classes', ClassController::class);
+        Route::patch('/classes/{class}/sessions/{session}', [ClassSessionController::class, 'update']);
+    });
 
     // Visits
     Route::get('/visits/summary',  [VisitController::class, 'summary']);
@@ -128,12 +132,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('/ingresos', IngresoController::class)->only(['index', 'store', 'update', 'destroy']);
 
     // ── Products & sales ─────────────────────────────────────────────────────
-    Route::get('/products/summary',            [ProductController::class,     'summary']);
-    Route::get('/products/{product}/stats',    [ProductController::class,     'stats']);
-    Route::apiResource('/products', ProductController::class)->only(['index', 'show', 'store', 'update', 'destroy']);
-    Route::post('/products/{product}/sell',    [ProductSaleController::class, 'sell']);
-    Route::post('/products/checkout',          [ProductSaleController::class, 'checkout']);
-    Route::get('/product-sales',               [ProductSaleController::class, 'index']);
+    Route::middleware('feature:products')->group(function () {
+        Route::get('/products/summary',            [ProductController::class,     'summary']);
+        Route::get('/products/{product}/stats',    [ProductController::class,     'stats']);
+        Route::apiResource('/products', ProductController::class)->only(['index', 'show', 'store', 'update', 'destroy']);
+        Route::post('/products/{product}/sell',    [ProductSaleController::class, 'sell']);
+        Route::post('/products/checkout',          [ProductSaleController::class, 'checkout']);
+        Route::get('/product-sales',               [ProductSaleController::class, 'index']);
+    });
 
     // Membership types & discount categories
     Route::apiResource('/membership-types',    MembershipTypeController::class)   ->only(['index', 'store', 'update', 'destroy']);
@@ -150,16 +156,20 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/support/tickets/{ticket}/messages', [SupportTicketController::class, 'addMessage']) ->middleware('throttle:30,1');
 
     // ── Bulk data import — expensive, strict limit ────────────────────────────
-    Route::post('/import/check', [ImportController::class, 'check'])->middleware('throttle:10,1');
-    Route::post('/import',       [ImportController::class, 'import'])->middleware('throttle:import');
+    Route::middleware('feature:import')->group(function () {
+        Route::post('/import/check', [ImportController::class, 'check'])->middleware('throttle:10,1');
+        Route::post('/import',       [ImportController::class, 'import'])->middleware('throttle:import');
+    });
 
     // ── WhatsApp ──────────────────────────────────────────────────────────────
-    Route::get('/whatsapp/status',        [WhatsAppController::class, 'status']);
-    Route::post('/whatsapp/init',         [WhatsAppController::class, 'init'])      ->middleware('throttle:whatsapp-init');
-    Route::get('/whatsapp/qr',            [WhatsAppController::class, 'qr']);
-    Route::delete('/whatsapp/disconnect', [WhatsAppController::class, 'disconnect'])->middleware('throttle:5,1');
-    Route::get('/whatsapp/logs',          [WhatsAppController::class, 'logs']);
-    Route::delete('/whatsapp/logs/{id}',  [WhatsAppController::class, 'deleteLog']);
+    Route::middleware('feature:whatsapp')->group(function () {
+        Route::get('/whatsapp/status',        [WhatsAppController::class, 'status']);
+        Route::post('/whatsapp/init',         [WhatsAppController::class, 'init'])      ->middleware('throttle:whatsapp-init');
+        Route::get('/whatsapp/qr',            [WhatsAppController::class, 'qr']);
+        Route::delete('/whatsapp/disconnect', [WhatsAppController::class, 'disconnect'])->middleware('throttle:5,1');
+        Route::get('/whatsapp/logs',          [WhatsAppController::class, 'logs']);
+        Route::delete('/whatsapp/logs/{id}',  [WhatsAppController::class, 'deleteLog']);
+    });
 
     // ── In-app notifications ──────────────────────────────────────────────────
     Route::get('/notifications',                              [NotificationController::class, 'index']);

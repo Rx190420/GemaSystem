@@ -71,6 +71,18 @@ function HashGuard({ children }) {
   return children
 }
 
+// Blocks direct URL access to a plan-gated page — Sidebar already hides the
+// nav link, but that alone doesn't stop someone from typing the URL by hand.
+// `plan_features` comes from AuthController::userPayload() (Gym::featureMap());
+// undefined (still loading, or a legacy/full gym with no map at all) fails
+// open on purpose so a slow first load or a legacy gym never gets wrongly
+// blocked — only an explicit `false` for this key denies access.
+function FeatureGuard({ feature, children }) {
+  const { user } = useAuthStore()
+  if (user?.plan_features?.[feature] === false) return <Forbidden />
+  return children
+}
+
 function OperatorHashGuard({ children }) {
   const { isAuthenticated, isOperator, operatorHash } = useAuthStore()
   const { hash } = useParams()
@@ -155,13 +167,13 @@ export default function App() {
               <Route path="panel"        element={<Dashboard />} />
               <Route path="socios"       element={<Members />} />
               <Route path="socio/:id"    element={<MemberDetail />} />
-              <Route path="clases"       element={<Classes />} />
+              <Route path="clases"       element={<FeatureGuard feature="classes"><Classes /></FeatureGuard>} />
               <Route path="visitas"      element={<Visits />} />
               <Route path="membresias"   element={<Memberships />} />
-              <Route path="productos"    element={<Products />} />
+              <Route path="productos"    element={<FeatureGuard feature="products"><Products /></FeatureGuard>} />
               <Route path="finanzas"     element={<Finances />} />
               <Route path="ajustes"      element={<Settings />} />
-              <Route path="whatsapp"     element={<WhatsAppPage />} />
+              <Route path="whatsapp"     element={<FeatureGuard feature="whatsapp"><WhatsAppPage /></FeatureGuard>} />
               <Route path="soporte"      element={<SupportPanel />} />
               <Route path="perfil"       element={<Profile />} />
             </Route>

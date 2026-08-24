@@ -27,11 +27,6 @@ use Stripe\Webhook;
 
 class StripeController extends Controller
 {
-    private const PRICE_IDS = [
-        'weekly'  => 'STRIPE_PRICE_WEEKLY',
-        'monthly' => 'STRIPE_PRICE_MONTHLY',
-    ];
-
     private function boot(): void
     {
         Stripe::setApiKey(config('services.stripe.secret'));
@@ -42,7 +37,10 @@ class StripeController extends Controller
     public function createCheckoutSession(Request $request)
     {
         $request->validate([
-            'plan_id'         => 'required|in:weekly,monthly',
+            // Broad here — each branch below enforces the subset it actually
+            // supports (resubscription: legacy plans only; new registration:
+            // the 3 new tiers only).
+            'plan_id'         => 'required|in:weekly,monthly,basic,full,custom',
             'email'           => 'required|email|max:150',
             'password'        => 'required|string|max:255',
         ]);
@@ -55,6 +53,13 @@ class StripeController extends Controller
         $existingUser = User::where('email', $email)->first();
 
         if ($existingUser) {
+            // Resubscription only ever offers the plan the account already knows
+            // (weekly/monthly) — switching an existing account onto Basic/Full/
+            // Custom is a separate "change plan" flow, not this one.
+            if (!in_array($planId, ['weekly', 'monthly'], true)) {
+                return response()->json(['message' => 'Plan inválido para reactivación.'], 422);
+            }
+
             // Verify the account's *existing* password — this isn't setting a new
             // one, so it must not be held to the new-password complexity rules.
             // No reCAPTCHA needed here: the modal that calls this already
@@ -89,11 +94,20 @@ class StripeController extends Controller
             'email'                 => 'unique:users,email',
             'password'              => ['confirmed', PasswordResetController::passwordRules()],
             'password_confirmation' => 'required',
+            'plan_id'                => 'in:basic,full,custom',
+            'features'               => 'required_if:plan_id,custom|array',
+            'features.*'             => 'in:' . implode(',', Gym::GATED_FEATURES),
         ]);
+
+        if (!in_array($planId, ['basic', 'full', 'custom'], true)) {
+            return response()->json(['message' => 'Plan inválido.'], 422);
+        }
 
         if (! RecaptchaService::verify($request->recaptcha_token, $request->ip())) {
             return response()->json(['message' => 'No pudimos verificar que eres humano. Intenta de nuevo.'], 422);
         }
+
+        $features = $planId === 'custom' ? array_values($request->input('features', [])) : null;
 
         $pending = PendingCheckout::create([
             'gym_name'         => $request->gym_name,
@@ -104,6 +118,7 @@ class StripeController extends Controller
             'email'            => $email,
             'password'         => Hash::make($password),
             'plan_id'          => $planId,
+            'plan_features'    => $features ? array_fill_keys($features, true) : null,
         ]);
 
         $this->boot();
@@ -119,7 +134,7 @@ class StripeController extends Controller
                 'mode'                 => 'subscription',
                 'payment_method_types' => ['card'],
                 'customer_email'       => $email,
-                'line_items'           => [['price' => config('services.stripe.' . $this->priceKey($planId)), 'quantity' => 1]],
+                'line_items'           => [$this->lineItemFor($planId, $features)],
                 'success_url'          => $frontendUrl . '/checkout/success?session_id={CHECKOUT_SESSION_ID}',
                 'cancel_url'           => $frontendUrl . '/',
                 'metadata'             => ['pending_checkout_id' => $pending->id],
@@ -275,7 +290,11 @@ class StripeController extends Controller
 
     public function createPlanChangeSession(Request $request)
     {
-        $request->validate(['plan_id' => 'required|in:weekly,monthly']);
+        $request->validate([
+            'plan_id'     => 'required|in:weekly,monthly,basic,full,custom',
+            'features'    => 'required_if:plan_id,custom|array',
+            'features.*'  => 'in:' . implode(',', Gym::GATED_FEATURES),
+        ]);
 
         $user = auth()->user();
         $gym  = $user->gym;
@@ -289,17 +308,21 @@ class StripeController extends Controller
 
         $this->boot();
         $frontendUrl = env('APP_FRONTEND_URL', 'http://localhost:5173');
+        $features = $request->plan_id === 'custom' ? array_values($request->input('features', [])) : null;
 
         $sessionParams = [
             'mode'                 => 'subscription',
             'payment_method_types' => ['card'],
-            'line_items'           => [['price' => config('services.stripe.' . $this->priceKey($request->plan_id)), 'quantity' => 1]],
+            'line_items'           => [$this->lineItemFor($request->plan_id, $features)],
             'success_url'          => $frontendUrl . '/checkout/success?session_id={CHECKOUT_SESSION_ID}&type=plan_change',
             'cancel_url'           => $frontendUrl . '/',
             'metadata'             => [
                 'action'           => 'plan_change',
                 'gym_id'           => (string) $gym->id,
                 'new_plan'         => $request->plan_id,
+                // Stripe metadata values are strings only — comma-join, same
+                // convention as the "features" query param the frontend uses.
+                'new_features'     => $features ? implode(',', $features) : '',
                 'old_subscription' => $gym->stripe_subscription_id ?? '',
             ],
             'locale' => 'es',
@@ -346,9 +369,10 @@ class StripeController extends Controller
 
     private function fulfillPlanChange(object $session, array $metadata): void
     {
-        $gymId    = $metadata['gym_id']           ?? null;
-        $newPlan  = $metadata['new_plan']          ?? null;
-        $oldSubId = $metadata['old_subscription']  ?? null;
+        $gymId       = $metadata['gym_id']           ?? null;
+        $newPlan     = $metadata['new_plan']          ?? null;
+        $newFeatures = !empty($metadata['new_features']) ? explode(',', $metadata['new_features']) : null;
+        $oldSubId    = $metadata['old_subscription']  ?? null;
 
         if (!$gymId) return;
 
@@ -365,10 +389,14 @@ class StripeController extends Controller
             $sub      = StripeSubscription::retrieve($newSubId);
             $period   = $this->extractSubPeriod($sub);
             $priceId  = $sub->items->data[0]->price->id ?? null;
+            // 'custom's dynamic price has no static id to match, same caveat
+            // as fulfill() — planFromPriceId() returns null and $newPlan
+            // (straight from our own metadata) is used instead.
             $planName = $this->planFromPriceId($priceId) ?? $newPlan;
 
             $gym->update([
                 'plan'                   => $planName,
+                'plan_features'          => $this->resolvePlanFeatures($planName, $newFeatures),
                 'stripe_subscription_id' => $newSubId,
                 'stripe_customer_id'     => $session->customer ?? $gym->stripe_customer_id,
                 'billing_status'         => 'active',
@@ -503,6 +531,15 @@ class StripeController extends Controller
                 'role'                 => $user->role,
                 'gym_id'               => $user->gym_id,
                 'plan_type'            => $user->gym?->plan_type ?? 'paid',
+                'plan'                 => $user->gym?->plan ?? null,
+                // Without this, a brand-new account's first session (built here,
+                // right after checkout) has no plan_features at all — Sidebar.jsx/
+                // App.jsx's `!== false` checks then fail OPEN and show every
+                // gated feature, exactly as if the gym were on Full. See
+                // AuthController::userPayload() for the normal login/me path,
+                // which already sends this — this is the other place a user
+                // object gets built and it drifted out of sync with it.
+                'plan_features'        => $user->gym?->featureMap() ?? null,
                 'onboarding_completed' => (bool) $user->onboarding_completed,
             ],
         ])->cookie(...AuthController::authCookie($token));
@@ -726,6 +763,7 @@ class StripeController extends Controller
                 if ($gym) {
                     $gym->update([
                         'plan'                    => $planName,
+                        'plan_features'           => $this->resolvePlanFeatures($planName, $pending->plan_features),
                         'stripe_customer_id'      => $stripeCustomerId ?? $gym->stripe_customer_id,
                         'stripe_subscription_id'  => $stripeSubscriptionId,
                         'status'                  => 'active',
@@ -746,6 +784,7 @@ class StripeController extends Controller
                 'name'                    => $pending->gym_name,
                 'code'                    => Gym::generateUniqueCode($pending->gym_name),
                 'plan'                    => $planName,
+                'plan_features'           => $this->resolvePlanFeatures($planName, $pending->plan_features),
                 'plan_type'               => 'paid',
                 'stripe_customer_id'      => $stripeCustomerId,
                 'stripe_subscription_id'  => $stripeSubscriptionId,
@@ -838,22 +877,72 @@ class StripeController extends Controller
         ];
     }
 
+    /**
+     * What to store in gyms.plan_features for a given plan. Only 'custom'
+     * actually reads this column at access-check time (Gym::hasFeature()) —
+     * 'full' is stored all-true here purely so SuperAdmin's gym detail view
+     * has something meaningful to display; legacy/basic store null.
+     */
+    private function resolvePlanFeatures(string $planName, ?array $pendingFeatures): ?array
+    {
+        return match ($planName) {
+            'custom' => $pendingFeatures,
+            'full'   => array_fill_keys(Gym::GATED_FEATURES, true),
+            default  => null,
+        };
+    }
+
     private function priceKey(string $planId): string
     {
         return match ($planId) {
             'weekly'  => 'price_weekly',
             'monthly' => 'price_monthly',
+            'basic'   => 'price_basic',
+            'full'    => 'price_full',
             default   => 'price_monthly',
         };
+    }
+
+    /**
+     * Builds the Stripe Checkout Session line item for a plan. Basic/Full use
+     * their fixed, manually-created Stripe Price. Custom has no static Price —
+     * its amount is computed server-side from config/plans.php (never trust a
+     * client-submitted price) and sent inline as price_data; Stripe auto-
+     * creates a one-off Price behind the scenes for it.
+     */
+    private function lineItemFor(string $planId, ?array $features): array
+    {
+        if ($planId !== 'custom') {
+            return ['price' => config('services.stripe.' . $this->priceKey($planId)), 'quantity' => 1];
+        }
+
+        $amount = (int) config('plans.basic.price');
+        foreach ($features ?? [] as $key) {
+            $amount += (int) (config("plans.addons.{$key}.price") ?? 0);
+        }
+
+        return [
+            'price_data' => [
+                'currency'    => config('plans.currency', 'mxn'),
+                'product'     => config('services.stripe.product_custom'),
+                'unit_amount' => $amount * 100, // pesos → centavos
+                'recurring'   => ['interval' => 'month'],
+            ],
+            'quantity' => 1,
+        ];
     }
 
     private function planFromPriceId(?string $priceId): ?string
     {
         if (!$priceId) return null;
-        $weekly  = config('services.stripe.price_weekly');
-        $monthly = config('services.stripe.price_monthly');
-        if ($priceId === $weekly)  return 'weekly';
-        if ($priceId === $monthly) return 'monthly';
+        if ($priceId === config('services.stripe.price_weekly'))  return 'weekly';
+        if ($priceId === config('services.stripe.price_monthly')) return 'monthly';
+        if ($priceId === config('services.stripe.price_basic'))   return 'basic';
+        if ($priceId === config('services.stripe.price_full'))    return 'full';
+        // 'custom' has no static price id — it's built inline via price_data at
+        // checkout time, so Stripe auto-creates a one-off Price with no entry
+        // here. Callers all fall back to the gym's existing ->plan when this
+        // returns null, which is exactly right for custom (never overwritten).
         return null;
     }
 

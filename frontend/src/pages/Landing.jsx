@@ -28,6 +28,7 @@ import TextType from '../components/TextType'
 import Reveal from '../components/Reveal'
 import RegisterModal from './Register'
 import useLockBodyScroll from '../hooks/useLockBodyScroll'
+import usePlans, { customTotal, BASIC_INCLUDES, fullIncludes } from '../hooks/usePlans'
 
 // ─── Schemas ──────────────────────────────────────────────────────────────────
 
@@ -69,27 +70,6 @@ const MODULE_IMAGES = [
   '/images/feature-memberships.webp',
   '/images/feature-finances.webp',
   '/images/feature-classes.webp',
-]
-
-const PLANS = [
-  {
-    id: 'weekly', name: 'Semanal', price: '$417', period: '/semana',
-    subtext: 'MXN · sin contrato', badge: null, highlight: false,
-    features: ['Miembros ilimitados','Control de visitas QR','Membresías flexibles','Exportar básico','Soporte estándar'],
-    cta: 'Comenzar', ctaColor: 'dark',
-  },
-  {
-    id: 'monthly', name: 'Mensual', price: '$1,622', period: '/mes',
-    subtext: 'MXN · cancela cuando quieras', badge: 'Más popular', highlight: true,
-    features: ['Todo lo de Semanal','Análisis financiero completo','Mapa de actividad','Exportar PDF y Excel','Clases y entrenadores','Modo privacidad','Soporte prioritario'],
-    cta: 'Comenzar ahora', ctaColor: 'white',
-  },
-  {
-    id: 'annual', name: 'Anual', price: '$9,999', period: '/año',
-    subtext: 'Pago único anual · equivale a $833/mes', badge: 'Mejor valor', highlight: false,
-    features: ['Todo lo de Mensual','Pago único anual','API access (próx.)','Múltiples sucursales (próx.)','Soporte premium','Gestor de cuenta dedicado'],
-    cta: 'Elegir Anual', ctaColor: 'gold',
-  },
 ]
 
 // ─── AuthModal ────────────────────────────────────────────────────────────────
@@ -913,6 +893,115 @@ function ModuleSpotlight({ features, images }) {
   )
 }
 
+// ─── PricingCards (Basic / Full / Custom) ─────────────────────────────────────
+// Reads every price from usePlans() (GET /api/plans → config/plans.php on the
+// backend) — nothing here is hardcoded, so this can never drift from what
+// Stripe actually charges. Custom's total updates live as add-ons are
+// toggled; Full's static price sitting right next to it is what makes Full
+// read as the better deal once a buyer checks more than one or two boxes.
+
+function PricingCards({ onSelectPlan }) {
+  const { plans, isLoading } = usePlans()
+  const [customFeatures, setCustomFeatures] = useState([])
+
+  const toggleFeature = key =>
+    setCustomFeatures(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key])
+
+  if (isLoading || !plans) {
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {[0, 1, 2].map(i => (
+          <div key={i} className="h-[420px] rounded-3xl border border-white/10 animate-pulse" style={{ background: '#0d1020' }} />
+        ))}
+      </div>
+    )
+  }
+
+  const total = customTotal(plans, customFeatures)
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+      {/* Basic */}
+      <Reveal as="div" className="rounded-3xl border border-white/10 p-8 flex flex-col" style={{ background: '#0d1020' }}>
+        <span className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4">{plans.basic.label}</span>
+        <div className="flex items-end gap-2 mb-1">
+          <span className="text-5xl font-black text-white leading-none">${plans.basic.price.toLocaleString('es-MX')}</span>
+          <span className="text-slate-400 text-sm mb-1.5">/mes</span>
+        </div>
+        <p className="text-xs text-slate-500 mb-7">MXN · lo esencial para empezar</p>
+        <ul className="space-y-2.5 flex-1 mb-8">
+          {BASIC_INCLUDES.map((f) => (
+            <li key={f} className="flex items-center gap-2.5 text-sm text-white/85">
+              <Check className="w-4 h-4 text-slate-400 flex-shrink-0" /> {f}
+            </li>
+          ))}
+        </ul>
+        <button onClick={() => onSelectPlan('basic')}
+          className="w-full py-3.5 rounded-2xl font-bold text-sm text-white border border-white/15 hover:bg-white/10 transition-colors">
+          Comenzar con Basic
+        </button>
+      </Reveal>
+
+      {/* Full — featured */}
+      <Reveal delay={0.08} as="div" className="relative rounded-3xl border overflow-hidden p-8 flex flex-col"
+        style={{ borderColor: 'rgba(139,92,246,0.4)', background: 'linear-gradient(160deg,#211c4d 0%,#0f0d24 65%)' }}>
+        <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full opacity-25 pointer-events-none"
+          style={{ background: 'radial-gradient(circle,#8B5CF6,transparent 70%)' }} />
+        <div className="relative flex items-center gap-2 mb-4">
+          <span className="text-xs font-bold uppercase tracking-widest text-violet-300">{plans.full.label}</span>
+          <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-white/15 text-white">Más popular</span>
+        </div>
+        <div className="relative flex items-end gap-2 mb-1">
+          <span className="text-5xl font-black text-white leading-none">${plans.full.price.toLocaleString('es-MX')}</span>
+          <span className="text-violet-300 text-sm mb-1.5">/mes</span>
+        </div>
+        <p className="relative text-xs text-violet-300/70 mb-7">MXN · todo incluido</p>
+        <ul className="relative space-y-2.5 flex-1 mb-8">
+          {fullIncludes(plans).map(f => (
+            <li key={f} className="flex items-center gap-2.5 text-sm text-white/90">
+              <Check className="w-4 h-4 text-violet-300 flex-shrink-0" /> {f}
+            </li>
+          ))}
+        </ul>
+        <button onClick={() => onSelectPlan('full')}
+          className="relative w-full py-3.5 rounded-2xl font-bold text-sm bg-white text-indigo-700 hover:bg-indigo-50 transition-all duration-200 shadow-xl">
+          Comenzar con Full
+        </button>
+      </Reveal>
+
+      {/* Custom */}
+      <Reveal delay={0.16} as="div" className="rounded-3xl border border-white/10 p-8 flex flex-col" style={{ background: '#0d1020' }}>
+        <span className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4">Custom</span>
+        <div className="flex items-end gap-2 mb-1">
+          <span className="text-5xl font-black text-white leading-none">${total.toLocaleString('es-MX')}</span>
+          <span className="text-slate-400 text-sm mb-1.5">/mes</span>
+        </div>
+        <p className="text-xs text-slate-500 mb-6">MXN · arma tu propio plan</p>
+        <div className="space-y-2 flex-1 mb-8">
+          {Object.entries(plans.addons).map(([key, addon]) => {
+            const checked = customFeatures.includes(key)
+            return (
+              <label key={key}
+                className={`flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl border cursor-pointer transition-colors ${checked ? 'border-indigo-400/50 bg-indigo-500/10' : 'border-white/10 hover:border-white/20'}`}>
+                <span className="flex items-center gap-2.5 text-sm text-white/85">
+                  <input type="checkbox" checked={checked} onChange={() => toggleFeature(key)}
+                    className="w-4 h-4 rounded accent-indigo-500 flex-shrink-0" />
+                  {addon.label}
+                </span>
+                <span className="text-xs text-slate-400 flex-shrink-0">+${addon.price}</span>
+              </label>
+            )
+          })}
+        </div>
+        <button onClick={() => onSelectPlan('custom', customFeatures)}
+          className="w-full py-3.5 rounded-2xl font-bold text-sm text-white border border-white/15 hover:bg-white/10 transition-colors">
+          Comenzar con Custom
+        </button>
+      </Reveal>
+    </div>
+  )
+}
+
 // ─── Landing ──────────────────────────────────────────────────────────────────
 
 export default function Landing() {
@@ -937,7 +1026,12 @@ export default function Landing() {
   const trialForm = useForm({ resolver: yupResolver(trialSchema) })
   const recaptchaRefTrial = useRef(null)
 
-  const goRegister = (planId = 'monthly') => { navigate(`/register?plan=${planId}`); setNavOpen(false) }
+  const goRegister = (planId = 'full', features) => {
+    const params = new URLSearchParams({ plan: planId })
+    if (features?.length) params.set('features', features.join(','))
+    navigate(`/register?${params.toString()}`)
+    setNavOpen(false)
+  }
 
   const scrollToTrial = () => {
     document.getElementById('prueba-gratis')?.scrollIntoView({ behavior: 'smooth' })
@@ -1505,100 +1599,14 @@ export default function Landing() {
                 Precios
               </span>
               <h2 className="text-[clamp(2rem,6vw,3rem)] font-extrabold text-white leading-tight">
-                Planes para cada etapa<br className="hidden md:block" /> de tu negocio
+                Elige lo que tu gimnasio<br className="hidden md:block" /> realmente necesita
               </h2>
               <p className="text-slate-400 mt-5 text-lg max-w-xl mx-auto">
-                Sin permanencia, cancela cuando quieras.{' '}
-                <span className="text-amber-400 font-semibold">Precio beta congelado</span> mientras dure el acceso anticipado.
+                Sin permanencia, cancela cuando quieras. Empieza con lo esencial o arma tu propio plan.
               </p>
             </Reveal>
 
-            {/* Asymmetric layout — one large featured plan instead of three
-                equal-weight columns, with the other two options as compact
-                secondary cards beside it. Leads the eye to the recommended
-                plan first, instead of asking the visitor to compare three
-                equally-weighted choices. */}
-            <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-6 items-stretch">
-
-              {/* Featured — Mensual */}
-              <Reveal as="div" className="relative rounded-3xl border overflow-hidden p-9 flex flex-col"
-                style={{ borderColor: 'rgba(139,92,246,0.35)', background: 'linear-gradient(160deg,#211c4d 0%,#0f0d24 65%)' }}>
-                <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full opacity-25 pointer-events-none"
-                  style={{ background: 'radial-gradient(circle,#8B5CF6,transparent 70%)' }} />
-                <div className="relative flex items-center gap-2 mb-6">
-                  <span className="text-xs font-bold uppercase tracking-widest text-violet-300">Mensual</span>
-                  <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-white/15 text-white">Recomendado</span>
-                </div>
-                <p className="relative text-sm text-violet-300/40 line-through leading-none mb-1.5">$2,499/mes</p>
-                <div className="relative flex items-end gap-2 flex-wrap">
-                  <span className="text-6xl font-black text-white leading-none">$1,622</span>
-                  <span className="text-violet-300 text-sm mb-2">/mes</span>
-                </div>
-                <span className="relative mt-2 text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 w-fit">
-                  Ahorras $877
-                </span>
-                <p className="relative text-xs text-violet-300/70 mt-3 mb-8">MXN · cancela cuando quieras</p>
-                <ul className="relative grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-2.5 flex-1 mb-8">
-                  {PLANS[1].features.map((f, j) => (
-                    <li key={j} className="flex items-start gap-2.5 text-sm">
-                      <Check className="w-4 h-4 text-violet-300 flex-shrink-0 mt-0.5" />
-                      <span className="text-white/90">{f}</span>
-                    </li>
-                  ))}
-                </ul>
-                <button onClick={() => goRegister('monthly')}
-                  className="relative w-full py-4 rounded-2xl font-bold text-base bg-white text-indigo-700 hover:bg-indigo-50 transition-all duration-200 shadow-xl">
-                  Comenzar ahora
-                </button>
-              </Reveal>
-
-              {/* Secondary — Semanal + Prueba gratis, stacked and compact */}
-              <div className="flex flex-col gap-6">
-                <Reveal delay={0.1} as="div" className="rounded-2xl border border-white/10 p-6 flex flex-col flex-1" style={{ background: '#0d1020' }}>
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-bold uppercase tracking-widest text-slate-400">Semanal</span>
-                    <span className="text-[10px] font-bold text-emerald-400">Ahorras $282</span>
-                  </div>
-                  <div className="flex items-end gap-2">
-                    <span className="text-3xl font-black text-white leading-none">$417</span>
-                    <span className="text-slate-400 text-xs mb-1">/semana</span>
-                  </div>
-                  <p className="text-xs text-slate-500 mt-1.5 mb-4">MXN · sin contrato</p>
-                  <div className="flex flex-wrap gap-1.5 mb-5">
-                    {PLANS[0].features.slice(0, 3).map((f) => (
-                      <span key={f} className="text-[10px] px-2 py-1 rounded-full bg-white/5 text-slate-300 border border-white/10">{f}</span>
-                    ))}
-                  </div>
-                  <button onClick={() => goRegister('weekly')}
-                    className="mt-auto w-full py-2.5 rounded-xl font-bold text-xs text-white border border-white/15 hover:bg-white/10 transition-colors">
-                    Comenzar
-                  </button>
-                </Reveal>
-
-                <Reveal delay={0.18} as="div" className="rounded-2xl border p-6 flex flex-col flex-1"
-                  style={{ borderColor: 'rgba(16,185,129,0.3)', background: 'linear-gradient(160deg,#062a17 0%,#0d1020 75%)' }}>
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-bold uppercase tracking-widest text-emerald-400">Prueba gratis</span>
-                    <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300">Sin tarjeta</span>
-                  </div>
-                  <div className="flex items-end gap-2">
-                    <span className="text-3xl font-black text-white leading-none">$0</span>
-                    <span className="text-emerald-300 text-xs mb-1">/ 10 días</span>
-                  </div>
-                  <p className="text-xs text-emerald-400/80 mt-1.5 mb-4">Acceso completo desde el día uno</p>
-                  <div className="flex flex-wrap gap-1.5 mb-5">
-                    {['Todo incluido', 'Sin límites', 'Soporte real'].map((f) => (
-                      <span key={f} className="text-[10px] px-2 py-1 rounded-full bg-white/5 text-emerald-200 border border-emerald-500/20">{f}</span>
-                    ))}
-                  </div>
-                  <button onClick={scrollToTrial}
-                    className="mt-auto w-full py-2.5 rounded-xl font-bold text-xs text-white hover:brightness-110 transition-all duration-200"
-                    style={{ background: 'linear-gradient(90deg,#10b981,#059669)' }}>
-                    Comenzar gratis
-                  </button>
-                </Reveal>
-              </div>
-            </div>
+            <PricingCards onSelectPlan={goRegister} />
 
             <p className="text-center text-xs text-slate-600 mt-8">
               Precios en pesos mexicanos (MXN) · IVA no incluido · Sin contrato de permanencia · Cancela cuando quieras

@@ -25,9 +25,11 @@ USE `gemasystem`;
 CREATE TABLE IF NOT EXISTS `gyms` (
   `id`                      BIGINT UNSIGNED     NOT NULL AUTO_INCREMENT,
   `name`                    VARCHAR(255)         NOT NULL,
-  `plan`                    VARCHAR(50)          NOT NULL COMMENT 'weekly | monthly | annual',
+  `plan`                    VARCHAR(50)          NOT NULL COMMENT 'weekly | monthly | annual | basic | full | custom',
   `plan_type`               ENUM('free','paid')  NOT NULL DEFAULT 'free'
                             COMMENT 'free = DB compartida con gym_id | paid = DB dedicada',
+  `plan_features`           JSON                 NULL DEFAULT NULL
+                            COMMENT 'Solo para plan=custom: {"whatsapp":bool,"products":bool,"classes":bool,"import":bool,"export":bool}. NULL para planes viejos (weekly/monthly/annual, acceso total) y para basic/full (derivado del plan).',
   `db_name`                 VARCHAR(100)         NULL DEFAULT NULL
                             COMMENT 'gemasystem_gym_{id} â€” solo para cuentas de pago',
   `stripe_subscription_id`  VARCHAR(255)         NULL DEFAULT NULL,
@@ -123,7 +125,8 @@ CREATE TABLE IF NOT EXISTS `pending_checkouts` (
   `username`          VARCHAR(50)     NOT NULL,
   `email`             VARCHAR(150)    NOT NULL,
   `password`          VARCHAR(255)    NOT NULL,
-  `plan_id`           VARCHAR(20)     NOT NULL COMMENT 'weekly | monthly | annual',
+  `plan_id`           VARCHAR(20)     NOT NULL COMMENT 'weekly | monthly | annual | basic | full | custom',
+  `plan_features`     JSON            NULL DEFAULT NULL COMMENT 'Selección de extras si plan_id=custom — igual formato que gyms.plan_features',
   `status`            VARCHAR(20)     NOT NULL DEFAULT 'pending' COMMENT 'pending | completed',
   `created_at`        TIMESTAMP       NULL DEFAULT NULL,
   `updated_at`        TIMESTAMP       NULL DEFAULT NULL,
@@ -501,7 +504,19 @@ INSERT IGNORE INTO `migrations` (`migration`, `batch`) VALUES
   ('2026_05_26_000005_add_onboarding_to_users',                        6),
   ('2026_05_28_000001_add_plan_type_to_gyms',                          7),
   ('2026_05_28_000002_add_operator_fields_to_users',                   7),
-  ('2026_05_28_000003_create_trial_requests_table',                    7);
+  ('2026_05_28_000003_create_trial_requests_table',                    7),
+  ('2026_08_23_000001_add_plan_features_to_gyms_and_pending_checkouts', 8);
+
+-- ------------------------------------------------------------
+-- Base de datos YA EXISTENTE (producción): CREATE TABLE IF NOT EXISTS de
+-- arriba no le agrega la columna nueva a una tabla que ya existía — corre
+-- esto una sola vez a mano contra la DB en vivo:
+--
+--   ALTER TABLE `gyms` ADD COLUMN `plan_features` JSON NULL DEFAULT NULL
+--     COMMENT 'Solo para plan=custom' AFTER `plan_type`;
+--   ALTER TABLE `pending_checkouts` ADD COLUMN `plan_features` JSON NULL
+--     DEFAULT NULL AFTER `plan_id`;
+-- ------------------------------------------------------------
 
 -- ============================================================
 --  NOTA: No hay datos por defecto.

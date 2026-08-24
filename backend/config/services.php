@@ -43,6 +43,10 @@ return [
         'price_weekly'   => env('STRIPE_PRICE_WEEKLY'),
         'price_monthly'  => env('STRIPE_PRICE_MONTHLY'),
         'price_annual'   => env('STRIPE_PRICE_ANNUAL'),
+        // New 3-tier plans (basic/full/custom) — see config/plans.php for prices.
+        'price_basic'    => env('STRIPE_PRICE_BASIC'),
+        'price_full'     => env('STRIPE_PRICE_FULL'),
+        'product_custom' => env('STRIPE_PRODUCT_CUSTOM'),
     ],
 
     'superadmin' => [

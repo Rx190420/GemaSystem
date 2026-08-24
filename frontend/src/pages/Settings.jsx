@@ -13,6 +13,7 @@ import toast from 'react-hot-toast'
 import api from '../api/axios'
 import { THEME_OPTIONS, applyTheme } from '../utils/theme'
 import { useSettingsStore } from '../store/settingsStore'
+import { useAuthStore } from '../store/authStore'
 import ImportDataTab from '../components/settings/ImportDataTab'
 
 const TABS = [
@@ -658,10 +659,28 @@ function SecurityTab() {
   const [changing, setChanging]     = useState(false)
   const [newCode, setNewCode]       = useState('')
   const [saving, setSaving]         = useState(false)
+  const qc = useQueryClient()
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['access-code'],
     queryFn: () => api.get('/auth/access-code').then(r => r.data),
+  })
+
+  // Gym-wide policy — separate from the personal code above. Shares the
+  // ['settings'] query key with the rest of the Settings page so toggling
+  // it here doesn't cause an extra fetch or go stale against GeneralTab etc.
+  const { data: gymSettings } = useQuery({
+    queryKey: ['settings'],
+    queryFn: () => api.get('/settings').then(r => r.data),
+  })
+  const requireCodeEnabled = gymSettings?.require_access_code !== '0' // unset = on by default
+  const policyMutation = useMutation({
+    mutationFn: (enabled) => api.put('/settings', { require_access_code: enabled ? '1' : '0' }),
+    onSuccess: (_, enabled) => {
+      toast.success(enabled ? 'Código de acceso requerido para todos los usuarios' : 'Código de acceso desactivado — el login ya no lo pedirá')
+      qc.setQueryData(['settings'], (old) => ({ ...old, require_access_code: enabled ? '1' : '0' }))
+    },
+    onError: () => toast.error('No se pudo guardar el ajuste'),
   })
 
   const handleChange = async (e) => {
@@ -704,6 +723,33 @@ function SecurityTab() {
         title="Código de acceso"
         description="Código de seguridad requerido en cada inicio de sesión. Único por usuario."
       />
+
+      <SubCard icon={ShieldCheck} title="Exigir código de acceso" description="Ajuste general del gimnasio — aplica a todos los usuarios que tengan un código configurado.">
+        <div className="flex items-center justify-between p-4 rounded-xl border border-gray-200 bg-white">
+          <div>
+            <p className="text-sm font-medium text-gray-900">Pedir código de acceso al iniciar sesión</p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {requireCodeEnabled
+                ? 'Activado (recomendado) — quien tenga un código configurado deberá ingresarlo para entrar.'
+                : 'Desactivado — el login no pedirá el código, aunque un usuario tenga uno configurado.'}
+            </p>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer flex-shrink-0 ml-4">
+            <input
+              type="checkbox"
+              checked={requireCodeEnabled}
+              disabled={policyMutation.isPending}
+              onChange={(e) => policyMutation.mutate(e.target.checked)}
+              className="sr-only peer"
+            />
+            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer
+              peer-checked:after:translate-x-full peer-checked:after:border-white
+              after:content-[''] after:absolute after:top-[2px] after:left-[2px]
+              after:bg-white after:border-gray-300 after:border after:rounded-full
+              after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--color-primary-600)]" />
+          </label>
+        </div>
+      </SubCard>
 
       <SubCard icon={KeyRound} title="Tu código de acceso" description="Solo visible para ti · Requerido al iniciar sesión">
         {hasCode ? (
@@ -833,6 +879,17 @@ export default function SettingsPage() {
   const qc = useQueryClient()
   const { setSystemSettings, systemSettings } = useSettingsStore()
 
+  // Basic-tier gyms don't get the "Importar datos" tab (see plan_features
+  // gating — same feature key the backend's `feature:import` middleware
+  // enforces on the actual /api/import routes; this just hides the tab so a
+  // Basic user never sees a dead-end button).
+  const { user } = useAuthStore()
+  const hasImport = user?.plan_features?.import !== false
+  const visibleGroups = TAB_GROUPS.map(group => ({
+    ...group,
+    tabs: group.tabs.filter(id => id !== 'import' || hasImport),
+  })).filter(group => group.tabs.length > 0)
+
   const { data: settings = {}, isLoading } = useQuery({
     queryKey: ['settings'],
     queryFn: () => api.get('/settings').then(r => r.data),
@@ -889,7 +946,7 @@ export default function SettingsPage() {
             the active tab stands out through weight and a neutral gray fill,
             not color, so the app's purple stays reserved for actual buttons. */}
         <div className="md:w-64 border-b md:border-b-0 md:border-r border-gray-100 p-3 flex md:flex-col gap-1 md:gap-4 overflow-x-auto">
-          {TAB_GROUPS.map(group => (
+          {visibleGroups.map(group => (
             <div key={group.label} className="flex md:flex-col gap-1 flex-shrink-0">
               <p className="hidden md:block px-3 pb-1 text-[11px] font-bold uppercase tracking-wider text-gray-400">
                 {group.label}

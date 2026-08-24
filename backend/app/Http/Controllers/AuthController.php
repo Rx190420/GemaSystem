@@ -3,8 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Mail\UserWelcome;
+use App\Models\Gym;
+use App\Models\Setting;
 use App\Models\User;
+use App\Scopes\GymScope;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -114,8 +118,11 @@ class AuthController extends Controller
             ], 403);
         }
 
-        // If user has an access code, require it
-        if ($user->access_code !== null) {
+        // If user has an access code AND the gym hasn't turned the feature
+        // off, require it. Gyms get it enabled by default (a real security
+        // step, not just a per-user preference) — disabling it in Settings
+        // is an explicit opt-out, not the default state.
+        if ($user->access_code !== null && (!$gym || $this->accessCodeRequired($gym))) {
             if (!$request->filled('access_code')) {
                 return response()->json(['requires_code' => true], 200);
             }
@@ -132,6 +139,45 @@ class AuthController extends Controller
 
         return response()->json(['user' => $this->userPayload($user)])
             ->cookie(...self::authCookie($token));
+    }
+
+    /**
+     * Whether this gym has the "require access code at login" setting on
+     * (the `require_access_code` key in `settings`). Defaults to enabled —
+     * a gym that never touched this in Settings still gets the security
+     * step for any user who's set an access code; only an explicit "off"
+     * skips it.
+     *
+     * Can't reuse SetTenantDatabase/the 'gym.plan' app instance here:
+     * both depend on Auth::guard('sanctum')->user(), which is still null at
+     * this point in login() — there's no session yet, we're creating one.
+     * So for paid gyms this resolves the tenant connection itself, same
+     * logic SetTenantDatabase would apply once a session exists.
+     */
+    private function accessCodeRequired(Gym $gym): bool
+    {
+        if ($gym->plan_type === 'paid' && $gym->db_name) {
+            if (config('database.default') === 'mysql') {
+                config(['database.connections.tenant' => array_merge(
+                    config('database.connections.mysql'),
+                    ['database' => $gym->db_name]
+                )]);
+            } else {
+                config(['database.connections.tenant' => array_merge(
+                    config('database.connections.pgsql'),
+                    ['schema' => [$gym->db_name, 'public']]
+                )]);
+            }
+            DB::purge('tenant');
+            $value = DB::connection('tenant')->table('settings')->where('key', 'require_access_code')->value('value');
+        } else {
+            $value = Setting::withoutGlobalScope(GymScope::class)
+                ->where('gym_id', $gym->id)
+                ->where('key', 'require_access_code')
+                ->value('value');
+        }
+
+        return $value === null ? true : $value !== '0';
     }
 
     // ── Operator-only login (separate endpoint, requires PIN) ─────────────────
@@ -271,6 +317,10 @@ class AuthController extends Controller
             'gym_name'              => $user->gym?->name ?? null,
             'plan_type'             => $user->gym?->plan_type ?? null,
             'plan'                  => $user->gym?->plan ?? null,
+            // Feature-key => bool map (whatsapp/products/classes/import/export) —
+            // Sidebar.jsx/App.jsx gate nav+routes off this instead of
+            // reimplementing Gym::hasFeature()'s legacy/basic/full/custom logic.
+            'plan_features'         => $user->gym?->featureMap() ?? null,
             'billing_status'        => $user->gym?->billing_status ?? null,
             'subscription_starts_at'=> $user->gym?->subscription_starts_at?->toIso8601String() ?? null,
             'subscription_ends_at'  => $user->gym?->subscription_ends_at?->toIso8601String() ?? null,

@@ -7,17 +7,50 @@ use Illuminate\Database\Eloquent\Model;
 class Gym extends Model
 {
     protected $fillable = [
-        'name', 'code', 'plan', 'plan_type', 'db_name',
+        'name', 'code', 'plan', 'plan_type', 'plan_features', 'db_name',
         'stripe_subscription_id', 'stripe_customer_id',
         'status', 'billing_status',
         'subscription_starts_at', 'subscription_ends_at', 'last_payment_at',
     ];
 
     protected $casts = [
-        'subscription_starts_at' => 'datetime',
-        'subscription_ends_at'   => 'datetime',
-        'last_payment_at'        => 'datetime',
+        'plan_features'           => 'array',
+        'subscription_starts_at'  => 'datetime',
+        'subscription_ends_at'    => 'datetime',
+        'last_payment_at'         => 'datetime',
     ];
+
+    /** Billing plans that predate per-feature gating — always full access. */
+    public const LEGACY_PLANS = ['weekly', 'monthly', 'annual'];
+
+    /** The 5 toggleable extras on the 'custom' plan (also all included on 'full'). */
+    public const GATED_FEATURES = ['whatsapp', 'products', 'classes', 'import', 'export'];
+
+    /**
+     * Whether this gym's plan includes the given feature key (one of
+     * self::GATED_FEATURES). Legacy plans (weekly/monthly/annual — includes
+     * free trials, which are created with plan='weekly') and 'full' always
+     * return true, unchanged from how the app has always behaved for them.
+     * 'basic' always returns false. 'custom' reads its own toggle state from
+     * plan_features. Anything else fails closed (false).
+     */
+    public function hasFeature(string $key): bool
+    {
+        if (in_array($this->plan, self::LEGACY_PLANS, true)) return true;
+        if ($this->plan === 'full')  return true;
+        if ($this->plan === 'basic') return false;
+        if ($this->plan === 'custom') return (bool) (($this->plan_features ?? [])[$key] ?? false);
+        return false;
+    }
+
+    /** Feature-key => bool map for every gated feature — handed straight to the frontend. */
+    public function featureMap(): array
+    {
+        return array_combine(
+            self::GATED_FEATURES,
+            array_map(fn ($key) => $this->hasFeature($key), self::GATED_FEATURES)
+        );
+    }
 
     /**
      * True when the gym should be blocked from accessing the system.

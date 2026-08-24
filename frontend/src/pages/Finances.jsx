@@ -16,6 +16,7 @@ import api from '../api/axios'
 import toast from 'react-hot-toast'
 import { isSparseTrend, trimLeadingEmpty } from '../utils/charts'
 import { useSettingsStore } from '../store/settingsStore'
+import { useAuthStore } from '../store/authStore'
 import useLockBodyScroll from '../hooks/useLockBodyScroll'
 import ExportMenu from '../components/ExportMenu'
 import { exportToExcel, exportToPDF } from '../utils/exportUtils'
@@ -595,6 +596,8 @@ function CustomPieTooltip({ active, payload }) {
 
 export default function Finances() {
   const { privacyMode, togglePrivacy, systemSettings } = useSettingsStore()
+  const { user }                        = useAuthStore()
+  const canExport                       = user?.plan_features?.export !== false
   const qc                              = useQueryClient()
   const [page, setPage]                 = useState(1)
   const [pageSize, setPageSize]         = useState(12)
@@ -702,7 +705,7 @@ export default function Finances() {
             {privacyMode ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
             {privacyMode ? 'Mostrar' : 'Ocultar'}
           </button>
-          <ExportMenu onExportExcel={handleExportExcel} onExportPDF={handleExportPDF} loading={exporting} />
+          {canExport && <ExportMenu onExportExcel={handleExportExcel} onExportPDF={handleExportPDF} loading={exporting} />}
         </div>
       </div>
 
