@@ -51,7 +51,6 @@ const PRICE_NOTICE = {
 const CONTACT_METHODS = [
   { id: 'email',    label: 'Correo',   icon: Mail },
   { id: 'whatsapp', label: 'WhatsApp', icon: MessageSquare },
-  { id: 'call',     label: 'Llamada',  icon: Phone },
 ]
 
 const inp    = 'w-full pl-10 pr-4 py-2.5 rounded-xl text-sm border outline-none transition-all bg-gray-50 border-gray-200 focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 text-gray-900 placeholder-gray-400'
@@ -62,7 +61,7 @@ const inpErr = 'w-full pl-10 pr-4 py-2.5 rounded-xl text-sm border outline-none 
 export default function Projects() {
   const [projectType, setProjectType] = useState(null)
   const [dismissedNotice, setDismissedNotice] = useState(false)
-  const [form, setForm] = useState({ name: '', email: '', company: '', description: '', budget: '', contact: 'email' })
+  const [form, setForm] = useState({ name: '', email: '', phone: '', company: '', description: '', budget: '', contact: 'email' })
   const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
@@ -85,6 +84,7 @@ export default function Projects() {
     if (!form.email.trim())                    e.email         = 'El correo es requerido'
     else if (!/\S+@\S+\.\S+/.test(form.email)) e.email        = 'Correo no válido'
     if (form.description.trim().length < 20)   e.description   = 'Describe tu proyecto (mínimo 20 caracteres)'
+    if (form.contact === 'whatsapp' && !form.phone.trim()) e.phone = 'El teléfono es requerido para contactarte por WhatsApp'
     return e
   }
 
@@ -97,6 +97,7 @@ export default function Projects() {
         type:           'contact',
         name:           form.name.trim(),
         email:          form.email.trim(),
+        phone:          form.contact === 'whatsapp' ? form.phone.trim() : undefined,
         company:        form.company.trim() || undefined,
         category:       projectType,
         message:        form.description.trim(),
@@ -358,7 +359,7 @@ export default function Projects() {
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
                   ¿Cómo prefieres que te contactemos?
                 </label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   {CONTACT_METHODS.map(({ id, label, icon: Icon }) => (
                     <button key={id} type="button" onClick={() => set('contact', id)}
                       className={`flex flex-col items-center gap-1.5 py-3 rounded-xl border-2 text-xs font-semibold transition-all ${
@@ -372,6 +373,20 @@ export default function Projects() {
                   ))}
                 </div>
               </div>
+
+              {/* Phone (only when WhatsApp is selected) */}
+              {form.contact === 'whatsapp' && (
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Número de WhatsApp</label>
+                  <div className="relative">
+                    <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                    <input value={form.phone} onChange={e => set('phone', e.target.value)}
+                      type="tel" placeholder="Ej. 55 1234 5678"
+                      className={errors.phone ? inpErr : inp} />
+                  </div>
+                  {errors.phone && <p className="mt-1 text-xs text-red-500">{errors.phone}</p>}
+                </div>
+              )}
 
               {/* Submit */}
               <button type="button" onClick={submit} disabled={loading}

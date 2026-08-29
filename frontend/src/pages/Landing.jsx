@@ -448,9 +448,9 @@ function AuthModal({ onClose }) {
                         </button>
                       ))}
                     </div>
-                    <a href="mailto:soporte@gemasystem.mx"
+                    <a href="mailto:soporte@gemasystem.app"
                       className="flex items-center gap-2 text-xs text-gray-400 hover:text-indigo-600 transition-colors justify-center">
-                      <Send className="w-3 h-3" /> soporte@gemasystem.mx
+                      <Send className="w-3 h-3" /> soporte@gemasystem.app
                     </a>
                   </>
                 )}
@@ -502,9 +502,9 @@ function AuthModal({ onClose }) {
                         </button>
                       ))}
                     </div>
-                    <a href="mailto:soporte@gemasystem.mx"
+                    <a href="mailto:soporte@gemasystem.app"
                       className="flex items-center gap-2 text-xs text-gray-400 hover:text-indigo-600 transition-colors justify-center">
-                      <Send className="w-3 h-3" /> soporte@gemasystem.mx
+                      <Send className="w-3 h-3" /> soporte@gemasystem.app
                     </a>
                   </>
                 )}
@@ -537,12 +537,12 @@ function AuthModal({ onClose }) {
                     )}
                     <div className="rounded-2xl border border-gray-200 p-4 space-y-2.5">
                       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">¿Necesitas ayuda?</p>
-                      <a href="mailto:soporte@gemasystem.mx"
+                      <a href="mailto:soporte@gemasystem.app"
                         className="flex items-center gap-2.5 text-sm text-gray-700 hover:text-indigo-600 transition-colors group">
                         <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center flex-shrink-0 group-hover:bg-indigo-100 transition-colors">
                           <Send className="w-3.5 h-3.5 text-indigo-600" />
                         </div>
-                        soporte@gemasystem.mx
+                        soporte@gemasystem.app
                       </a>
                     </div>
                   </>
@@ -1672,8 +1672,8 @@ export default function Landing() {
               <div className="rounded-2xl border border-white/10 p-5" style={{ background: 'rgba(255,255,255,0.02)' }}>
                 <p className="text-white text-sm font-bold mb-3">Contacto</p>
                 <div className="space-y-2">
-                  <a href="mailto:soporte@gemasystem.mx" className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors">
-                    <Send className="w-3.5 h-3.5 flex-shrink-0" /> soporte@gemasystem.mx
+                  <a href="mailto:soporte@gemasystem.app" className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors">
+                    <Send className="w-3.5 h-3.5 flex-shrink-0" /> soporte@gemasystem.app
                   </a>
                   <p className="flex items-center gap-2 text-sm text-slate-400">
                     <BadgeCheck className="w-3.5 h-3.5 flex-shrink-0" /> Hecho en México

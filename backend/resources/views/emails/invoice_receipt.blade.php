@@ -50,5 +50,5 @@
 @endsection
 
 @section('footer-extra')
-  <p style="margin-top:4px;">¿Preguntas? Escríbenos a <a href="mailto:soporte@gemasystem.mx" style="color:#6366f1;text-decoration:none;">soporte@gemasystem.mx</a></p>
+  <p style="margin-top:4px;">¿Preguntas? Escríbenos a <a href="mailto:soporte@gemasystem.app" style="color:#6366f1;text-decoration:none;">soporte@gemasystem.app</a></p>
 @endsection

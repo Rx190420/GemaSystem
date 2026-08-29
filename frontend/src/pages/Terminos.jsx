@@ -32,7 +32,7 @@ export default function Terminos() {
           Para usar GemaSystem debes crear una cuenta proporcionando información veraz, completa y actualizada
           (nombre del gimnasio, usuario, correo electrónico y contraseña). Eres responsable de mantener la
           confidencialidad de tus credenciales y de todas las actividades realizadas bajo tu cuenta.
-          Notifícanos de inmediato a <a href="mailto:soporte@gemasystem.mx" className="text-indigo-600 hover:text-indigo-700 font-medium">soporte@gemasystem.mx</a> ante
+          Notifícanos de inmediato a <a href="mailto:soporte@gemasystem.app" className="text-indigo-600 hover:text-indigo-700 font-medium">soporte@gemasystem.app</a> ante
           cualquier uso no autorizado.
         </p>
       </LegalSection>
@@ -49,7 +49,7 @@ export default function Terminos() {
           Las suscripciones se renuevan automáticamente al final de cada periodo (semanal o mensual) salvo
           que se cancelen antes de la fecha de renovación. No hay contrato de permanencia mínima: puedes
           cancelar en cualquier momento desde el portal de facturación de Stripe o escribiendo a
-          soporte@gemasystem.mx, y conservarás acceso hasta el final del periodo ya pagado.
+          soporte@gemasystem.app, y conservarás acceso hasta el final del periodo ya pagado.
         </p>
       </LegalSection>
 
@@ -137,7 +137,7 @@ export default function Terminos() {
       <LegalSection title="14. Contacto">
         <p>
           Para preguntas sobre estos Términos, escríbenos a{' '}
-          <a href="mailto:soporte@gemasystem.mx" className="text-indigo-600 hover:text-indigo-700 font-medium">soporte@gemasystem.mx</a>.
+          <a href="mailto:soporte@gemasystem.app" className="text-indigo-600 hover:text-indigo-700 font-medium">soporte@gemasystem.app</a>.
         </p>
       </LegalSection>
 

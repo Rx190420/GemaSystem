@@ -24,6 +24,6 @@
   @endif
 
   <div class="notice">
-    <p class="notice-text">Si crees que esto es un error o tienes más información que pueda ayudar, escríbenos directamente a <a href="mailto:soporte@gemasystem.mx" style="color:#6366f1;text-decoration:none;">soporte@gemasystem.mx</a> y con gusto revisaremos tu caso.</p>
+    <p class="notice-text">Si crees que esto es un error o tienes más información que pueda ayudar, escríbenos directamente a <a href="mailto:soporte@gemasystem.app" style="color:#6366f1;text-decoration:none;">soporte@gemasystem.app</a> y con gusto revisaremos tu caso.</p>
   </div>
 @endsection

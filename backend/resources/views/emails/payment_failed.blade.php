@@ -34,6 +34,6 @@
   @endif
 
   <div class="notice amber">
-    <p class="notice-text"><strong>Tienes {{ $graceDays ?? 3 }} días</strong> para actualizar tu información de pago antes de que el servicio sea suspendido. Si necesitas ayuda escríbenos a <a href="mailto:soporte@gemasystem.mx" style="color:#6366f1;">soporte@gemasystem.mx</a>.</p>
+    <p class="notice-text"><strong>Tienes {{ $graceDays ?? 3 }} días</strong> para actualizar tu información de pago antes de que el servicio sea suspendido. Si necesitas ayuda escríbenos a <a href="mailto:soporte@gemasystem.app" style="color:#6366f1;">soporte@gemasystem.app</a>.</p>
   </div>
 @endsection

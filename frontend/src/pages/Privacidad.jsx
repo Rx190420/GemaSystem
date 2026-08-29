@@ -9,7 +9,7 @@ export default function Privacidad() {
           GemaSystem ("nosotros") es responsable del tratamiento de los datos personales que recabamos a través de
           este sitio y de la Plataforma, de conformidad con la Ley Federal de Protección de Datos Personales
           en Posesión de los Particulares (LFPDPPP) y su Reglamento. Para cualquier duda sobre este aviso,
-          puedes contactarnos en <a href="mailto:soporte@gemasystem.mx" className="text-indigo-600 hover:text-indigo-700 font-medium">soporte@gemasystem.mx</a>.
+          puedes contactarnos en <a href="mailto:soporte@gemasystem.app" className="text-indigo-600 hover:text-indigo-700 font-medium">soporte@gemasystem.app</a>.
         </p>
       </LegalSection>
 
@@ -52,7 +52,7 @@ export default function Privacidad() {
         <p>
           Tienes derecho a Acceder, Rectificar, Cancelar u Oponerte (derechos "ARCO") al tratamiento de tus
           datos personales, así como a revocar tu consentimiento en cualquier momento. Para ejercer estos
-          derechos, envía tu solicitud a <a href="mailto:soporte@gemasystem.mx" className="text-indigo-600 hover:text-indigo-700 font-medium">soporte@gemasystem.mx</a> indicando:
+          derechos, envía tu solicitud a <a href="mailto:soporte@gemasystem.app" className="text-indigo-600 hover:text-indigo-700 font-medium">soporte@gemasystem.app</a> indicando:
         </p>
         <ul className="list-disc pl-5 space-y-1.5">
           <li>Tu nombre completo y correo electrónico asociado a la cuenta.</li>
@@ -90,7 +90,7 @@ export default function Privacidad() {
       <LegalSection title="9. Contacto">
         <p>
           Si tienes dudas sobre este aviso de privacidad o sobre el tratamiento de tus datos, contáctanos en{' '}
-          <a href="mailto:soporte@gemasystem.mx" className="text-indigo-600 hover:text-indigo-700 font-medium">soporte@gemasystem.mx</a>.
+          <a href="mailto:soporte@gemasystem.app" className="text-indigo-600 hover:text-indigo-700 font-medium">soporte@gemasystem.app</a>.
         </p>
       </LegalSection>
 

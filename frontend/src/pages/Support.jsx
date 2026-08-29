@@ -64,7 +64,7 @@ const FAQS = [
       },
       {
         q: '¿Puedo cancelar mi suscripción a GemaSystem en cualquier momento?',
-        a: 'Sí, no hay contratos de permanencia. Puedes cancelar cuando quieras desde el portal de Stripe o contactando a soporte@gemasystem.mx. Al cancelar, mantendrás acceso hasta el final del período pagado.',
+        a: 'Sí, no hay contratos de permanencia. Puedes cancelar cuando quieras desde el portal de Stripe o contactando a soporte@gemasystem.app. Al cancelar, mantendrás acceso hasta el final del período pagado.',
       },
       {
         q: '¿El sistema lleva un historial de todas las membresías de un socio?',
@@ -892,7 +892,7 @@ export default function Support() {
             <div className="w-px h-5 bg-gray-100" />
             <div className="flex items-center gap-1.5 text-sm text-gray-600">
               <Mail className="w-3.5 h-3.5 text-gray-400" />
-              soporte@gemasystem.mx
+              soporte@gemasystem.app
             </div>
           </div>
         </div>

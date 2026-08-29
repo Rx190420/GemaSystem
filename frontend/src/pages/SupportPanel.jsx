@@ -253,7 +253,7 @@ const INTERNAL_FAQS = [
       },
       {
         q: '¿Qué pasa si mi suscripción a GemaSystem vence?',
-        a: 'Al vencer pierdes acceso al panel de administración. Tus datos se conservan 30 días adicionales. Puedes renovar desde el portal de Stripe o contactando a soporte@gemasystem.mx.',
+        a: 'Al vencer pierdes acceso al panel de administración. Tus datos se conservan 30 días adicionales. Puedes renovar desde el portal de Stripe o contactando a soporte@gemasystem.app.',
       },
     ],
   },
@@ -786,14 +786,14 @@ function SupportHub({ tickets, loading, onSelect, onNew, onFaq }) {
           </div>
         </button>
 
-        <a href="mailto:soporte@gemasystem.mx"
+        <a href="mailto:soporte@gemasystem.app"
           className="flex items-center gap-3 p-4 rounded-2xl text-left bg-white border border-gray-200 transition-all hover:-translate-y-0.5 hover:shadow-md hover:border-indigo-200">
           <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center flex-shrink-0">
             <Mail className="w-5 h-5 text-indigo-600" />
           </div>
           <div>
             <p className="text-sm font-bold text-gray-900">Enviar correo</p>
-            <p className="text-xs text-gray-400">soporte@gemasystem.mx</p>
+            <p className="text-xs text-gray-400">soporte@gemasystem.app</p>
           </div>
         </a>
       </div>
