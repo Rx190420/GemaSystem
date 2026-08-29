@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import api from '../api/axios'
+import SkeletonLogoMark from '../components/SkeletonLogoMark'
 import useLockBodyScroll from '../hooks/useLockBodyScroll'
 import useSort from '../hooks/useSort'
 import SortableTh from '../components/SortableTh'
@@ -164,7 +165,7 @@ export default function WhatsAppPage() {
 
   if (isLoading) return (
     <div className="flex items-center justify-center py-20">
-      <Loader2 className="w-7 h-7 animate-spin text-gray-400" />
+      <SkeletonLogoMark size={56} />
     </div>
   )
 

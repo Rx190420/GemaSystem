@@ -1,121 +1,156 @@
-import * as XLSX from 'xlsx'
+import ExcelJS from 'exceljs'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-const dateSuffix = () => new Date().toISOString().slice(0, 10)
-const dateLong   = () => new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
-const timeNow    = () => new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })
-
-// Colors (RGB arrays)
-const C = {
-  brand:    [99,  102, 241],   // indigo-500
-  brandDark:[67,  56,  202],   // indigo-700
-  dark:     [15,  23,  42],    // slate-900
-  gray:     [100, 116, 139],   // slate-500
-  lightGray:[226, 232, 240],   // slate-200
-  rowAlt:   [248, 250, 252],   // slate-50
-  white:    [255, 255, 255],
-  emerald:  [16,  185, 129],   // emerald-500
-  amber:    [245, 158, 11],    // amber-500
-}
-
-// Detect amount columns by header keyword
-const isAmountCol = h => /monto|precio|amount|mxn/i.test(h)
-const isNumericCol = h => /días|visitas|cantidad|num/i.test(h)
+import { dateSuffix, dateLong, timeNow, C, HEX, isAmountCol, isNumericCol } from './exportShared'
 
 // ─────────────────────────────────────────────────────────────────────────────
-// EXCEL
+// EXCEL — built with ExcelJS so real styling (bold, fills, borders) is honored.
 // ─────────────────────────────────────────────────────────────────────────────
-export function exportToExcel(rows, columns, filename, opts = {}) {
+export async function exportToExcel(rows, columns, filename, opts = {}) {
   const { title = 'Reporte', gymName = 'GemaSystem', subtitle = '' } = opts
 
-  const wb   = XLSX.utils.book_new()
-  const aoa  = []  // array-of-arrays
+  const wb = new ExcelJS.Workbook()
+  wb.creator = gymName
+  wb.created = new Date()
+
+  const sheetName = title.slice(0, 31).replace(/[:\\/?*[\]]/g, '') || 'Reporte'
+  const ws = wb.addWorksheet(sheetName, { views: [{ showGridLines: false }] })
 
   const ncols = columns.length
-
-  // ── Cover block ───────────────────────────────────────────────────────────
-  aoa.push([gymName])
-  aoa.push([title])
-  if (subtitle) aoa.push([subtitle])
-  aoa.push([`Fecha de generación: ${dateLong()} ${timeNow()}`])
-  aoa.push([`Total de registros: ${rows.length}`])
-  aoa.push([])  // spacer
-
-  const headerRow = aoa.length  // 0-based index of the column header row
-
-  // ── Column headers ────────────────────────────────────────────────────────
-  aoa.push(columns.map(c => c.header))
-
-  // ── Data rows ─────────────────────────────────────────────────────────────
-  rows.forEach(row => {
-    aoa.push(
-      columns.map(c => {
-        const v = c.value(row)
-        const num = parseFloat(v)
-        return isAmountCol(c.header) && !isNaN(num) ? num : v
-      })
-    )
-  })
-
-  // ── Totals row (amount columns) ───────────────────────────────────────────
   const amountIdxs = columns
     .map((c, i) => (isAmountCol(c.header) ? i : -1))
     .filter(i => i >= 0)
 
-  if (amountIdxs.length > 0) {
-    aoa.push([])
-    const totRow = Array(ncols).fill('')
-    totRow[0] = 'TOTAL'
-    amountIdxs.forEach(i => {
-      const sum = rows.reduce((acc, r) => {
-        const n = parseFloat(columns[i].value(r))
-        return acc + (isNaN(n) ? 0 : n)
-      }, 0)
-      totRow[i] = sum
-    })
-    aoa.push(totRow)
-  }
-
-  const ws = XLSX.utils.aoa_to_sheet(aoa)
+  const thin = { style: 'thin', color: { argb: HEX.lightGray } }
+  const borderAll = { top: thin, left: thin, bottom: thin, right: thin }
 
   // ── Column widths ─────────────────────────────────────────────────────────
-  const colWidths = columns.map(c => {
-    const maxLen = rows.reduce((m, r) => {
-      const v = String(c.value(r) ?? '')
-      return Math.max(m, v.length)
-    }, c.header.length)
-    return { wch: Math.min(Math.max(maxLen + 3, 12), 40) }
+  ws.columns = columns.map(c => {
+    const maxLen = rows.reduce((m, r) => Math.max(m, String(c.value(r) ?? '').length), c.header.length)
+    return { width: Math.min(Math.max(maxLen + 3, 12), 40) }
   })
-  ws['!cols'] = colWidths
 
-  // ── Merged cells (title block) ────────────────────────────────────────────
-  const merges = []
-  for (let r = 0; r < headerRow; r++) {
-    if (aoa[r].length > 0 && aoa[r][0] !== '') {
-      merges.push({ s: { r, c: 0 }, e: { r, c: ncols - 1 } })
-    }
+  // ── Cover block ───────────────────────────────────────────────────────────
+  let r = 1
+
+  ws.mergeCells(r, 1, r, ncols)
+  ws.getRow(r).height = 28
+  const gymCell = ws.getCell(r, 1)
+  gymCell.value = gymName
+  gymCell.font = { bold: true, size: 16, color: { argb: HEX.white } }
+  gymCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 }
+  gymCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: HEX.brand } }
+  r++
+
+  ws.mergeCells(r, 1, r, ncols)
+  ws.getRow(r).height = 22
+  const titleCell = ws.getCell(r, 1)
+  titleCell.value = title
+  titleCell.font = { bold: true, size: 13, color: { argb: HEX.dark } }
+  titleCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 }
+  titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: HEX.rowAlt } }
+  r++
+
+  if (subtitle) {
+    ws.mergeCells(r, 1, r, ncols)
+    const subCell = ws.getCell(r, 1)
+    subCell.value = subtitle
+    subCell.font = { italic: true, size: 10, color: { argb: HEX.gray } }
+    subCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 }
+    r++
   }
-  ws['!merges'] = merges
 
-  // ── Cell number formats ───────────────────────────────────────────────────
-  const dataStartRow = headerRow + 1
-  rows.forEach((_, ri) => {
-    amountIdxs.forEach(ci => {
-      const cellAddr = XLSX.utils.encode_cell({ r: dataStartRow + ri, c: ci })
-      if (ws[cellAddr] && typeof ws[cellAddr].v === 'number') {
-        ws[cellAddr].z = '#,##0.00'
+  ws.mergeCells(r, 1, r, ncols)
+  const genCell = ws.getCell(r, 1)
+  genCell.value = `Generado el ${dateLong()}, ${timeNow()}`
+  genCell.font = { size: 9.5, color: { argb: HEX.gray } }
+  genCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 }
+  r++
+
+  ws.mergeCells(r, 1, r, ncols)
+  const countCell = ws.getCell(r, 1)
+  countCell.value = `Total de registros: ${rows.length}`
+  countCell.font = { bold: true, size: 9.5, color: { argb: HEX.dark } }
+  countCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 }
+  r++
+
+  r++ // spacer row
+
+  // ── Header row ────────────────────────────────────────────────────────────
+  const headerRowNum = r
+  const headerRow = ws.getRow(headerRowNum)
+  headerRow.height = 22
+  columns.forEach((c, i) => {
+    const cell = headerRow.getCell(i + 1)
+    cell.value = c.header
+    cell.font = { bold: true, size: 10, color: { argb: HEX.white } }
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: HEX.brandDark } }
+    cell.alignment = { vertical: 'middle', horizontal: isAmountCol(c.header) || isNumericCol(c.header) ? 'center' : 'left', indent: 1 }
+    cell.border = borderAll
+  })
+  r++
+
+  // ── Data rows ─────────────────────────────────────────────────────────────
+  rows.forEach((row, ri) => {
+    const excelRow = ws.getRow(r)
+    columns.forEach((c, ci) => {
+      const raw = c.value(row)
+      const num = parseFloat(raw)
+      const cell = excelRow.getCell(ci + 1)
+      const isAmount = isAmountCol(c.header)
+      const isNumeric = isNumericCol(c.header)
+
+      if (isAmount && !isNaN(num)) {
+        cell.value = num
+        cell.numFmt = '#,##0.00'
+      } else {
+        cell.value = raw ?? '—'
+      }
+
+      cell.font = ci === 0
+        ? { bold: true, size: 10, color: { argb: HEX.dark } }
+        : { size: 10, color: { argb: isAmount ? HEX.brandDark : HEX.dark } }
+
+      cell.alignment = { vertical: 'middle', horizontal: (isAmount || isNumeric) ? 'center' : 'left', indent: ci === 0 ? 1 : 0 }
+      cell.border = borderAll
+      if (ri % 2 === 1) {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: HEX.rowAlt } }
       }
     })
+    r++
   })
 
-  // ── Freeze header ─────────────────────────────────────────────────────────
-  ws['!freeze'] = { xSplit: 0, ySplit: headerRow + 1 }
+  // ── Totals row (amount columns) ───────────────────────────────────────────
+  if (amountIdxs.length > 0) {
+    const totalsRow = ws.getRow(r)
+    totalsRow.height = 20
+    for (let ci = 1; ci <= ncols; ci++) {
+      const cell = totalsRow.getCell(ci)
+      cell.border = { top: { style: 'medium', color: { argb: HEX.brand } } }
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: HEX.totalsBg } }
+      cell.font = { bold: true, size: 10, color: { argb: HEX.brandDark } }
+    }
+    totalsRow.getCell(1).value = 'TOTAL'
+    totalsRow.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 1 }
+    amountIdxs.forEach(i => {
+      const sum = rows.reduce((acc, row) => {
+        const n = parseFloat(columns[i].value(row))
+        return acc + (isNaN(n) ? 0 : n)
+      }, 0)
+      const cell = totalsRow.getCell(i + 1)
+      cell.value = sum
+      cell.numFmt = '#,##0.00'
+      cell.alignment = { vertical: 'middle', horizontal: 'center' }
+    })
+    r++
+  }
 
-  const sheetName = title.slice(0, 31).replace(/[:\\/\?*\[\]]/g, '')
-  XLSX.utils.book_append_sheet(wb, ws, sheetName || 'Reporte')
-  XLSX.writeFile(wb, `${filename}_${dateSuffix()}.xlsx`)
+  // ── Freeze panes below header ────────────────────────────────────────────
+  ws.views = [{ state: 'frozen', ySplit: headerRowNum, showGridLines: false }]
+
+  const buffer = await wb.xlsx.writeBuffer()
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+  return { kind: 'excel', blob, filename: `${filename}_${dateSuffix()}.xlsx` }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -136,13 +171,16 @@ export function exportToPDF(rows, columns, filename, opts = {}) {
   const margin = 14
 
   // ── Header bar ────────────────────────────────────────────────────────────
-  // Gradient-like effect: two rectangles
   doc.setFillColor(...accent)
   doc.rect(0, 0, pageW, 32, 'F')
 
-  // Subtle dark stripe at top
+  // Subtle dark stripe at top + a hairline seam under the bar for a flatter,
+  // more deliberate edge than a plain solid block.
   doc.setFillColor(accent[0] - 20, accent[1] - 20, accent[2] - 20)
   doc.rect(0, 0, pageW, 4, 'F')
+  doc.setDrawColor(accent[0] - 30, accent[1] - 30, accent[2] - 30)
+  doc.setLineWidth(0.3)
+  doc.line(0, 32, pageW, 32)
 
   // Gym name
   doc.setFont('helvetica', 'bold')
@@ -189,6 +227,9 @@ export function exportToPDF(rows, columns, filename, opts = {}) {
     doc.setFillColor(...C.rowAlt)
     doc.setDrawColor(...C.lightGray)
     doc.roundedRect(x, curY, cardW, 13, 1.5, 1.5, 'FD')
+    // Thin accent tick on the left edge of each card for a touch of color
+    doc.setFillColor(...accent)
+    doc.roundedRect(x, curY, 1.4, 13, 0.7, 0.7, 'F')
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(6.5)
     doc.setTextColor(...C.gray)
@@ -209,12 +250,16 @@ export function exportToPDF(rows, columns, filename, opts = {}) {
     .map((c, i) => (isNumericCol(c.header) || isAmountCol(c.header)) ? i : -1)
     .filter(i => i >= 0)
 
-  const colStyles = {}
+  const colStyles = {
+    // The first column is always the row's primary/identifying field
+    // (name, member, etc.) — bold it so it reads as the anchor of the row.
+    0: { fontStyle: 'bold', textColor: C.dark },
+  }
   amountColIdxs.forEach(i => {
     colStyles[i] = { halign: 'right', fontStyle: 'bold', textColor: accent }
   })
   numericColIdxs.filter(i => !amountColIdxs.includes(i)).forEach(i => {
-    colStyles[i] = { halign: 'center' }
+    colStyles[i] = { ...colStyles[i], halign: 'center' }
   })
 
   // Compute totals for foot row
@@ -275,5 +320,5 @@ export function exportToPDF(rows, columns, filename, opts = {}) {
     },
   })
 
-  doc.save(`${filename}_${dateSuffix()}.pdf`)
+  return { kind: 'pdf', doc, filename: `${filename}_${dateSuffix()}.pdf` }
 }

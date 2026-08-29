@@ -137,7 +137,21 @@ class AuthController extends Controller
 
         $token = $user->createToken('auth-token', ['*'])->plainTextToken;
 
-        return response()->json(['user' => $this->userPayload($user)])
+        // The cookie is the primary carrier (HttpOnly — a same-site XSS can't
+        // read it) and works fine for most browsers. But it's a cross-site
+        // cookie (frontend and API live on different domains), and mobile
+        // Safari/Chrome increasingly block those outright — the request
+        // still reaches the server, the Set-Cookie header still arrives, the
+        // browser just never persists or resends it, so every request after
+        // login 401s and the SPA bounces straight back to the login screen.
+        // Sending the token in the body too lets the frontend attach it
+        // itself as `Authorization: Bearer` (see api/axios.js) — a plain
+        // header isn't a cookie and isn't subject to any of that, so it
+        // keeps working even where the cookie silently doesn't. Purely
+        // additive: TokenFromCookie only fills the header when the request
+        // didn't already carry one, so nothing changes for clients that
+        // still get the cookie fine.
+        return response()->json(['user' => $this->userPayload($user), 'token' => $token])
             ->cookie(...self::authCookie($token));
     }
 
@@ -217,7 +231,8 @@ class AuthController extends Controller
 
         $token = $user->createToken('auth-token', ['*', 'operator'])->plainTextToken;
 
-        return response()->json(['user' => $this->userPayload($user), 'is_operator' => true])
+        // See the comment in login() above — same cross-site-cookie fallback.
+        return response()->json(['user' => $this->userPayload($user), 'is_operator' => true, 'token' => $token])
             ->cookie(...self::authCookie($token));
     }
 

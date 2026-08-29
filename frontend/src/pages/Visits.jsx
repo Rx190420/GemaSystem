@@ -31,6 +31,7 @@ import useSort from '../hooks/useSort'
 import SortableTh from '../components/SortableTh'
 import Pagination from '../components/Pagination'
 import { exportToExcel, exportToPDF } from '../utils/exportUtils'
+import { runExport } from '../utils/runExport'
 import { useSettingsStore } from '../store/settingsStore'
 import { useAuthStore } from '../store/authStore'
 import useLockBodyScroll from '../hooks/useLockBodyScroll'
@@ -930,23 +931,39 @@ export default function Visits() {
     fill:  TYPE_CHART_COLORS[r.type] ?? '#94A3B8',
   }))
 
-  async function fetchAll() {
-    const res = await api.get('/visits', { params: { page: 1, per_page: 9999, ...(dateFilter && { date: dateFilter }), ...(search.trim() && { search: search.trim() }) } })
+  async function fetchAll(signal) {
+    const res = await api.get('/visits', { params: { page: 1, per_page: 9999, ...(dateFilter && { date: dateFilter }), ...(search.trim() && { search: search.trim() }) }, signal })
     return res.data.data ?? []
   }
 
   async function handleExportExcel() {
     setExporting(true)
     const gymName = systemSettings?.gym_name || 'GemaSystem'
-    try { exportToExcel(await fetchAll(), EXPORT_COLS, 'visitas', { title: 'Reporte de Visitas', gymName }) }
-    finally { setExporting(false) }
+    try {
+      await runExport({
+        label: 'Reporte de Visitas', fileLabel: 'visitas.xlsx', kind: 'excel',
+        task: async (signal, setPhase) => {
+          const rows = await fetchAll(signal)
+          setPhase('generating')
+          return exportToExcel(rows, EXPORT_COLS, 'visitas', { title: 'Reporte de Visitas', gymName })
+        },
+      })
+    } finally { setExporting(false) }
   }
 
   async function handleExportPDF() {
     setExporting(true)
     const gymName = systemSettings?.gym_name || 'GemaSystem'
-    try { exportToPDF(await fetchAll(), EXPORT_COLS, 'visitas', { title: 'Reporte de Visitas', gymName }) }
-    finally { setExporting(false) }
+    try {
+      await runExport({
+        label: 'Reporte de Visitas', fileLabel: 'visitas.pdf', kind: 'pdf',
+        task: async (signal, setPhase) => {
+          const rows = await fetchAll(signal)
+          setPhase('generating')
+          return exportToPDF(rows, EXPORT_COLS, 'visitas', { title: 'Reporte de Visitas', gymName })
+        },
+      })
+    } finally { setExporting(false) }
   }
 
   const axisProps = { tick: { fontSize: 11, fill: '#94A3B8' }, tickLine: false, axisLine: false }

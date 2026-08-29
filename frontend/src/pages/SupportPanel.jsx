@@ -10,6 +10,7 @@ import {
 import { useAuthStore } from '../store/authStore'
 import api from '../api/axios'
 import toast from 'react-hot-toast'
+import SkeletonLogoMark from '../components/SkeletonLogoMark'
 
 // ── Status / Cats ──────────────────────────────────────────────────────────────
 
@@ -628,7 +629,7 @@ function TicketThread({ ticketId, user, onBack }) {
     finally { setSending(false) }
   }
 
-  if (loading) return <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 text-gray-300 animate-spin" /></div>
+  if (loading) return <div className="flex justify-center py-20"><SkeletonLogoMark size={56} /></div>
   if (!ticket) return null
 
   const isOpen = !['resolved', 'closed'].includes(ticket.status)
@@ -811,7 +812,7 @@ function SupportHub({ tickets, loading, onSelect, onNew, onFaq }) {
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-16"><Loader2 className="w-5 h-5 text-gray-300 animate-spin" /></div>
+          <div className="flex justify-center py-16"><SkeletonLogoMark size={40} /></div>
         ) : tickets.length === 0 ? (
           <div className="bg-white border border-gray-200 rounded-2xl p-10 text-center">
             <MessageSquare className="w-8 h-8 text-gray-200 mx-auto mb-3" />

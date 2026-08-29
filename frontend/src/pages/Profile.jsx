@@ -5,6 +5,7 @@ import {
   Lock, Eye, EyeOff, Loader2, CheckCircle2, ShieldCheck,
   AlertTriangle, BadgeCheck, ArrowLeft, Users, TrendingUp,
   Activity, Shield, ChevronRight, Dumbbell, KeyRound, Info,
+  MessageSquare, Package, Upload, Download, Gift,
 } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import api from '../api/axios'
@@ -191,6 +192,8 @@ export default function Profile() {
   const [changingPlan, setChangingPlan]   = useState(false)
   const [planBusy, setPlanBusy]           = useState(false)
   const [customFeatures, setCustomFeatures] = useState([])
+  const [selectedExtras, setSelectedExtras] = useState([]) // cart — features not yet owned, picked to buy together
+  const [extraCartBusy, setExtraCartBusy] = useState(false)
   const { plans } = usePlans()
   useLockBodyScroll(showCancelModal)
 
@@ -230,6 +233,30 @@ export default function Profile() {
     } catch (e) {
       toast.error(e.response?.data?.message ?? 'No se pudo iniciar el cambio de plan.')
       setPlanBusy(false)
+    }
+  }
+
+  // Toggling only ever adds/removes a not-yet-owned extra from the cart
+  // (selectedExtras) — no charge yet; buyExtrasCart() below checks out
+  // everything selected in one Stripe payment. Already-purchased extras
+  // aren't editable from here (shown shaded with an arrow instead).
+  const toggleExtra = (key) => {
+    setSelectedExtras(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key])
+  }
+
+  const extrasCartTotal = selectedExtras.reduce((sum, k) => sum + (plans?.addons?.[k]?.price ?? 0), 0)
+
+  // One Stripe Checkout for every selected extra at once — same one-time,
+  // per-subscription-only pricing as a single extra, just itemized together.
+  const buyExtrasCart = async () => {
+    if (selectedExtras.length === 0) return
+    setExtraCartBusy(true)
+    try {
+      const { data } = await api.post('/gym/extras/checkout', { features: selectedExtras })
+      window.location.href = data.url
+    } catch (e) {
+      toast.error(e.response?.data?.message ?? 'No se pudo iniciar el pago.')
+      setExtraCartBusy(false)
     }
   }
 
@@ -481,6 +508,84 @@ export default function Profile() {
           </div>
         )}
       </div>
+
+      {/* ══════════════════════════════════════════════════════
+          Extras individuales — selecciona uno, varios o todos y págalos
+          juntos en un solo cobro (pago único, mismo precio individual que
+          en el builder de Custom). Los ya comprados se muestran sombreados
+          con una flecha — no editables desde aquí. Solo duran lo que dure
+          la suscripción actual — no se conservan al resuscribirse.
+      ══════════════════════════════════════════════════════ */}
+      {profile?.plan_type === 'paid' && profile?.billing_status === 'active' && (
+        <div className="bg-white rounded-2xl border border-gray-200 p-6">
+          <div className="flex items-center gap-2 mb-1">
+            <Gift className="w-4 h-4 text-indigo-500" />
+            <h2 className="text-base font-semibold text-gray-900">Extras individuales</h2>
+          </div>
+          <p className="text-sm text-gray-400 mb-4">
+            Selecciona uno, varios o todos y págalos juntos en un solo cobro — mismo precio individual que en el
+            builder de Custom. Quedan activos solo mientras dure tu suscripción actual: si esta termina y contratas
+            una nueva, no se conservan y tendrás que volver a comprarlos.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {[
+              { key: 'whatsapp', label: 'WhatsApp',         Icon: MessageSquare },
+              { key: 'products', label: 'Productos',        Icon: Package },
+              { key: 'classes',  label: 'Clases',            Icon: Calendar },
+              { key: 'import',   label: 'Importar datos',    Icon: Upload },
+              { key: 'export',   label: 'Exportar reportes', Icon: Download },
+            ].map(({ key, label, Icon }) => {
+              const enabled  = !!profile?.plan_features?.[key]
+              const price    = plans?.addons?.[key]?.price
+              const selected = selectedExtras.includes(key)
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  disabled={enabled || extraCartBusy}
+                  onClick={() => toggleExtra(key)}
+                  className={`flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl border text-left transition-colors disabled:cursor-default ${
+                    enabled ? 'border-gray-100 bg-gray-50 opacity-70'
+                    : selected ? 'border-indigo-300 bg-indigo-50/60 disabled:opacity-60'
+                    : 'border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-60'
+                  }`}
+                >
+                  <span className="flex items-center gap-2 min-w-0">
+                    <Icon className={`w-3.5 h-3.5 flex-shrink-0 ${enabled ? 'text-gray-400' : selected ? 'text-indigo-600' : 'text-gray-400'}`} />
+                    <span className={`text-xs font-bold truncate ${enabled ? 'text-gray-500' : selected ? 'text-indigo-700' : 'text-gray-600'}`}>{label}</span>
+                  </span>
+                  {enabled ? (
+                    <ChevronRight className="w-3.5 h-3.5 text-gray-300 flex-shrink-0" />
+                  ) : (
+                    <span className={`flex items-center gap-1 flex-shrink-0 ${selected ? '' : 'text-gray-500'}`}>
+                      <input type="checkbox" readOnly checked={selected}
+                        className="w-3.5 h-3.5 rounded accent-indigo-500 pointer-events-none" />
+                      <span className="text-[10px] font-bold">${price}</span>
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+
+          {selectedExtras.length > 0 && (
+            <div className="flex items-center justify-between gap-3 mt-4 pt-4 border-t border-gray-100">
+              <p className="text-sm text-gray-600">
+                <span className="font-bold text-gray-900">{selectedExtras.length}</span> extra{selectedExtras.length !== 1 ? 's' : ''} seleccionado{selectedExtras.length !== 1 ? 's' : ''}
+                {' · '}<span className="font-bold text-gray-900">${extrasCartTotal.toLocaleString('es-MX')}</span>
+              </p>
+              <button
+                onClick={buyExtrasCart}
+                disabled={extraCartBusy}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 transition-colors flex-shrink-0"
+              >
+                {extraCartBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CreditCard className="w-3.5 h-3.5" />}
+                Comprar seleccionados
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ══════════════════════════════════════════════════════
           ROW 3 — Account + Gym + Quick links

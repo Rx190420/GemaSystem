@@ -302,7 +302,7 @@ export default function Dashboard() {
                 <div
                   key={i}
                   className="flex items-center gap-2.5 cursor-pointer hover:bg-gray-50 -mx-2 px-2 py-1.5 rounded-xl transition-colors"
-                  onClick={() => navigate(`/members/${m.id}`)}
+                  onClick={() => navigate(`/g/${hash}/socio/${m.id}`)}
                 >
                   <div className="w-7 h-7 rounded-lg bg-red-50 flex items-center justify-center text-red-600 text-xs font-bold flex-shrink-0">
                     {m.name.slice(0, 2).toUpperCase()}
@@ -412,7 +412,7 @@ export default function Dashboard() {
                 <div
                   key={i}
                   className="flex items-center gap-2.5 cursor-pointer hover:bg-gray-50 -mx-2 px-2 py-1.5 rounded-xl transition-colors"
-                  onClick={() => navigate(`/members/${b.id}`)}
+                  onClick={() => navigate(`/g/${hash}/socio/${b.id}`)}
                 >
                   <div className="w-7 h-7 rounded-lg bg-pink-50 flex items-center justify-center text-pink-600 text-xs font-bold flex-shrink-0">
                     {b.name.slice(0, 2).toUpperCase()}

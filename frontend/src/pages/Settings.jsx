@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Skeleton } from 'boneyard-js/react'
-import { LoadingLogoOverlay } from '../components/SkeletonLogoMark'
+import SkeletonLogoMark, { LoadingLogoOverlay } from '../components/SkeletonLogoMark'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
@@ -706,7 +706,7 @@ function SecurityTab() {
 
   if (isLoading) return (
     <div className="flex items-center justify-center py-16">
-      <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+      <SkeletonLogoMark size={48} />
     </div>
   )
 
@@ -907,7 +907,7 @@ export default function SettingsPage() {
 
   if (isLoading) return (
     <div className="flex items-center justify-center py-20">
-      <Loader2 className="w-7 h-7 animate-spin text-gray-400" />
+      <SkeletonLogoMark size={56} />
     </div>
   )
 

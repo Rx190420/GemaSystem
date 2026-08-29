@@ -10,9 +10,11 @@ import {
   CreditCard, TrendingUp, Activity, UserCheck, Calendar,
   BadgeCheck, Ban, RotateCcw, Info,
   Globe, Code2, Sparkles, Phone, Wallet, Mail, User,
+  Package, Upload, Download, Gift,
 } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import axiosInstance from '../api/axios'
+import SkeletonLogoMark from '../components/SkeletonLogoMark'
 import toast from 'react-hot-toast'
 import useLockBodyScroll from '../hooks/useLockBodyScroll'
 
@@ -145,7 +147,7 @@ function TrialTab() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 text-gray-300 animate-spin" /></div>
+        <div className="flex justify-center py-16"><SkeletonLogoMark size={48} /></div>
       ) : items.length === 0 ? (
         <div className="text-center py-16 text-gray-400 text-sm">Sin solicitudes</div>
       ) : items.map(item => (
@@ -572,7 +574,7 @@ function GymsTab({ onManage }) {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 text-gray-300 animate-spin" /></div>
+        <div className="flex justify-center py-16"><SkeletonLogoMark size={48} /></div>
       ) : gyms.length === 0 ? (
         <div className="text-center py-16 text-gray-400 text-sm">Sin gyms registrados</div>
       ) : gyms.map(gym => (
@@ -658,7 +660,7 @@ function ManageTab({ selectedGym, onBack }) {
     <div className="text-center py-16 text-gray-400 text-sm">Selecciona un gym desde la pestaña Gyms.</div>
   )
 
-  if (loading) return <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 text-gray-300 animate-spin" /></div>
+  if (loading) return <div className="flex justify-center py-16"><SkeletonLogoMark size={48} /></div>
   if (!detail) return null
 
   const { gym, users, stats, subscription: sub } = detail
@@ -804,6 +806,62 @@ function ManageTab({ selectedGym, onBack }) {
               <span className="text-[10px] text-emerald-600 leading-snug">Reactiva la facturación manualmente. El gym puede volver a iniciar sesión.</span>
             </button>
           </div>
+        </div>
+      )}
+
+      {/* ── Extras manuales (sin costo automático) ── */}
+      {gym.plan_type === 'paid' && (
+        <div className={`${card} p-5`}>
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+            <Gift className="w-3.5 h-3.5" /> Extras manuales
+          </p>
+          {sub?.billing_status === 'active' ? (
+            <>
+              <p className="text-xs text-gray-400 mb-4">
+                Activa un extra sin pasar por Stripe — no se agrega a la suscripción ni se cobra en automático.
+                Acordado por fuera del sistema, cóbralo manualmente cada mes para que el gym lo conserve.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                {[
+                  { key: 'whatsapp', label: 'WhatsApp',           Icon: MessageSquare },
+                  { key: 'products', label: 'Productos',          Icon: Package },
+                  { key: 'classes',  label: 'Clases',              Icon: Calendar },
+                  { key: 'import',   label: 'Importar datos',      Icon: Upload },
+                  { key: 'export',   label: 'Exportar reportes',   Icon: Download },
+                ].map(({ key, label, Icon }) => {
+                  const enabled  = !!gym.plan_features?.[key]
+                  const busyKey  = `extra-${key}`
+                  return (
+                    <button
+                      key={key}
+                      disabled={busy === busyKey}
+                      onClick={() => action(busyKey, () =>
+                        api('PUT', `/gyms/${gym.id}/extras`, { feature: key, enabled: !enabled }))}
+                      className={`flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl border text-left transition-colors disabled:opacity-60 ${
+                        enabled ? 'border-indigo-200 bg-indigo-50' : 'border-gray-200 bg-white hover:bg-gray-50'
+                      }`}
+                    >
+                      <span className="flex items-center gap-2 min-w-0">
+                        <Icon className={`w-3.5 h-3.5 flex-shrink-0 ${enabled ? 'text-indigo-600' : 'text-gray-400'}`} />
+                        <span className={`text-xs font-bold truncate ${enabled ? 'text-indigo-700' : 'text-gray-600'}`}>{label}</span>
+                      </span>
+                      {busy === busyKey
+                        ? <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-400 flex-shrink-0" />
+                        : <div className={`w-8 h-4.5 rounded-full flex-shrink-0 relative transition-colors ${enabled ? 'bg-indigo-500' : 'bg-gray-200'}`}>
+                            <div className={`absolute top-0.5 w-3.5 h-3.5 rounded-full bg-white shadow transition-transform ${enabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                          </div>
+                      }
+                    </button>
+                  )
+                })}
+              </div>
+            </>
+          ) : (
+            <p className="text-xs text-gray-400">
+              Solo se pueden agregar extras a cuentas con una suscripción de pago activa
+              {sub?.billing_status ? ` (estado actual: ${sub.billing_status})` : ''}.
+            </p>
+          )}
         </div>
       )}
 
@@ -1116,7 +1174,7 @@ function TicketThread({ ticketId, onBack }) {
     setBusy(null)
   }
 
-  if (loading) return <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 text-gray-300 animate-spin" /></div>
+  if (loading) return <div className="flex justify-center py-16"><SkeletonLogoMark size={48} /></div>
   if (!ticket) return null
 
   const isOpen = !['resolved', 'closed'].includes(ticket.status)
@@ -1255,7 +1313,7 @@ function TicketsTab() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 text-gray-300 animate-spin" /></div>
+        <div className="flex justify-center py-16"><SkeletonLogoMark size={48} /></div>
       ) : tickets.length === 0 ? (
         <div className="text-center py-16 text-gray-400 text-sm">Sin tickets en este estado</div>
       ) : tickets.map(t => (
@@ -1557,7 +1615,7 @@ function MessagesTabSimple() {
 
       {/* Results */}
       {loading ? (
-        <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 text-gray-300 animate-spin" /></div>
+        <div className="flex justify-center py-12"><SkeletonLogoMark size={36} /></div>
       ) : items.length === 0 ? (
         <div className="text-center py-12 text-gray-400 text-sm">
           No hay {filterType !== 'all' ? TYPE_META[filterType]?.label?.toLowerCase() + 's' : 'mensajes'} {filterStatus !== 'all' ? filterStatus === 'new' ? 'nuevos' : filterStatus === 'read' ? 'leídos' : 'archivados' : ''}
@@ -1696,7 +1754,7 @@ export default function SuperAdmin() {
                   ))}
                 </div>
               ) : (
-                <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 text-gray-300 animate-spin" /></div>
+                <div className="flex justify-center py-16"><SkeletonLogoMark size={48} /></div>
               )}
 
               <div className={`${card} p-5`}>

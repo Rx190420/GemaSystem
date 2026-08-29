@@ -6,7 +6,25 @@ const api = axios.create({
   withCredentials: true, // envía la cookie gemasystem_token (HttpOnly) en cada request
 })
 
-// Sin interceptor de Authorization — el token viaja en cookie HttpOnly automáticamente
+// ── Bearer-token fallback ────────────────────────────────────────────────────
+// The HttpOnly cookie is the primary auth carrier and works for most
+// browsers. But frontend and API live on different domains, so it's a
+// cross-site cookie — mobile Safari/Chrome increasingly block those outright,
+// which meant the cookie's Set-Cookie header arrived fine at login but the
+// browser never persisted/resent it, so every request right after 401'd and
+// the SPA bounced straight back to the login screen. authStore stores the
+// token login() also returns and calls setAuthToken() with it; attaching it
+// here as a plain header sidesteps cookie policy entirely, since it isn't a
+// cookie. Kept as a module-level variable (not read from authStore) to avoid
+// a circular import — authStore already imports this module.
+let authToken = null
+export function setAuthToken(token) { authToken = token }
+export function clearAuthToken()    { authToken = null }
+
+api.interceptors.request.use((config) => {
+  if (authToken) config.headers.Authorization = `Bearer ${authToken}`
+  return config
+})
 
 api.interceptors.response.use(
   (res) => res,

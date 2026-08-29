@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { QRCodeCanvas } from 'qrcode.react'
+import SkeletonLogoMark from '../components/SkeletonLogoMark'
 import {
   ArrowLeft, Mail, Phone, Calendar, MapPin, User, Hash,
   Shield, Tag, Plus, X, Check, Loader2, BadgeCheck, Zap, Percent,
@@ -534,7 +535,7 @@ export default function MemberDetail() {
 
   if (isLoading) return (
     <div className="flex items-center justify-center h-64">
-      <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+      <SkeletonLogoMark size={56} />
     </div>
   )
 

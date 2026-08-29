@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import api from '../api/axios'
+import api, { setAuthToken, clearAuthToken } from '../api/axios'
 import { queryClient } from '../lib/queryClient'
 import { useSettingsStore } from './settingsStore'
 
@@ -22,10 +22,19 @@ const stored = {
   operatorHash: sessionStorage.getItem('gemasystem_op_hash') || null,
 }
 
-// El token viaja solo en la cookie HttpOnly. Si hay datos de usuario en
-// sessionStorage asumimos que la sesión está activa (la cookie persiste mientras
-// no se cierre el navegador). Si no hay datos, el usuario no está autenticado.
+// El token viaja principalmente en la cookie HttpOnly. Si hay datos de usuario
+// en sessionStorage asumimos que la sesión está activa (la cookie persiste
+// mientras no se cierre el navegador). Si no hay datos, el usuario no está
+// autenticado.
 const isAuthenticated = !!stored.user
+
+// Fallback de Bearer token (ver api/axios.js) — se pierde en cada recarga
+// completa (es una variable de módulo, no persiste), así que hay que
+// re-hidratarlo desde sessionStorage al arrancar para que un refresh no deje
+// sin encabezado Authorization a los navegadores que bloquean la cookie
+// cross-site (típicamente móviles).
+const storedToken = sessionStorage.getItem('gemasystem_bearer')
+if (storedToken) setAuthToken(storedToken)
 
 // Si hay sesión activa pero falta el hash de navegación (recarga), regenerarlo
 if (isAuthenticated && !stored.isOperator && !stored.sessionHash) {
@@ -66,6 +75,10 @@ export const useAuthStore = create((set, get) => ({
       sessionStorage.setItem('gemasystem_operator', isOp ? '1' : '0')
       if (sessionHash)  sessionStorage.setItem('gemasystem_hash',    sessionHash)
       if (operatorHash) sessionStorage.setItem('gemasystem_op_hash', operatorHash)
+      if (data.token) {
+        sessionStorage.setItem('gemasystem_bearer', data.token)
+        setAuthToken(data.token)
+      }
 
       set({
         user: data.user,
@@ -85,6 +98,7 @@ export const useAuthStore = create((set, get) => ({
     queryClient.clear()
     useSettingsStore.getState().resetGymData()
     sessionStorage.clear()
+    clearAuthToken()
     set({ user: null, isAuthenticated: false, isOperator: false, sessionHash: null, operatorHash: null })
   },
 
@@ -100,6 +114,10 @@ export const useAuthStore = create((set, get) => ({
       sessionStorage.setItem('gemasystem_user',     JSON.stringify(data.user))
       sessionStorage.setItem('gemasystem_operator', '1')
       sessionStorage.setItem('gemasystem_op_hash',  operatorHash)
+      if (data.token) {
+        sessionStorage.setItem('gemasystem_bearer', data.token)
+        setAuthToken(data.token)
+      }
 
       set({
         user: data.user,
@@ -114,13 +132,20 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
-  // Usado en CheckoutSuccess después de pago exitoso
-  // El token ya llegó en la cookie HttpOnly; aquí solo guardamos el usuario
-  loginFromCookie: (user) => {
+  // Usado en CheckoutSuccess después de pago exitoso. El token ya llegó en la
+  // cookie HttpOnly; `token` es el mismo fallback de Bearer que login() — solo
+  // viene poblado cuando esta llamada mintió uno nuevo (StripeController::
+  // verifySession, tras un checkout nuevo), no en el refresh de un cambio de
+  // plan de una sesión ya activa, donde el token existente sigue siendo válido.
+  loginFromCookie: (user, token) => {
     const hash = generateSessionHash()
     sessionStorage.setItem('gemasystem_user',     JSON.stringify(user))
     sessionStorage.setItem('gemasystem_operator', '0')
     sessionStorage.setItem('gemasystem_hash',     hash)
+    if (token) {
+      sessionStorage.setItem('gemasystem_bearer', token)
+      setAuthToken(token)
+    }
     set({ user, isAuthenticated: true, sessionHash: hash })
     return hash
   },

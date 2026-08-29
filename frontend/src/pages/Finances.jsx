@@ -19,7 +19,8 @@ import { useSettingsStore } from '../store/settingsStore'
 import { useAuthStore } from '../store/authStore'
 import useLockBodyScroll from '../hooks/useLockBodyScroll'
 import ExportMenu from '../components/ExportMenu'
-import { exportToExcel, exportToPDF } from '../utils/exportUtils'
+import { exportFinancesExcel, exportFinancesPDF } from '../utils/financeExportUtils'
+import { runExport } from '../utils/runExport'
 import useSort from '../hooks/useSort'
 import SortableTh from '../components/SortableTh'
 import Pagination from '../components/Pagination'
@@ -658,19 +659,43 @@ export default function Finances() {
     } catch { toast.error('No se pudo eliminar') }
   }
 
-  async function fetchAllTx() {
-    const res = await api.get('/ingresos', { params: { ...txParams, page: 1, per_page: 9999 } })
+  async function fetchAllTx(signal) {
+    const res = await api.get('/ingresos', { params: { ...txParams, page: 1, per_page: 9999 }, signal })
     return res.data.data ?? []
+  }
+  function txFilterLabel() {
+    const parts = []
+    if (monthFilter) parts.push(`Detalle filtrado a ${new Date(monthFilter + '-02').toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })}`)
+    if (originFilter) parts.push(`origen: ${ORIGIN_LABEL[originFilter] ?? originFilter}`)
+    return parts.join(' · ')
   }
   async function handleExportExcel() {
     setExporting(true)
     const gymName = systemSettings?.gym_name || 'GemaSystem'
-    try { exportToExcel(await fetchAllTx(), EXPORT_COLS, 'finanzas', { title: 'Reporte Financiero', gymName }) } finally { setExporting(false) }
+    try {
+      await runExport({
+        label: 'Reporte Financiero', fileLabel: 'finanzas_desglose.xlsx', kind: 'excel',
+        task: async (signal, setPhase) => {
+          const transactions = await fetchAllTx(signal)
+          setPhase('generating')
+          return exportFinancesExcel({ summary, transactions, txColumns: EXPORT_COLS, gymName, subtitle: txFilterLabel() })
+        },
+      })
+    } finally { setExporting(false) }
   }
   async function handleExportPDF() {
     setExporting(true)
     const gymName = systemSettings?.gym_name || 'GemaSystem'
-    try { exportToPDF(await fetchAllTx(), EXPORT_COLS, 'finanzas', { title: 'Reporte Financiero', gymName }) } finally { setExporting(false) }
+    try {
+      await runExport({
+        label: 'Reporte Financiero', fileLabel: 'finanzas_desglose.pdf', kind: 'pdf',
+        task: async (signal, setPhase) => {
+          const transactions = await fetchAllTx(signal)
+          setPhase('generating')
+          return exportFinancesPDF({ summary, transactions, txColumns: EXPORT_COLS, gymName, subtitle: txFilterLabel() })
+        },
+      })
+    } finally { setExporting(false) }
   }
 
   const maxMethod = methods.reduce((acc, m) => Math.max(acc, m.total), 0)

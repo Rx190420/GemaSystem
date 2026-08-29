@@ -20,6 +20,7 @@ import { FixedPanel, PanelHeader, EmptyState } from '../components/Panel'
 import { isSparseTrend, trimLeadingEmpty } from '../utils/charts'
 import ExportMenu from '../components/ExportMenu'
 import { exportToExcel, exportToPDF } from '../utils/exportUtils'
+import { runExport } from '../utils/runExport'
 import { useSettingsStore } from '../store/settingsStore'
 import { useAuthStore } from '../store/authStore'
 import useLockBodyScroll from '../hooks/useLockBodyScroll'
@@ -455,23 +456,39 @@ export default function Memberships() {
     fill:  TYPE_CHART_COLORS[r.type] ?? '#94A3B8',
   }))
 
-  async function fetchAll() {
-    const res = await api.get('/memberships', { params: { page: 1, per_page: 9999, ...(statusFilter && { status: statusFilter }) } })
+  async function fetchAll(signal) {
+    const res = await api.get('/memberships', { params: { page: 1, per_page: 9999, ...(statusFilter && { status: statusFilter }) }, signal })
     return res.data.data ?? []
   }
 
   async function handleExportExcel() {
     setExporting(true)
     const gymName = systemSettings?.gym_name || 'GemaSystem'
-    try { exportToExcel(await fetchAll(), EXPORT_COLS, 'membresias', { title: 'Reporte de Membresías', gymName }) }
-    finally { setExporting(false) }
+    try {
+      await runExport({
+        label: 'Reporte de Membresías', fileLabel: 'membresias.xlsx', kind: 'excel',
+        task: async (signal, setPhase) => {
+          const rows = await fetchAll(signal)
+          setPhase('generating')
+          return exportToExcel(rows, EXPORT_COLS, 'membresias', { title: 'Reporte de Membresías', gymName })
+        },
+      })
+    } finally { setExporting(false) }
   }
 
   async function handleExportPDF() {
     setExporting(true)
     const gymName = systemSettings?.gym_name || 'GemaSystem'
-    try { exportToPDF(await fetchAll(), EXPORT_COLS, 'membresias', { title: 'Reporte de Membresías', gymName }) }
-    finally { setExporting(false) }
+    try {
+      await runExport({
+        label: 'Reporte de Membresías', fileLabel: 'membresias.pdf', kind: 'pdf',
+        task: async (signal, setPhase) => {
+          const rows = await fetchAll(signal)
+          setPhase('generating')
+          return exportToPDF(rows, EXPORT_COLS, 'membresias', { title: 'Reporte de Membresías', gymName })
+        },
+      })
+    } finally { setExporting(false) }
   }
 
   const axisProps = { tick: { fontSize: 11, fill: '#94A3B8' }, tickLine: false, axisLine: false }

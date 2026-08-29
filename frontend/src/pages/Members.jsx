@@ -34,6 +34,7 @@ import { useAuthStore } from '../store/authStore'
 import ConfirmModal from '../components/ConfirmModal'
 import ExportMenu from '../components/ExportMenu'
 import { exportToExcel, exportToPDF } from '../utils/exportUtils'
+import { runExport } from '../utils/runExport'
 
 const MONTH_NAMES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
 
@@ -695,9 +696,10 @@ export default function Members() {
   }))
   const typeTotal = typeData.reduce((sum, d) => sum + d.count, 0)
 
-  async function fetchAll() {
+  async function fetchAll(signal) {
     const res = await api.get('/members', {
       params: { page: 1, per_page: 9999, search, status: statusFilter, membership_type: typeFilter },
+      signal,
     })
     return res.data.data ?? []
   }
@@ -705,15 +707,31 @@ export default function Members() {
   async function handleExportExcel() {
     setExporting(true)
     const gymName = systemSettings?.gym_name || 'GemaSystem'
-    try { exportToExcel(await fetchAll(), EXPORT_COLS, 'miembros', { title: 'Reporte de Miembros', gymName }) }
-    finally { setExporting(false) }
+    try {
+      await runExport({
+        label: 'Reporte de Miembros', fileLabel: 'miembros.xlsx', kind: 'excel',
+        task: async (signal, setPhase) => {
+          const rows = await fetchAll(signal)
+          setPhase('generating')
+          return exportToExcel(rows, EXPORT_COLS, 'miembros', { title: 'Reporte de Miembros', gymName })
+        },
+      })
+    } finally { setExporting(false) }
   }
 
   async function handleExportPDF() {
     setExporting(true)
     const gymName = systemSettings?.gym_name || 'GemaSystem'
-    try { exportToPDF(await fetchAll(), EXPORT_COLS, 'miembros', { title: 'Reporte de Miembros', gymName }) }
-    finally { setExporting(false) }
+    try {
+      await runExport({
+        label: 'Reporte de Miembros', fileLabel: 'miembros.pdf', kind: 'pdf',
+        task: async (signal, setPhase) => {
+          const rows = await fetchAll(signal)
+          setPhase('generating')
+          return exportToPDF(rows, EXPORT_COLS, 'miembros', { title: 'Reporte de Miembros', gymName })
+        },
+      })
+    } finally { setExporting(false) }
   }
 
   const axisProps = { tick: { fontSize: 11, fill: '#94A3B8' }, tickLine: false, axisLine: false }

@@ -35,6 +35,33 @@ require __DIR__.'/../vendor/autoload.php';
 
 /*
 |--------------------------------------------------------------------------
+| Disable putenv() for .env loading (thread-safety, Apache/mod_php)
+|--------------------------------------------------------------------------
+|
+| vlucas/phpdotenv's default PutenvAdapter writes loaded .env values via
+| PHP's putenv() — which touches the process-wide OS environment table, not
+| a thread-local or request-local one. Under Apache's threaded MPM
+| (ThreadsPerChild > 1), two requests bootstrapping .env at the same moment
+| on different threads of the same worker process can race on that shared
+| table, leaving one of them with a corrupted/partial environment for the
+| rest of its request (reproduced live: "No application encryption key",
+| Postgres queries suddenly claiming a real column "does not exist", MySQL
+| defaults like host=127.0.0.1/user=forge appearing out of nowhere — same
+| query, same connection, works every time from the CLI).
+|
+| disablePutenv() keeps Laravel on $_ENV/$_SERVER only (still populated by
+| Dotenv's other adapters), which Apache correctly keeps request-local even
+| under a threaded/persistent worker — this is what actually lets
+| ThreadsPerChild go back above 1 without reintroducing that corruption.
+| Must run before bootstrap/app.php, which is what first reads config values
+| that depend on the environment being loaded.
+|
+*/
+
+Illuminate\Support\Env::disablePutenv();
+
+/*
+|--------------------------------------------------------------------------
 | Run The Application
 |--------------------------------------------------------------------------
 |

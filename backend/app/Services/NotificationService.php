@@ -132,4 +132,63 @@ class NotificationService
             WhatsAppService::membershipReminder($member->phone, $member->first_name, $member->member_code, 0, $formatted, $gymName, $gymId);
         }
     }
+
+    /** Human labels for Gym::GATED_FEATURES — shared by every place that needs to show one. */
+    public const FEATURE_LABELS = [
+        'whatsapp' => 'WhatsApp', 'products' => 'Productos', 'classes' => 'Clases',
+        'import'   => 'Importar datos', 'export' => 'Exportar reportes',
+    ];
+
+    /**
+     * An operator manually granted an extra for free (SuperAdminController::
+     * updateExtras) — a case handled outside normal billing (support call,
+     * goodwill, etc.), so this one's wording is explicit about not being
+     * charged. The gym's own self-service purchase uses extraPurchased()
+     * below instead, which IS a real Stripe charge.
+     */
+    public static function extraGranted(int $gymId, string $featureKey): void
+    {
+        $label = self::FEATURE_LABELS[$featureKey] ?? $featureKey;
+        self::create(
+            $gymId,
+            'plan_changed',
+            'Nuevo extra activado',
+            "Se activó el extra \"{$label}\" en tu cuenta, sin costo. "
+                . 'Este extra no se cobra automáticamente cada mes — para conservarlo tendrás que pagarlo manualmente. '
+                . 'Si no ves el cambio reflejado, cierra sesión y vuelve a entrar.',
+            ['feature' => $featureKey, 'manual_billing' => true]
+        );
+    }
+
+    /**
+     * The gym owner just paid (one-time, self-service) for an individual
+     * extra — StripeController::fulfillExtraPurchase. Unlike a plan itself,
+     * this purchase isn't a recurring Stripe line item: it's only valid
+     * through the CURRENT subscription. plan_features gets fully overwritten
+     * every time fulfill()/fulfillPlanChange() run (a fresh subscription or
+     * a plan change), so a lapsed-then-renewed subscription naturally loses
+     * every previously-purchased extra — this notification is also the
+     * documented place that tells the gym that's expected, not a bug.
+     */
+    /**
+     * @param string[] $featureKeys One or more extras bought together in a
+     *   single checkout (Profile.jsx lets the gym select several before
+     *   paying once) — $totalPrice is their combined price, not per-item.
+     */
+    public static function extraPurchased(int $gymId, array $featureKeys, int $totalPrice): void
+    {
+        $labels    = array_map(fn ($k) => self::FEATURE_LABELS[$k] ?? $k, $featureKeys);
+        $labelList = count($labels) === 1 ? "\"{$labels[0]}\"" : implode(', ', array_map(fn ($l) => "\"{$l}\"", $labels));
+        $title     = count($labels) === 1 ? 'Extra comprado' : 'Extras comprados';
+
+        self::create(
+            $gymId,
+            'plan_changed',
+            $title,
+            "Compraste {$labelList} por \${$totalPrice} MXN. Quedan activos mientras dure tu suscripción actual — "
+                . 'si tu suscripción termina y compras una nueva, estos extras no se conservan y tendrás que volver a comprarlos. '
+                . 'Si no ves el cambio reflejado, cierra sesión y vuelve a entrar.',
+            ['features' => $featureKeys, 'total_price' => $totalPrice, 'tied_to_current_subscription' => true]
+        );
+    }
 }

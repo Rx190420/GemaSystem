@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Plus, Footprints, CreditCard, Package } from 'lucide-react'
+import { useAuthStore } from '../store/authStore'
 
 const ACTIONS = [
   {
@@ -22,11 +23,21 @@ const ACTIONS = [
     icon: Package,
     bg: 'bg-orange-500 hover:bg-orange-600',
     shadow: 'shadow-orange-200',
+    gate: 'products',
   },
 ]
 
 export default function QuickAccessFAB({ onOpen }) {
   const [open, setOpen] = useState(false)
+
+  // Same gating rule as Sidebar.jsx: plan_features is a {whatsapp,products,
+  // classes,import,export} bool map resolved server-side (basic → all false,
+  // custom → its own toggles, full/legacy → all true). undefined key = not a
+  // gated action at all, so it never gets hidden by a missing feature map.
+  const { user } = useAuthStore()
+  const features = user?.plan_features
+  const has = key => !key || features?.[key] !== false
+  const actions = ACTIONS.filter(a => has(a.gate))
 
   function handleAction(id) {
     setOpen(false)
@@ -40,7 +51,7 @@ export default function QuickAccessFAB({ onOpen }) {
       )}
 
       <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
-        {open && ACTIONS.map((action, i) => (
+        {open && actions.map((action, i) => (
           <div
             key={action.id}
             className="flex items-center gap-3"

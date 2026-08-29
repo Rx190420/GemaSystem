@@ -139,10 +139,20 @@ function VerifyingAnimation() {
 
 // ── Page ───────────────────────────────────────────────────────────────────────
 
+// Both of these are "authenticated user already had a session, this Stripe
+// payment just changed something about their account" flows — same polling
+// shape, same need to refresh the cached session afterward, different
+// backend endpoint. New registration (the plain `else` branch below) is
+// its own thing: no prior session exists yet to refresh.
+const ACCOUNT_UPDATE_TYPES = {
+  plan_change:    { verifyPath: 'verify-plan-change',    successTitle: '¡Plan actualizado!',   successBody: 'Tu plan ha sido cambiado correctamente.' },
+  extra_purchase: { verifyPath: 'verify-extra-purchase', successTitle: '¡Extra activado!',      successBody: 'Tu compra se procesó y el extra ya está activo en tu cuenta.' },
+}
+
 export default function CheckoutSuccess() {
   const [params]                = useSearchParams()
   const sessionId               = params.get('session_id')
-  const isPlanChange            = params.get('type') === 'plan_change'
+  const accountUpdateType       = ACCOUNT_UPDATE_TYPES[params.get('type')] ?? null
   const [status, setStatus]     = useState('loading')
   const [errorMsg, setErrorMsg] = useState('')
   const { loginFromCookie, sessionHash } = useAuthStore()
@@ -159,11 +169,21 @@ export default function CheckoutSuccess() {
 
     const check = async () => {
       try {
-        if (isPlanChange) {
-          // Authenticated user changing plan — poll verify-plan-change
-          const { data } = await api.get(`/stripe/verify-plan-change?session_id=${sessionId}`)
+        if (accountUpdateType) {
+          // Authenticated user changing plan / buying an extra — poll the
+          // matching verify endpoint.
+          const { data } = await api.get(`/stripe/${accountUpdateType.verifyPath}?session_id=${sessionId}`)
 
           if (data.status === 'success') {
+            // The backend just updated gym.plan/plan_features, but the
+            // session cached in sessionStorage (read by every gated page)
+            // is still the pre-upgrade snapshot — without this, the panel
+            // looks like "nothing happened" until a manual logout/login,
+            // which is exactly the confusing symptom this was fixing.
+            try {
+              const { data: freshUser } = await api.get('/auth/me')
+              loginFromCookie(freshUser)
+            } catch { /* non-fatal — the plan_changed notification covers this case */ }
             setStatus('success')
             const dest = sessionHash ? `/g/${sessionHash}/perfil` : '/'
             setTimeout(() => navigate(dest), 2500)
@@ -179,7 +199,7 @@ export default function CheckoutSuccess() {
           const { data } = await api.get(`/stripe/verify-session?session_id=${sessionId}`)
 
           if (data.status === 'success') {
-            const hash = loginFromCookie(data.user)
+            const hash = loginFromCookie(data.user, data.token)
             setStatus('success')
             setTimeout(() => navigate(`/g/${hash}/panel`), 2500)
           } else if (data.status === 'pending' && attempts < 6) {
@@ -197,7 +217,7 @@ export default function CheckoutSuccess() {
     }
 
     check()
-  }, [sessionId, isPlanChange])
+  }, [sessionId, accountUpdateType])
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6" style={{ background: '#020817' }}>
@@ -229,11 +249,11 @@ export default function CheckoutSuccess() {
               <CheckCircle2 className="w-10 h-10 text-emerald-400" />
             </div>
             <h2 className="text-2xl font-extrabold text-white mb-2">
-              {isPlanChange ? '¡Plan actualizado!' : '¡Pago exitoso!'}
+              {accountUpdateType ? accountUpdateType.successTitle : '¡Pago exitoso!'}
             </h2>
             <p className="text-slate-500 text-sm mb-8">
-              {isPlanChange
-                ? <>Tu plan ha sido cambiado correctamente.<br />Regresando a tu perfil…</>
+              {accountUpdateType
+                ? <>{accountUpdateType.successBody}<br />Regresando a tu perfil…</>
                 : <>Tu cuenta ha sido activada.<br />Te estamos llevando al panel…</>}
             </p>
             <div className="h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>

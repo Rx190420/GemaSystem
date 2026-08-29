@@ -59,11 +59,14 @@ Route::post('/stripe/create-session',       [StripeController::class, 'createChe
 Route::post('/stripe/webhook',              [StripeController::class, 'webhook']);             // signature-verified; no throttle needed
 Route::get('/stripe/verify-session',        [StripeController::class, 'verifySession'])       ->middleware('throttle:20,1');
 Route::get('/stripe/verify-plan-change',    [StripeController::class, 'verifyPlanChange'])    ->middleware('throttle:20,1');
+Route::get('/stripe/verify-extra-purchase', [StripeController::class, 'verifyExtraPurchase']) ->middleware('throttle:20,1');
 
 // ── Stripe — authenticated ────────────────────────────────────────────────────
 Route::post('/stripe/change-plan',          [StripeController::class, 'changePlan'])          ->middleware('auth:sanctum');
 Route::post('/stripe/plan-change-checkout', [StripeController::class, 'createPlanChangeSession'])->middleware('auth:sanctum');
 Route::post('/stripe/cancel-subscription',  [StripeController::class, 'cancelSubscription'])  ->middleware('auth:sanctum');
+Route::put('/gym/extras',                   [StripeController::class, 'updateGymExtras'])     ->middleware('auth:sanctum');
+Route::post('/gym/extras/checkout',         [StripeController::class, 'purchaseGymExtra'])    ->middleware('auth:sanctum');
 
 // ── Protected routes (authenticated gym users) ────────────────────────────────
 Route::middleware('auth:sanctum')->group(function () {
@@ -200,6 +203,7 @@ Route::middleware(['auth:sanctum', 'operator', 'throttle:operator'])->prefix('op
     Route::put('/gyms/{gym}/restrict',                     [SuperAdminController::class, 'restrictGym']);
     Route::put('/gyms/{gym}/activate',                     [SuperAdminController::class, 'activateGym']);
     Route::put('/gyms/{gym}/billing-status',               [SuperAdminController::class, 'setBillingStatus']);
+    Route::put('/gyms/{gym}/extras',                       [SuperAdminController::class, 'updateExtras']);
     Route::delete('/gyms/{gym}',                           [SuperAdminController::class, 'deleteGym']); // gated by SUPERADMIN_DELETE_SECRET
 
     // Per-user management

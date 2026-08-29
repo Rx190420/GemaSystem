@@ -11,6 +11,7 @@ use App\Models\Gym;
 use App\Models\SupportTicket;
 use App\Models\TrialRequest;
 use App\Models\User;
+use App\Services\NotificationService;
 use App\Services\RecaptchaService;
 use App\Services\WhatsAppService;
 use Carbon\Carbon;
@@ -299,6 +300,43 @@ class SuperAdminController extends Controller
                 ]);
                 return response()->json(['message' => 'Facturación restaurada. El gym puede volver a acceder.']);
         }
+    }
+
+    /**
+     * Operator manual grant of one of Gym::GATED_FEATURES to any gym with an
+     * active paid subscription — bypasses Stripe entirely, so it never
+     * touches billing/the subscription price. The gym's own owner has the
+     * same toggle self-service in Profile.jsx (StripeController::
+     * updateGymExtras) — this operator version exists for cases handled on
+     * the gym owner's behalf (support call, etc.) or to grant/revoke a gym
+     * that isn't self-serving it. See Gym::hasFeature() for how a 'basic'
+     * gym can gain a feature this way without being relabeled 'custom'.
+     */
+    public function updateExtras(Request $request, Gym $gym)
+    {
+        $request->validate([
+            'feature' => 'required|in:' . implode(',', Gym::GATED_FEATURES),
+            'enabled' => 'required|boolean',
+        ]);
+
+        if (!$gym->canGrantExtras()) {
+            return response()->json([
+                'message' => 'Solo se pueden agregar extras a cuentas con una suscripción de pago activa.',
+            ], 422);
+        }
+
+        $label   = NotificationService::FEATURE_LABELS[$request->feature] ?? $request->feature;
+        $enabled = $request->boolean('enabled');
+        $gym->setExtra($request->feature, $enabled);
+
+        if ($enabled) {
+            NotificationService::extraGranted($gym->id, $request->feature);
+        }
+
+        return response()->json([
+            'message' => $enabled ? "Extra \"{$label}\" activado." : "Extra \"{$label}\" desactivado.",
+            'gym'     => $gym->fresh(),
+        ]);
     }
 
     private function getGymStats(Gym $gym): array

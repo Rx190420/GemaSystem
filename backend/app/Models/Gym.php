@@ -35,18 +35,51 @@ class Gym extends Model
      * trial ever gets created/approved with a different plan value than
      * today's 'weekly' default. Legacy paid plans (weekly/monthly/annual)
      * and 'full' also always return true, unchanged from how the app has
-     * always behaved for them. 'basic' always returns false. 'custom' reads
-     * its own toggle state from plan_features. Anything else fails closed
-     * (false).
+     * always behaved for them.
+     *
+     * Everything else (namely 'basic' and 'custom') falls through to
+     * plan_features — 'custom' has always worked this way (its whole point
+     * is per-feature toggles), and 'basic' used to hard-fail closed here
+     * instead. Collapsing them into the same check lets an operator manually
+     * grant a one-off extra to a 'basic' gym (see SuperAdminController::
+     * updateExtras) without relabeling its plan to 'custom' — which would
+     * otherwise risk a Stripe subscription-sync webhook (still billing the
+     * real 'basic' price) resetting `plan` back and silently reverting the
+     * grant. A 'basic' gym nobody ever manually granted anything to behaves
+     * exactly as before: plan_features is empty, so this returns false.
      */
     public function hasFeature(string $key): bool
     {
         if ($this->plan_type === 'free') return true;
         if (in_array($this->plan, self::LEGACY_PLANS, true)) return true;
         if ($this->plan === 'full')  return true;
-        if ($this->plan === 'basic') return false;
-        if ($this->plan === 'custom') return (bool) (($this->plan_features ?? [])[$key] ?? false);
-        return false;
+        return (bool) (($this->plan_features ?? [])[$key] ?? false);
+    }
+
+    /**
+     * True only for gyms allowed to grant/toggle a manual extra (self-service
+     * from Profile.jsx, or an operator's manual grant) — an active PAID
+     * subscription. Free/trial gyms already get every feature via
+     * hasFeature()'s plan_type check above, and a lapsed/suspended paid gym
+     * shouldn't be picking up new extras it can't even access yet.
+     */
+    public function canGrantExtras(): bool
+    {
+        return $this->plan_type === 'paid' && $this->billing_status === 'active';
+    }
+
+    /**
+     * Toggle one of self::GATED_FEATURES on/off directly in plan_features —
+     * no Stripe involved, not billed automatically. Shared by both
+     * SuperAdminController::updateExtras (operator, any gym) and
+     * StripeController::updateGymExtras (self-service, the gym's own
+     * account) so the actual mutation only lives in one place.
+     */
+    public function setExtra(string $key, bool $enabled): void
+    {
+        $features       = $this->plan_features ?? [];
+        $features[$key] = $enabled;
+        $this->update(['plan_features' => $features]);
     }
 
     /** Feature-key => bool map for every gated feature — handed straight to the frontend. */

@@ -11,6 +11,7 @@ use App\Http\Controllers\PasswordResetController;
 use App\Models\PendingCheckout;
 use App\Models\TrialRequest;
 use App\Models\User;
+use App\Services\NotificationService;
 use App\Services\RecaptchaService;
 use App\Services\WhatsAppService;
 use Carbon\Carbon;
@@ -247,6 +248,202 @@ class StripeController extends Controller
         }
     }
 
+    // ── Self-service manual extras ──────────────────────────────────────────────
+    // Turning an extra OFF is free/instant (you're just hiding something you
+    // already have rights to for this billing period). Turning one ON is a
+    // real one-time Stripe charge — see purchaseGymExtra()/fulfillExtraPurchase()
+    // below — this endpoint rejects enabled:true on purpose so there's no
+    // path to flip a feature on without paying.
+
+    public function updateGymExtras(Request $request)
+    {
+        $request->validate([
+            'feature' => 'required|in:' . implode(',', Gym::GATED_FEATURES),
+            'enabled' => 'required|boolean',
+        ]);
+
+        if ($request->boolean('enabled')) {
+            return response()->json([
+                'message' => 'Para activar un extra hay que comprarlo — usa el botón de compra.',
+            ], 422);
+        }
+
+        $gym = auth()->user()->gym;
+
+        if (!$gym || !$gym->canGrantExtras()) {
+            return response()->json([
+                'message' => 'Solo puedes administrar extras si tienes una suscripción de pago activa.',
+            ], 422);
+        }
+
+        $label = NotificationService::FEATURE_LABELS[$request->feature] ?? $request->feature;
+        $gym->setExtra($request->feature, false);
+
+        return response()->json([
+            'message'      => "Extra \"{$label}\" desactivado.",
+            'gym_features' => $gym->fresh()->plan_features,
+        ]);
+    }
+
+    /**
+     * Starts a one-time (mode: payment, NOT subscription) Stripe Checkout
+     * for a single Gym::GATED_FEATURES extra — priced the same as that
+     * feature's addon in the Custom plan (config('plans.addons.*.price')),
+     * never the Basic base price. Deliberately not a recurring line item:
+     * per the gym owner's own spec, this extra is only meant to survive the
+     * CURRENT subscription — see fulfillExtraPurchase() and
+     * NotificationService::extraPurchased() for where that's enforced/explained.
+     */
+    public function purchaseGymExtra(Request $request)
+    {
+        $request->validate([
+            'features'   => 'required|array|min:1',
+            'features.*' => 'in:' . implode(',', Gym::GATED_FEATURES),
+        ]);
+
+        $user     = auth()->user();
+        $gym      = $user->gym;
+        $features = array_values(array_unique($request->features));
+
+        if (!$gym || !$gym->canGrantExtras()) {
+            return response()->json([
+                'message' => 'Solo puedes comprar extras si tienes una suscripción de pago activa.',
+            ], 422);
+        }
+
+        $alreadyOwned = array_values(array_filter($features, fn ($f) => $gym->hasFeature($f)));
+        if ($alreadyOwned) {
+            $labels = array_map(fn ($f) => NotificationService::FEATURE_LABELS[$f] ?? $f, $alreadyOwned);
+            return response()->json([
+                'message' => 'Ya tienes activo: ' . implode(', ', $labels) . '. Quítalo de la selección e intenta de nuevo.',
+            ], 422);
+        }
+
+        $this->boot();
+        $frontendUrl = env('APP_FRONTEND_URL', 'http://localhost:5173');
+
+        // One line item per feature — the checkout page shows an itemized
+        // breakdown instead of a single opaque total, same reasoning as the
+        // product-sale cart (ProductSaleController::checkout).
+        $lineItems = array_map(function ($feature) {
+            $label = NotificationService::FEATURE_LABELS[$feature] ?? $feature;
+            $price = (int) config("plans.addons.{$feature}.price");
+            return [
+                'price_data' => [
+                    'currency'     => config('plans.currency', 'mxn'),
+                    'product_data' => ['name' => "Extra: {$label} (GemaSystem)"],
+                    'unit_amount'  => $price * 100,
+                ],
+                'quantity' => 1,
+            ];
+        }, $features);
+
+        $sessionParams = [
+            'mode'                 => 'payment', // one-time charge — not a subscription line item
+            'payment_method_types' => ['card'],
+            'line_items'           => $lineItems,
+            'success_url'          => $frontendUrl . '/checkout/success?session_id={CHECKOUT_SESSION_ID}&type=extra_purchase',
+            'cancel_url'           => $frontendUrl . '/',
+            'metadata'             => [
+                'action'   => 'extra_purchase',
+                'gym_id'   => (string) $gym->id,
+                // Stripe metadata values are strings only — comma-join, same
+                // convention as plan-change's "new_features".
+                'features' => implode(',', $features),
+            ],
+            'locale' => 'es',
+        ];
+
+        if ($gym->stripe_customer_id) {
+            $sessionParams['customer'] = $gym->stripe_customer_id;
+        } else {
+            $sessionParams['customer_email'] = $user->email;
+        }
+
+        try {
+            $session = StripeSession::create($sessionParams);
+            return response()->json(['url' => $session->url]);
+        } catch (\Throwable $e) {
+            Log::error("purchaseGymExtra error for gym {$gym->id} features " . implode(',', $features) . ': ' . $e->getMessage());
+            return response()->json(['message' => 'No se pudo iniciar el pago: ' . $e->getMessage()], 500);
+        }
+    }
+
+    // ── Verify extra purchase (polled by success page) ─────────────────────────
+
+    public function verifyExtraPurchase(Request $request)
+    {
+        $request->validate(['session_id' => 'required|string']);
+
+        $this->boot();
+
+        try {
+            $session = StripeSession::retrieve($request->session_id);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Sesión no encontrada'], 404);
+        }
+
+        if ($session->payment_status !== 'paid') {
+            return response()->json(['status' => 'pending'], 202);
+        }
+
+        $metadata = $session->metadata ? $session->metadata->toArray() : [];
+        $ok       = $this->fulfillExtraPurchase($session, $metadata);
+
+        if (!$ok) {
+            return response()->json([
+                'status' => 'error',
+                'error'  => 'Tu pago se procesó, pero no pudimos activar el extra automáticamente. Contáctanos por soporte con tu correo — lo resolvemos manualmente sin cobrarte de nuevo.',
+            ], 500);
+        }
+
+        return response()->json(['status' => 'success']);
+    }
+
+    /**
+     * @return bool — see fulfillPlanChange()'s docblock for why this must be
+     *   honest. metadata.features is a comma-joined list — a single checkout
+     *   can cover several extras bought together in one cart (see
+     *   Profile.jsx's cart-select UI), all activated here in one pass so
+     *   they land together with one combined notification instead of one
+     *   per feature.
+     */
+    private function fulfillExtraPurchase(object $session, array $metadata): bool
+    {
+        $gymId    = $metadata['gym_id']   ?? null;
+        $features = !empty($metadata['features']) ? explode(',', $metadata['features']) : [];
+
+        if (!$gymId || !$features) {
+            Log::error("fulfillExtraPurchase: sesión {$session->id} sin gym_id/features en metadata — " . json_encode($metadata));
+            return false;
+        }
+
+        $gym = Gym::find($gymId);
+        if (!$gym) {
+            Log::error("fulfillExtraPurchase: gym {$gymId} no encontrado (sesión {$session->id}).");
+            return false;
+        }
+
+        // Idempotent — every feature already active means a previous
+        // poll/webhook already fulfilled this exact purchase, not a failure.
+        $toGrant = array_values(array_filter($features, fn ($f) => !$gym->hasFeature($f)));
+        if (!$toGrant) return true;
+
+        try {
+            $totalPrice = 0;
+            foreach ($toGrant as $feature) {
+                $gym->setExtra($feature, true);
+                $totalPrice += (int) config("plans.addons.{$feature}.price");
+            }
+            NotificationService::extraPurchased((int) $gym->id, $toGrant, $totalPrice);
+            Log::info("Extra purchase fulfilled — gym {$gym->id} → " . implode(',', $toGrant) . " (\${$totalPrice} MXN).");
+            return true;
+        } catch (\Throwable $e) {
+            Log::error("fulfillExtraPurchase error for gym {$gymId} features " . implode(',', $toGrant) . ': ' . $e->getMessage());
+            return false;
+        }
+    }
+
     // ── Cancel subscription (authenticated) ──────────────────────────────────
 
     public function cancelSubscription(Request $request)
@@ -361,29 +558,74 @@ class StripeController extends Controller
             return response()->json(['status' => 'pending'], 202);
         }
 
-        $metadata = (array) ($session->metadata ?? []);
-        $this->fulfillPlanChange($session, $metadata);
+        // (array) on a Stripe SDK object does NOT produce the key => value
+        // metadata map — Stripe\StripeObject stores its data in protected
+        // properties, so a plain array-cast mangles everything into
+        // null-byte-prefixed internal property names ("\0*\0_values", ...).
+        // $metadata['gym_id'] was always null here, so fulfillPlanChange()
+        // silently bailed out on its very first guard clause on EVERY call —
+        // this endpoint has reported "success" back to the frontend without
+        // ever actually applying a single plan change. toArray() is the
+        // SDK's own correct accessor for this.
+        $metadata = $session->metadata ? $session->metadata->toArray() : [];
+        $ok       = $this->fulfillPlanChange($session, $metadata);
+
+        if (!$ok) {
+            // Stripe already took the payment at this point — this is NOT a
+            // "pending" state (retrying won't fix a bad metadata/gym lookup)
+            // and must not be reported as success. See fulfillPlanChange()'s
+            // own Log::error for the specific reason. Surfacing this as a
+            // real error is what makes a future regression of this class
+            // show up in the UI instead of silently vanishing again.
+            return response()->json([
+                'status' => 'error',
+                // 'error', not 'message' — matches every other error response
+                // in this controller, which is the key CheckoutSuccess.jsx's
+                // catch block actually reads (err.response?.data?.error).
+                'error'  => 'Tu pago se procesó, pero no pudimos aplicar el cambio de plan automáticamente. Contáctanos por soporte con tu correo — lo resolvemos manualmente sin cobrarte de nuevo.',
+            ], 500);
+        }
 
         return response()->json(['status' => 'success']);
     }
 
-    private function fulfillPlanChange(object $session, array $metadata): void
+    /**
+     * @return bool true on success (including "already fulfilled" — a second
+     *   poll/webhook hitting the idempotency guard is a legitimate success,
+     *   not a failure). false means the plan change was NOT applied — the
+     *   caller (verifyPlanChange) must NOT report "success" to the frontend
+     *   when this returns false, which is exactly the bug that let a real
+     *   (array)-cast defect go undetected: every guard clause below used to
+     *   return void silently, so a failed fulfillment still looked identical
+     *   to a successful one from the outside.
+     */
+    private function fulfillPlanChange(object $session, array $metadata): bool
     {
         $gymId       = $metadata['gym_id']           ?? null;
         $newPlan     = $metadata['new_plan']          ?? null;
         $newFeatures = !empty($metadata['new_features']) ? explode(',', $metadata['new_features']) : null;
         $oldSubId    = $metadata['old_subscription']  ?? null;
 
-        if (!$gymId) return;
+        if (!$gymId) {
+            Log::error("fulfillPlanChange: sesión {$session->id} sin gym_id en metadata — " . json_encode($metadata));
+            return false;
+        }
 
         $gym = Gym::find($gymId);
-        if (!$gym) return;
+        if (!$gym) {
+            Log::error("fulfillPlanChange: gym {$gymId} no encontrado (sesión {$session->id}).");
+            return false;
+        }
 
         $newSubId = $session->subscription ?? null;
-        if (!$newSubId) return;
+        if (!$newSubId) {
+            Log::error("fulfillPlanChange: sesión {$session->id} sin subscription id (gym {$gymId}).");
+            return false;
+        }
 
-        // Idempotent — webhook and polling may both call this
-        if ($gym->stripe_subscription_id === $newSubId) return;
+        // Idempotent — webhook and polling may both call this. Already done
+        // is success, not failure.
+        if ($gym->stripe_subscription_id === $newSubId) return true;
 
         try {
             $sub      = StripeSubscription::retrieve($newSubId);
@@ -416,8 +658,29 @@ class StripeController extends Controller
             }
 
             Log::info("Plan change fulfilled — gym {$gym->id} → {$planName}, ends=" . ($period['ends_at']?->toDateString() ?? 'n/a'));
+
+            // This method only ever runs for an ALREADY-subscribed gym changing
+            // plan (a brand-new signup goes through fulfill(), not here) — so
+            // every notification created here is exactly "an existing
+            // subscription just got upgraded/changed", per spec. The frontend
+            // session cache (sessionStorage) isn't refreshed by this backend
+            // call — CheckoutSuccess.jsx re-fetches /auth/me itself right after
+            // this succeeds — but this notification is the fallback for
+            // whenever that refresh didn't reach the user (closed the tab
+            // mid-flow, a stale tab open elsewhere, etc).
+            $planLabels = ['weekly' => 'Semanal', 'monthly' => 'Mensual', 'basic' => 'Basic', 'full' => 'Full', 'custom' => 'Custom'];
+            NotificationService::create(
+                (int) $gym->id,
+                'plan_changed',
+                'Plan actualizado',
+                'Tu plan cambió a ' . ($planLabels[$planName] ?? $planName) . '. Si no ves los cambios reflejados, cierra sesión y vuelve a entrar.',
+                ['plan' => $planName]
+            );
+
+            return true;
         } catch (\Throwable $e) {
             Log::error("fulfillPlanChange error for gym {$gymId}: " . $e->getMessage());
+            return false;
         }
     }
 
@@ -452,9 +715,16 @@ class StripeController extends Controller
                         break;
                     }
 
-                    $metadata = (array) ($obj->metadata ?? []);
+                    // Same (array) cast bug as verifyPlanChange() — see the
+                    // comment there. Here it meant the webhook always fell
+                    // through to the else branch (treating a plan_change as
+                    // if it were a brand-new registration) since 'action' was
+                    // never actually readable.
+                    $metadata = $obj->metadata ? $obj->metadata->toArray() : [];
                     if (($metadata['action'] ?? '') === 'plan_change') {
                         $this->fulfillPlanChange($obj, $metadata);
+                    } elseif (($metadata['action'] ?? '') === 'extra_purchase') {
+                        $this->fulfillExtraPurchase($obj, $metadata);
                     } else {
                         $this->fulfill($obj->id, $obj->customer ?? null, $obj->subscription ?? null);
                     }
@@ -542,6 +812,10 @@ class StripeController extends Controller
                 'plan_features'        => $user->gym?->featureMap() ?? null,
                 'onboarding_completed' => (bool) $user->onboarding_completed,
             ],
+            // Same cross-site-cookie fallback as AuthController::login() — see
+            // its comment. Needed here too since this also logs the user in
+            // for the first time (fresh signup / reactivation after checkout).
+            'token' => $token,
         ])->cookie(...AuthController::authCookie($token));
     }
 
@@ -885,11 +1159,23 @@ class StripeController extends Controller
      */
     private function resolvePlanFeatures(string $planName, ?array $pendingFeatures): ?array
     {
-        return match ($planName) {
-            'custom' => $pendingFeatures,
-            'full'   => array_fill_keys(Gym::GATED_FEATURES, true),
-            default  => null,
-        };
+        if ($planName !== 'custom') {
+            return $planName === 'full' ? array_fill_keys(Gym::GATED_FEATURES, true) : null;
+        }
+
+        // Callers pass two different shapes here: fulfillPlanChange() passes
+        // a plain list of selected keys (['whatsapp','products'], split from
+        // Stripe metadata), while the new-registration flow passes an
+        // already-built key => true map (PendingCheckout::plan_features).
+        // Gym::hasFeature()/featureMap() always index by key
+        // (plan_features['whatsapp'] ?? false), so either shape has to land
+        // here as a map — array_values(...) === ... is the pre-8.1-safe way
+        // to tell a plain list apart from an associative array (this app
+        // runs PHP 8.0 in production; array_is_list() isn't available).
+        $features = $pendingFeatures ?? [];
+        $keys     = array_values($features) === $features ? $features : array_keys($features);
+
+        return array_fill_keys($keys, true);
     }
 
     private function priceKey(string $planId): string

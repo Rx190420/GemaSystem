@@ -4,6 +4,7 @@ import { Loader2 } from 'lucide-react'
 import { useAuthStore } from './store/authStore'
 import Layout from './components/layout/Layout'
 import PageLoader from './components/PageLoader'
+import ExportOverlay from './components/ExportOverlay'
 import { markPageLoaderDone } from './lib/pageLoaderSignal'
 import OnboardingWizard from './components/OnboardingWizard'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -203,6 +204,9 @@ export default function App() {
 
       {/* Overlay — siempre encima, nunca desmonta el Router */}
       {visible && <PageLoader hiding={hiding} />}
+
+      {/* Export overlay — always mounted, its own store drives visibility */}
+      <ExportOverlay />
     </>
   )
 }
