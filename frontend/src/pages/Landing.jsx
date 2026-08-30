@@ -1021,6 +1021,27 @@ export default function Landing() {
   const [heroReady, setHeroReady] = useState(isPageLoaderDone)
   useEffect(() => onPageLoaderDone(() => setHeroReady(true)), [])
 
+  // Hero title height, computed in JS instead of a CSS `clamp(...vw...)`
+  // class. <StrokeLogoMark>/<StrokeText> are SVGs sized by height with
+  // width:auto (letting the browser derive width from the intrinsic
+  // viewBox aspect ratio) — on real phones that auto-width resolution was
+  // unreliable and the "GemaSystem" wordmark rendered at something close to
+  // its full intrinsic size (~1100 SVG units wide), badly overflowing the
+  // screen on both sides instead of respecting the clamped height. Plain
+  // arithmetic against window.innerWidth has no such ambiguity: both
+  // components now take an explicit heroHeight (px) and compute their own
+  // pixel width from it directly, so the rendered size can't drift from
+  // what was actually asked for.
+  const [heroHeight, setHeroHeight] = useState(() =>
+    typeof window === 'undefined' ? 52 : Math.min(140, Math.max(52, window.innerWidth * 0.09))
+  )
+  useEffect(() => {
+    const onResize = () => setHeroHeight(Math.min(140, Math.max(52, window.innerWidth * 0.09)))
+    onResize()
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+
   const [trialDone, setTrialDone]       = useState(false)
   const [trialLoading, setTrialLoading] = useState(false)
   const trialForm = useForm({ resolver: yupResolver(trialSchema) })
@@ -1153,20 +1174,20 @@ export default function Landing() {
           group looking off-center on first load. */}
       <section className="relative z-10 overflow-hidden min-h-screen min-h-[100svh] flex flex-col items-center justify-center text-center px-4 sm:px-6 py-16 pt-32">
         {heroReady ? (
-          <h1 className="flex items-center justify-center gap-0.5 sm:gap-1">
+          <h1 className="flex items-center justify-center gap-0.5 sm:gap-1 max-w-full overflow-hidden">
             <StrokeLogoMark
-              className="h-[clamp(52px,9vw,140px)]"
+              heightPx={heroHeight}
               delay={0}
               duration={0.8}
             />
             <StrokeText
               text="emaSystem"
-              className="h-[clamp(52px,9vw,140px)]"
+              heightPx={heroHeight}
               delay={0.55}
             />
           </h1>
         ) : (
-          <div className="h-[clamp(52px,9vw,140px)]" aria-hidden="true" />
+          <div style={{ height: heroHeight }} aria-hidden="true" />
         )}
         <TextType
           texts={[

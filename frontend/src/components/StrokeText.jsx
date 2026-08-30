@@ -14,7 +14,14 @@ import gsap from 'gsap'
 //
 // Measures real glyph widths once fonts have finished loading (Font Loading
 // API) instead of forcing a fixed length, so letterforms stay undistorted.
-// Fully vector — control the rendered size from the outside via `className`.
+//
+// Sized via an explicit `heightPx` (+ a pixel width computed from it below),
+// not a CSS height + width:auto. That relied on the browser deriving width
+// from the SVG's intrinsic viewBox aspect ratio, which turned out to be
+// unreliable on real phones — the rendered width didn't track the clamped
+// height at all, badly overflowing the screen (see the comment in
+// Landing.jsx where heroHeight is computed). Explicit width = heightPx *
+// (viewBox aspect ratio) can't drift the way that auto-resolution did.
 
 const FONT_SIZE = 180
 const VB_H = FONT_SIZE * 1.32
@@ -22,6 +29,7 @@ const VB_H = FONT_SIZE * 1.32
 export default function StrokeText({
   text = '',
   as: Tag = 'span',
+  heightPx,
   className = '',
   fillColor = '#ffffff',
   strokeColor = '#a78bfa',
@@ -77,29 +85,61 @@ export default function StrokeText({
         .to(strokeEls, { opacity: 0, duration: 0.5, ease: 'power1.out' }, '+=0.1')
     }
 
+    // Re-measures the box width only — doesn't touch the draw animation.
+    // Needed because `document.fonts.ready` can resolve before a
+    // `font-display: swap` webfont (Sora 800, here) actually finishes
+    // swapping in: the first measurement then reflects the narrower
+    // fallback font's metrics, boxW/the SVG's viewBox get sized from that,
+    // and the real font — wider — renders past that box once it swaps in.
+    // Since the SVG has overflow:visible (for the glow filter), that shows
+    // up as the text visibly spilling past its container instead of being
+    // safely clipped. `loadingdone` fires for every such late swap, so this
+    // just keeps the box honest whenever one happens.
+    const remeasure = () => {
+      const totalW = strokeTextRef.current?.getComputedTextLength?.()
+      if (totalW) setBoxW(totalW)
+    }
+
     if (typeof document !== 'undefined' && document.fonts?.ready) {
       document.fonts.ready.then(run)
+      document.fonts.addEventListener?.('loadingdone', remeasure)
     } else {
       run()
     }
 
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+      document.fonts?.removeEventListener?.('loadingdone', remeasure)
+    }
     // `chars` is derived fresh from `text` every render (already a dep) — listing
     // it too would re-run this effect every render, since arrays are never `===`.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [text, duration, delay])
 
   const padX = strokeWidth * 3
+  // getComputedTextLength() can undershoot the glyphs' true rendered width
+  // (a font-display:swap webfont swapping in after the measurement is the
+  // main way that happens — see the `loadingdone` listener above) — a small
+  // safety margin on the box itself, plus `overflow:hidden` below instead
+  // of `visible`, means a stale/undershooting measurement makes the text
+  // render very slightly smaller than it could, never past its container.
+  const boxWSafe = boxW * 1.08
+  const totalW = boxWSafe + padX * 2
 
   return (
     <Tag className="inline-flex align-middle leading-none">
       <svg
-        viewBox={`0 0 ${boxW + padX * 2} ${VB_H}`}
+        viewBox={`0 0 ${totalW} ${VB_H}`}
         preserveAspectRatio="xMidYMid meet"
         role="img"
         aria-label={text}
         className={className}
-        style={{ display: 'block', overflow: 'visible', width: 'auto' }}
+        style={{
+          display: 'block',
+          overflow: 'hidden',
+          height: heightPx,
+          width: heightPx * (totalW / VB_H),
+        }}
       >
         <defs>
           <filter id={filterId} x="-20%" y="-40%" width="140%" height="180%">

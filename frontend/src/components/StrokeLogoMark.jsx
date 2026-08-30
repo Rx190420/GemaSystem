@@ -6,8 +6,16 @@ import gsap from 'gsap'
 // <StrokeText> so it reads as the leading letter of the wordmark. Unlike
 // text, these are real <path> elements, so getTotalLength()/dasharray draw
 // correctly as one continuous stroke per path (no per-glyph quirk).
-// No box, no background — just the mark. Size it via `className` (height +
-// `w-auto`, matching <StrokeText>'s sizing contract) so both line up.
+// No box, no background — just the mark. Size it via `heightPx` (matching
+// <StrokeText>'s sizing contract so both line up) — an explicit pixel
+// height/width pair computed here from the fixed 554:703 viewBox ratio,
+// rather than a CSS height + width:auto letting the browser derive width
+// from the intrinsic aspect ratio. That auto-width resolution turned out to
+// be unreliable for this SVG on real phones (see the comment in Landing.jsx
+// where heroHeight is computed) — plain arithmetic against a known ratio
+// can't drift the way browser-side intrinsic sizing did.
+const VIEWBOX_W = 554
+const VIEWBOX_H = 703
 
 const PATHS = [
   'M 586.691406 616.171875 L 449.171875 616.171875 C 445.800781 616.171875 443.070312 613.4375 443.070312 610.066406 L 443.070312 294.570312 C 443.070312 161.789062 560.171875 53.761719 704.113281 53.761719 L 852.492188 53.761719 C 855.855469 53.761719 858.585938 56.496094 858.585938 59.867188 L 858.585938 185.777344 C 858.585938 189.144531 855.855469 191.878906 852.492188 191.878906 L 704.113281 191.878906 C 642.726562 191.878906 592.789062 237.945312 592.789062 294.570312 L 592.789062 610.066406 C 592.789062 613.4375 590.058594 616.171875 586.691406 616.171875',
@@ -15,6 +23,7 @@ const PATHS = [
 ]
 
 export default function StrokeLogoMark({
+  heightPx,
   className = '',
   fillColor = '#ffffff',
   strokeColor = '#a78bfa',
@@ -67,7 +76,12 @@ export default function StrokeLogoMark({
       role="img"
       aria-label="G"
       className={className}
-      style={{ display: 'block', overflow: 'visible', width: 'auto' }}
+      style={{
+        display: 'block',
+        overflow: 'visible',
+        height: heightPx,
+        width: heightPx * (VIEWBOX_W / VIEWBOX_H),
+      }}
     >
       <defs>
         <filter id={filterId} x="-40%" y="-40%" width="180%" height="180%">
