@@ -15,7 +15,7 @@
     <h1 class="h1">¡Feliz cumpleaños, {{ $member->first_name }}!</h1>
   </div>
   <p class="lead">
-    Todo el equipo{{ $gymName ? " de <strong>{$gymName}</strong>" : '' }} te desea un día increíble lleno de energía y alegría.
+    Todo el equipo{!! $gymName ? " de <strong>{$gymName}</strong>" : '' !!} te desea un día increíble lleno de energía y alegría.
     Gracias por ser parte de nuestra comunidad.
   </p>
 

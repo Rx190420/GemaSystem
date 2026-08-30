@@ -8,11 +8,12 @@
     * { margin:0; padding:0; box-sizing:border-box; }
     body { background:#f4f4f5; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif; color:#09090b; -webkit-font-smoothing:antialiased; }
     .wrap { max-width:560px; margin:40px auto; padding:0 20px 40px; }
-    .card { background:#fff; border:1px solid #e4e4e7; border-radius:8px; overflow:hidden; }
+    .card { background:#fff; border:1px solid #e4e4e7; border-radius:14px; overflow:hidden; box-shadow:0 1px 2px rgba(24,24,27,0.04), 0 12px 32px -12px rgba(79,70,229,0.18); }
+    .card-bar { height:4px; background:linear-gradient(90deg,#4F46E5,#7C3AED); }
     /* ── Nav ── */
-    .nav { padding:18px 24px; border-bottom:1px solid #f4f4f5; display:flex; align-items:center; gap:8px; }
-    .nav-icon { width:24px; height:24px; background:linear-gradient(135deg,#6366f1,#7c3aed); border-radius:5px; padding:3px; box-sizing:border-box; }
-    .nav-name { font-size:14px; font-weight:800; color:#09090b; letter-spacing:-0.3px; }
+    .nav { padding:20px 24px; border-bottom:1px solid #f4f4f5; display:flex; align-items:center; gap:9px; }
+    .nav-icon { width:22px; height:22px; background:linear-gradient(135deg,#4F46E5,#7C3AED); border-radius:6px; padding:3px 5px; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; box-shadow:0 2px 5px rgba(79,70,229,0.3); }
+    .nav-name { font-size:14.5px; font-weight:800; color:#09090b; letter-spacing:-0.3px; }
     /* ── Body ── */
     .body { padding:32px 24px; }
     .eyebrow { font-size:11px; font-weight:700; color:#6366f1; text-transform:uppercase; letter-spacing:1.2px; margin-bottom:8px; }
@@ -26,8 +27,8 @@
     .rk { color:#71717a; }
     .rv { font-weight:600; color:#09090b; text-align:right; }
     /* ── Code ── */
-    .code-box { background:#fafafa; border:1px solid #e4e4e7; border-radius:6px; padding:28px; text-align:center; margin-bottom:20px; }
-    .code { font-size:44px; font-weight:800; color:#09090b; letter-spacing:10px; font-family:'Courier New',monospace; }
+    .code-box { background:linear-gradient(135deg,#eef2ff,#f5f3ff); border:1px solid #e0e7ff; border-radius:10px; padding:26px; text-align:center; margin-bottom:20px; }
+    .code { font-size:36px; font-weight:800; color:#4338ca; letter-spacing:5px; font-family:'Courier New',monospace; }
     .code-hint { font-size:12px; color:#a1a1aa; margin-top:10px; }
     /* ── Notices ── */
     .notice { border-left:3px solid #e4e4e7; padding:12px 16px; margin-bottom:20px; border-radius:0 4px 4px 0; background:#fafafa; }
@@ -49,22 +50,23 @@
        that ignore flexbox; inline-flex centers it properly everywhere else. */
     .hero { text-align:center; margin-bottom:22px; }
     .icon-badge {
-      width:56px; height:56px; line-height:56px; text-align:center; border-radius:50%;
+      width:60px; height:60px; line-height:60px; text-align:center; border-radius:50%;
       margin:0 auto 16px; display:inline-flex; align-items:center; justify-content:center;
+      box-shadow:0 0 0 6px rgba(24,24,27,0.03);
     }
     .icon-badge img { display:inline-block; vertical-align:middle; }
-    .icon-badge-green  { background:#f0fdf4; }
-    .icon-badge-red    { background:#fef2f2; }
-    .icon-badge-amber  { background:#fffbeb; }
-    .icon-badge-indigo { background:#eef2ff; }
-    .icon-badge-purple { background:#faf5ff; }
+    .icon-badge-green  { background:#f0fdf4; box-shadow:0 0 0 6px rgba(34,197,94,0.06); }
+    .icon-badge-red    { background:#fef2f2; box-shadow:0 0 0 6px rgba(239,68,68,0.06); }
+    .icon-badge-amber  { background:#fffbeb; box-shadow:0 0 0 6px rgba(245,158,11,0.08); }
+    .icon-badge-indigo { background:#eef2ff; box-shadow:0 0 0 6px rgba(99,102,241,0.08); }
+    .icon-badge-purple { background:#faf5ff; box-shadow:0 0 0 6px rgba(124,58,237,0.08); }
     .icon-badge-gray   { background:#f4f4f5; }
     .hero .h1 { margin-bottom:0; }
     /* ── Misc ── */
     hr { border:none; border-top:1px solid #f4f4f5; margin:20px 0; }
     .btn { display:block; background:#09090b; color:#fff!important; text-decoration:none; padding:13px 20px; border-radius:6px; font-size:14px; font-weight:600; text-align:center; margin-bottom:20px; }
     .btn-indigo { background:#6366f1; }
-    .qr-wrap { display:inline-block; padding:8px; background:#fff; border:1px solid #e4e4e7; border-radius:6px; }
+    .qr-wrap { display:inline-block; padding:12px; background:#fff; border:1px solid #e0e7ff; border-radius:10px; box-shadow:0 2px 10px rgba(79,70,229,0.08); }
     /* ── Footer ── */
     .footer { padding:16px 24px; border-top:1px solid #f4f4f5; }
     .footer p { font-size:11px; color:#a1a1aa; text-align:center; line-height:1.7; }
@@ -85,8 +87,8 @@
       .h1 { font-size:19px; }
       .lead { font-size:13.5px; }
       .box { padding:16px; }
-      .code-box { padding:20px 12px; }
-      .code { font-size:28px; letter-spacing:4px; }
+      .code-box { padding:18px 12px; }
+      .code { font-size:24px; letter-spacing:3px; }
       .row { flex-wrap:wrap; row-gap:2px; }
       .rv { text-align:left; width:100%; }
       .icon-badge { width:48px; height:48px; line-height:48px; }
@@ -96,10 +98,12 @@
 <body>
   <div class="wrap">
     <div class="card">
+      <div class="card-bar"></div>
 
       <div class="nav">
         <div class="nav-icon">
-          <img src="{{ $LOGO }}" width="18" height="18" alt="G" style="display:block;">
+          {{-- Logo mark is 554:705 (portrait, not square) — forcing equal width/height squished it. --}}
+          <img src="{{ $LOGO }}" width="12" height="15" alt="G" style="display:block;">
         </div>
         <span class="nav-name">GemaSystem</span>
         @yield('nav-extra')

@@ -16,7 +16,7 @@
   </div>
   <p class="lead">
     Hola, <strong>{{ $member->first_name }}</strong>. No dejes que el progreso se detenga —
-    renueva tu membresía{{ $gymName ? " en <strong>{$gymName}</strong>" : '' }} y sigue alcanzando tus metas.
+    renueva tu membresía{!! $gymName ? " en <strong>{$gymName}</strong>" : '' !!} y sigue alcanzando tus metas.
   </p>
 
   <div style="text-align:center;padding:18px 20px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;margin-bottom:20px;">

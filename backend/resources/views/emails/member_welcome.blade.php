@@ -19,7 +19,7 @@
   {{-- ID de miembro --}}
   <div class="code-box">
     <div style="font-size:10px;font-weight:700;color:#a1a1aa;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:12px;">Tu ID de miembro</div>
-    <div class="code" style="letter-spacing:8px;">{{ $member->member_code }}</div>
+    <div class="code">{{ $member->member_code }}</div>
   </div>
 
   {{-- QR --}}
