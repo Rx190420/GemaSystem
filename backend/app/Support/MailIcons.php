@@ -32,20 +32,51 @@ class MailIcons
 {
     public static function all(): array
     {
-        return [
-            'LOGO'              => asset('mail-assets/logo.png'),
-            'ICON_CHECK'        => asset('mail-assets/icon-check.png'),
-            'ICON_CHECK_CIRCLE' => asset('mail-assets/icon-check-circle.png'),
-            'ICON_RECEIPT'      => asset('mail-assets/icon-receipt.png'),
-            'ICON_ALERT'        => asset('mail-assets/icon-alert.png'),
-            'ICON_CLOCK'        => asset('mail-assets/icon-clock.png'),
-            'ICON_CLOCK_URGENT' => asset('mail-assets/icon-clock-urgent.png'),
-            'ICON_SHIELD'       => asset('mail-assets/icon-shield.png'),
-            'ICON_HEADSET'      => asset('mail-assets/icon-headset.png'),
-            'ICON_USER_CHECK'   => asset('mail-assets/icon-user-check.png'),
-            'ICON_GIFT'         => asset('mail-assets/icon-gift.png'),
-            'ICON_DUMBBELL'     => asset('mail-assets/icon-dumbbell.png'),
-            'ICON_INFO'         => asset('mail-assets/icon-info.png'),
+        $files = [
+            'LOGO'              => 'logo.png',
+            'ICON_CHECK'        => 'icon-check.png',
+            'ICON_CHECK_CIRCLE' => 'icon-check-circle.png',
+            'ICON_RECEIPT'      => 'icon-receipt.png',
+            'ICON_ALERT'        => 'icon-alert.png',
+            'ICON_CLOCK'        => 'icon-clock.png',
+            'ICON_CLOCK_URGENT' => 'icon-clock-urgent.png',
+            'ICON_SHIELD'       => 'icon-shield.png',
+            'ICON_HEADSET'      => 'icon-headset.png',
+            'ICON_USER_CHECK'   => 'icon-user-check.png',
+            'ICON_GIFT'         => 'icon-gift.png',
+            'ICON_DUMBBELL'     => 'icon-dumbbell.png',
+            'ICON_INFO'         => 'icon-info.png',
         ];
+
+        return array_map(fn (string $file) => self::url($file), $files);
+    }
+
+    /**
+     * Builds a cache-busted URL for a mail-asset file: {url}?v={mtime}.
+     *
+     * Without this, fixing a broken icon (like the squished logo — see git
+     * history) doesn't actually fix anything for anyone who already opened
+     * an older email or a preview pointing at the same URL: Gmail's image
+     * proxy and browsers both cache images by URL, indefinitely by default
+     * since this route sends no Cache-Control. Same URL in every email ever
+     * sent means the very first cached copy wins forever, even after the
+     * file on disk changes. Appending the file's mtime makes the URL itself
+     * change whenever the file does, so there's nothing stale to serve.
+     *
+     * Tried a data: URI fallback here for local testing (APP_URL=localhost
+     * is unreachable from Gmail's servers) — reverted it. Confirmed against
+     * a real send: Gmail strips data: image sources from received HTML mail
+     * regardless of size, same as it would a <script> tag. It isn't a
+     * reachability problem inline base64 can sidestep; every mail client
+     * has to actually support the scheme, and Gmail's inbox renderer
+     * doesn't. See email-previews/ for a way to check the design locally
+     * that doesn't route through a real inbox.
+     */
+    private static function url(string $file): string
+    {
+        $path = public_path("mail-assets/{$file}");
+        $version = is_file($path) ? filemtime($path) : time();
+
+        return asset("mail-assets/{$file}") . '?v=' . $version;
     }
 }
