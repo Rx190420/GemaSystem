@@ -221,17 +221,27 @@ export default function Profile() {
     }
   }
 
+  // A paid gym switching plans goes through plan-change-checkout (billing
+  // continues uninterrupted, remaining time credited). A free-trial gym
+  // activating a plan for the first time goes through upgrade-to-paid
+  // instead — a real conversion (its own schema gets created and the
+  // trial's data migrated once payment clears), not a plan swap on an
+  // account that's already paid.
   const handleChangePlan = async (planId) => {
     if (planId === profile?.plan || planBusy) return
     setPlanBusy(planId)
     try {
-      const { data } = await api.post('/stripe/plan-change-checkout', {
-        plan_id: planId,
-        ...(planId === 'custom' ? { features: customFeatures } : {}),
-      })
+      const isFree = profile?.plan_type === 'free'
+      const { data } = await api.post(
+        isFree ? '/gym/upgrade-to-paid' : '/stripe/plan-change-checkout',
+        {
+          [isFree ? 'plan' : 'plan_id']: planId,
+          ...(planId === 'custom' ? { features: customFeatures } : {}),
+        }
+      )
       window.location.href = data.url
     } catch (e) {
-      toast.error(e.response?.data?.message ?? 'No se pudo iniciar el cambio de plan.')
+      toast.error(e.response?.data?.message ?? 'No se pudo iniciar el proceso de pago.')
       setPlanBusy(false)
     }
   }
@@ -349,7 +359,7 @@ export default function Profile() {
                 Vence en {days} día{days !== 1 ? 's' : ''}
               </div>
             )}
-            {profile?.plan_type === 'paid' && profile?.billing_status === 'active' && (
+            {((profile?.plan_type === 'paid' && profile?.billing_status === 'active') || profile?.plan_type === 'free') && (
               <button
                 onClick={() => setChangingPlan(v => !v)}
                 className={`flex items-center gap-1.5 text-xs font-medium border rounded-lg px-3 py-1.5 transition-colors ${
@@ -358,7 +368,7 @@ export default function Profile() {
                     : 'text-indigo-600 border-indigo-200 bg-indigo-50 hover:bg-indigo-100 hover:border-indigo-300'
                 }`}>
                 <CreditCard className="w-3.5 h-3.5" />
-                {changingPlan ? 'Cerrar planes' : 'Cambiar plan'}
+                {changingPlan ? 'Cerrar planes' : profile?.plan_type === 'free' ? 'Adquirir suscripción' : 'Cambiar plan'}
               </button>
             )}
             {profile?.plan_type === 'paid' && profile?.billing_status === 'active' && (
@@ -408,11 +418,13 @@ export default function Profile() {
           ))}
         </div>
 
-        {/* ── Plan selector (shows when "Cambiar plan" is open) ── */}
-        {changingPlan && profile?.plan_type === 'paid' && (
+        {/* ── Plan selector (shows when "Cambiar plan"/"Adquirir suscripción" is open) ── */}
+        {changingPlan && (profile?.plan_type === 'paid' || profile?.plan_type === 'free') && (
           <div className="mt-6 pt-6 border-t border-gray-100 space-y-3">
             <p className="text-xs text-gray-500 mb-1">
-              El tiempo restante de tu plan actual se aplica como crédito en tu próxima factura.
+              {profile?.plan_type === 'free'
+                ? 'Al pagar, tu cuenta se activa de inmediato — todo lo que ya registraste en tu prueba (socios, visitas, ventas) se conserva.'
+                : 'El tiempo restante de tu plan actual se aplica como crédito en tu próxima factura.'}
             </p>
 
             {!plans ? (
@@ -503,7 +515,9 @@ export default function Profile() {
 
             <div className="flex items-start gap-2 pt-1 text-[11px] text-gray-400 leading-relaxed">
               <Info className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-              Serás redirigido a la página de pago de Stripe. El tiempo restante de tu plan actual se aplica como crédito.
+              {profile?.plan_type === 'free'
+                ? 'Serás redirigido a la página de pago de Stripe para activar tu cuenta.'
+                : 'Serás redirigido a la página de pago de Stripe. El tiempo restante de tu plan actual se aplica como crédito.'}
             </div>
           </div>
         )}

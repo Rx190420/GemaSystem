@@ -153,6 +153,13 @@ export default function CheckoutSuccess() {
   const [params]                = useSearchParams()
   const sessionId               = params.get('session_id')
   const accountUpdateType       = ACCOUNT_UPDATE_TYPES[params.get('type')] ?? null
+  // Paying off a trial→paid conversion (SuperAdminController::convertTrialToPaid,
+  // charge=true) isn't "an already-logged-in user changed something" like the
+  // two above — the gym was sitting on the blocked-login screen with no
+  // session at all. Handled like a brand-new signup (the plain `else` branch
+  // below): verify-trial-upgrade logs them in fresh instead of refreshing a
+  // session that never existed.
+  const isTrialUpgrade          = params.get('type') === 'trial_upgrade'
   const [status, setStatus]     = useState('loading')
   const [errorMsg, setErrorMsg] = useState('')
   const { loginFromCookie, sessionHash } = useAuthStore()
@@ -194,6 +201,27 @@ export default function CheckoutSuccess() {
             setStatus('error')
             setErrorMsg('El pago aún no ha sido confirmado. Intenta recargar la página en unos segundos.')
           }
+        } else if (isTrialUpgrade) {
+          const { data } = await api.get(`/stripe/verify-trial-upgrade?session_id=${sessionId}`)
+
+          if (data.status === 'success') {
+            if (data.user && data.token) {
+              const hash = loginFromCookie(data.user, data.token)
+              setStatus('success')
+              setTimeout(() => navigate(`/g/${hash}/panel`), 2500)
+            } else {
+              // Payment/provisioning succeeded but there was no admin user to
+              // hand back a session for — send them to log in normally.
+              setStatus('success')
+              setTimeout(() => navigate('/'), 2500)
+            }
+          } else if (data.status === 'pending' && attempts < 8) {
+            attempts++
+            setTimeout(check, 2000)
+          } else {
+            setStatus('error')
+            setErrorMsg('El pago aún no ha sido confirmado. Intenta recargar la página en unos segundos.')
+          }
         } else {
           // New registration / resubscription flow
           const { data } = await api.get(`/stripe/verify-session?session_id=${sessionId}`)
@@ -217,7 +245,7 @@ export default function CheckoutSuccess() {
     }
 
     check()
-  }, [sessionId, accountUpdateType])
+  }, [sessionId, accountUpdateType, isTrialUpgrade])
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6" style={{ background: '#020817' }}>

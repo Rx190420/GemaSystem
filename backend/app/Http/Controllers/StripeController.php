@@ -14,12 +14,12 @@ use App\Models\User;
 use App\Services\NotificationService;
 use App\Services\RecaptchaService;
 use App\Services\WhatsAppService;
+use App\Support\DeferredMail;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Stripe\Checkout\Session as StripeSession;
 use Stripe\Exception\SignatureVerificationException;
 use Stripe\Stripe;
@@ -294,6 +294,47 @@ class StripeController extends Controller
      * CURRENT subscription — see fulfillExtraPurchase() and
      * NotificationService::extraPurchased() for where that's enforced/explained.
      */
+
+    // ── Self-service trial→paid upgrade (authenticated gym owner) ─────────────
+    // The operator-initiated path (SuperAdminController::convertTrialToPaid,
+    // AuthController's 'upgrade_pending' block) exists for when an operator
+    // hands a gym off to paid on their behalf. This is the other way in: any
+    // gym still on a healthy, active free trial can upgrade itself, any time,
+    // picking whichever plan it wants — no operator involved. Reuses the same
+    // createTrialUpgradeSession()/fulfillTrialUpgrade() as that path (the
+    // Checkout session and its fulfillment don't care how the gym got there),
+    // so a trial that converts here ends up in exactly the same state — its
+    // own schema, trial data migrated over.
+    public function upgradeTrialToPaid(Request $request)
+    {
+        $request->validate([
+            'plan'       => 'required|in:basic,full,custom',
+            'features'   => 'required_if:plan,custom|array',
+            'features.*' => 'in:' . implode(',', Gym::GATED_FEATURES),
+        ]);
+
+        $user = auth()->user();
+        $gym  = $user->gym;
+
+        if (!$gym || $gym->plan_type !== 'free') {
+            return response()->json(['message' => 'Esta cuenta ya es de pago.'], 422);
+        }
+
+        $features = $request->plan === 'custom'
+            ? array_fill_keys(array_values($request->input('features', [])), true)
+            : ($request->plan === 'full' ? array_fill_keys(Gym::GATED_FEATURES, true) : null);
+
+        $gym->update(['plan' => $request->plan, 'plan_features' => $features]);
+
+        try {
+            $session = $this->createTrialUpgradeSession($gym->fresh(), $user->email);
+            return response()->json(['url' => $session->url]);
+        } catch (\Throwable $e) {
+            Log::error("upgradeTrialToPaid error for gym {$gym->id}: " . $e->getMessage());
+            return response()->json(['message' => 'No se pudo iniciar el pago: ' . $e->getMessage()], 500);
+        }
+    }
+
     public function purchaseGymExtra(Request $request)
     {
         $request->validate([
@@ -440,6 +481,231 @@ class StripeController extends Controller
             return true;
         } catch (\Throwable $e) {
             Log::error("fulfillExtraPurchase error for gym {$gymId} features " . implode(',', $toGrant) . ': ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    // ── Trial-to-paid upgrade payment (operator converted the gym, gym pays) ──
+    // SuperAdminController::convertTrialToPaid() sets plan/plan_features to
+    // whatever the operator chose and expires the trial on the spot
+    // (billing_status='payment_due' while plan_type stays 'free' — see the
+    // comment in AuthController::login() for why that combination, not a new
+    // column, is what flags this state) and emails a Checkout link for that
+    // exact session. This endpoint exists for when that link has expired
+    // (Stripe Checkout sessions last 24h) — the "Pagar ahora" button on the
+    // upgrade_pending blocked-login screen calls this to mint a fresh one.
+    //
+    // `plan`/`features` are optional: the gym can also swap to a different
+    // plan than the one the operator originally picked (the "¿No es el plan
+    // que quieres?" picker on that screen) — when given, this updates
+    // gym->plan/plan_features to match *before* building the session, so the
+    // eventual fulfillment (fulfillTrialUpgrade) prices and activates
+    // whatever they actually paid for, not the operator's original choice.
+    // Omitted, it falls back to gym->plan/plan_features exactly as stored.
+
+    public function payTrialUpgrade(Request $request)
+    {
+        $request->validate([
+            'email'      => 'required|email',
+            'password'   => 'required|string',
+            'plan'       => 'nullable|in:basic,full,custom',
+            'features'   => 'required_if:plan,custom|array',
+            'features.*' => 'in:' . implode(',', Gym::GATED_FEATURES),
+        ]);
+
+        $user = User::where('email', $request->email)->first();
+        if (!$user || !Hash::check($request->password, $user->password)) {
+            return response()->json(['message' => 'Las credenciales no son correctas.'], 422);
+        }
+
+        $gym = $user->gym;
+        if (!$gym || $gym->plan_type !== 'free' || $gym->billing_status !== 'payment_due') {
+            return response()->json(['message' => 'No hay ningún pago pendiente para esta cuenta.'], 422);
+        }
+
+        if ($request->filled('plan') && $request->plan !== $gym->plan) {
+            $newFeatures = $request->plan === 'custom'
+                ? array_fill_keys(array_values($request->input('features', [])), true)
+                : ($request->plan === 'full' ? array_fill_keys(Gym::GATED_FEATURES, true) : null);
+
+            $gym->update(['plan' => $request->plan, 'plan_features' => $newFeatures]);
+        }
+
+        try {
+            $session = $this->createTrialUpgradeSession($gym->fresh(), $user->email);
+            return response()->json(['url' => $session->url]);
+        } catch (\Throwable $e) {
+            Log::error("payTrialUpgrade error for gym {$gym->id}: " . $e->getMessage());
+            return response()->json(['message' => 'No se pudo iniciar el pago: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Builds the Checkout session for a trial→paid conversion — shared by
+     * payTrialUpgrade() (the retry button on the blocked-login screen) and
+     * SuperAdminController::convertTrialToPaid() (the first link, emailed
+     * the moment the operator picks "charge"). Always prices gym->plan/
+     * plan_features exactly as already stored on the gym — the operator
+     * chose that when converting; nothing here lets a caller substitute a
+     * different plan.
+     */
+    public function createTrialUpgradeSession(Gym $gym, string $email): StripeSession
+    {
+        $this->boot();
+        $frontendUrl = env('APP_FRONTEND_URL', 'http://localhost:5173');
+        $features = $gym->plan === 'custom' ? array_keys(array_filter($gym->plan_features ?? [])) : null;
+
+        $sessionParams = [
+            'mode'                 => 'subscription',
+            'payment_method_types' => ['card'],
+            'line_items'           => [$this->lineItemFor($gym->plan, $features)],
+            'success_url'          => $frontendUrl . '/checkout/success?session_id={CHECKOUT_SESSION_ID}&type=trial_upgrade',
+            'cancel_url'           => $frontendUrl . '/',
+            'metadata'             => [
+                'action' => 'trial_upgrade',
+                'gym_id' => (string) $gym->id,
+            ],
+            'locale' => 'es',
+        ];
+
+        if ($gym->stripe_customer_id) {
+            $sessionParams['customer'] = $gym->stripe_customer_id;
+        } else {
+            $sessionParams['customer_email'] = $email;
+        }
+
+        return StripeSession::create($sessionParams);
+    }
+
+    // ── Verify trial upgrade (polled by success page) ──────────────────────────
+
+    public function verifyTrialUpgrade(Request $request)
+    {
+        $request->validate(['session_id' => 'required|string']);
+
+        $this->boot();
+
+        try {
+            $session = StripeSession::retrieve($request->session_id);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Sesión no encontrada'], 404);
+        }
+
+        if ($session->payment_status !== 'paid') {
+            return response()->json(['status' => 'pending'], 202);
+        }
+
+        $metadata = $session->metadata ? $session->metadata->toArray() : [];
+        $ok       = $this->fulfillTrialUpgrade($session, $metadata);
+
+        if (!$ok) {
+            return response()->json([
+                'status' => 'error',
+                'error'  => 'Tu pago se procesó, pero no pudimos activar tu cuenta de pago automáticamente. Contáctanos por soporte con tu correo — lo resolvemos manualmente sin cobrarte de nuevo.',
+            ], 500);
+        }
+
+        // Unlike verify-plan-change/verify-extra-purchase (an already-logged-in
+        // user changing something about an account they're already in), the
+        // gym paying here was sitting on the blocked-login screen — no session
+        // to refresh. Same shape as verifySession()'s response, so
+        // CheckoutSuccess.jsx can log them in the same way it does for a
+        // brand-new signup.
+        $gym = Gym::find($metadata['gym_id'] ?? null);
+        $admin = $gym?->users()->where('role', 'admin')->first();
+
+        if (!$admin) {
+            // Payment and provisioning both genuinely succeeded — just no user
+            // to hand back a session for. Frontend falls back to "go log in".
+            return response()->json(['status' => 'success']);
+        }
+
+        $token = $admin->createToken('gemasystem')->plainTextToken;
+
+        return response()->json([
+            'status' => 'success',
+            'user'   => [
+                'id'                   => $admin->id,
+                'username'             => $admin->username,
+                'email'                => $admin->email,
+                'role'                 => $admin->role,
+                'gym_id'               => $admin->gym_id,
+                'plan_type'            => $gym->plan_type,
+                'plan'                 => $gym->plan,
+                'plan_features'        => $gym->featureMap(),
+                'onboarding_completed' => (bool) $admin->onboarding_completed,
+            ],
+            'token' => $token,
+        ])->cookie(...AuthController::authCookie($token));
+    }
+
+    /**
+     * @return bool — same honesty contract as fulfillPlanChange()/
+     *   fulfillExtraPurchase(): false means nothing was applied and the
+     *   caller must not report success.
+     */
+    private function fulfillTrialUpgrade(object $session, array $metadata): bool
+    {
+        $gymId = $metadata['gym_id'] ?? null;
+        if (!$gymId) {
+            Log::error("fulfillTrialUpgrade: sesión {$session->id} sin gym_id en metadata — " . json_encode($metadata));
+            return false;
+        }
+
+        $gym = Gym::find($gymId);
+        if (!$gym) {
+            Log::error("fulfillTrialUpgrade: gym {$gymId} no encontrado (sesión {$session->id}).");
+            return false;
+        }
+
+        // Idempotent — webhook and polling may both call this; already paid
+        // means a previous call already fulfilled it, not a failure.
+        if ($gym->plan_type === 'paid') return true;
+
+        $newSubId = $session->subscription ?? null;
+
+        try {
+            $startsAt = now();
+            $endsAt   = null;
+            if ($newSubId) {
+                $sub    = StripeSubscription::retrieve($newSubId);
+                $period = $this->extractSubPeriod($sub);
+                $startsAt = $period['starts_at'] ?? $startsAt;
+                $endsAt   = $period['ends_at'];
+            }
+
+            $gym->update([
+                'stripe_subscription_id' => $newSubId,
+                'stripe_customer_id'     => $session->customer ?? $gym->stripe_customer_id,
+                'status'                 => 'active',
+                'billing_status'         => 'active',
+                'subscription_starts_at' => $startsAt,
+                'subscription_ends_at'   => $endsAt,
+                'last_payment_at'        => now(),
+            ]);
+
+            // Sets plan_type='paid' and db_name as part of creating the schema
+            // and moving this gym's trial-period data into it — see the class
+            // doc comment on CreateGymDatabase::migrateAndProvision().
+            CreateGymDatabase::migrateAndProvision($gym);
+
+            $admin = $gym->users()->where('role', 'admin')->first();
+            if ($admin) {
+                DeferredMail::send($admin->email, new \App\Mail\GymUpgraded($gym), "GymUpgraded email failed for gym {$gym->id}");
+            }
+
+            NotificationService::create(
+                (int) $gym->id,
+                'plan_changed',
+                'Cuenta activada',
+                'Tu pago se confirmó y tu cuenta ya es de pago. ¡Bienvenido a GemaSystem!',
+                ['plan' => $gym->plan]
+            );
+
+            Log::info("Trial upgrade fulfilled — gym {$gym->id} → plan_type=paid, plan={$gym->plan}.");
+            return true;
+        } catch (\Throwable $e) {
+            Log::error("fulfillTrialUpgrade error for gym {$gymId}: " . $e->getMessage());
             return false;
         }
     }
@@ -725,6 +991,8 @@ class StripeController extends Controller
                         $this->fulfillPlanChange($obj, $metadata);
                     } elseif (($metadata['action'] ?? '') === 'extra_purchase') {
                         $this->fulfillExtraPurchase($obj, $metadata);
+                    } elseif (($metadata['action'] ?? '') === 'trial_upgrade') {
+                        $this->fulfillTrialUpgrade($obj, $metadata);
                     } else {
                         $this->fulfill($obj->id, $obj->customer ?? null, $obj->subscription ?? null);
                     }
@@ -861,21 +1129,17 @@ class StripeController extends Controller
                     $amount    = number_format(($invoice->amount_paid ?? 0) / 100, 2);
                     $currency  = strtoupper($invoice->currency ?? 'MXN');
 
-                    try {
-                        Mail::to($user->email)->send(new InvoiceReceiptMail(
-                            gymName:     $gym->name,
-                            planLabel:   $planLabel,
-                            amount:      $amount,
-                            currency:    $currency,
-                            periodStart: $period['starts_at'],
-                            periodEnd:   $period['ends_at'],
-                            invoiceId:   $invoice->id ?? null,
-                            invoiceUrl:  $invoice->hosted_invoice_url ?? null,
-                            invoicePdf:  $invoice->invoice_pdf ?? null,
-                        ));
-                    } catch (\Throwable $e) {
-                        Log::warning("Invoice receipt email failed for gym {$gym->id}: " . $e->getMessage());
-                    }
+                    DeferredMail::send($user->email, new InvoiceReceiptMail(
+                        gymName:     $gym->name,
+                        planLabel:   $planLabel,
+                        amount:      $amount,
+                        currency:    $currency,
+                        periodStart: $period['starts_at'],
+                        periodEnd:   $period['ends_at'],
+                        invoiceId:   $invoice->id ?? null,
+                        invoiceUrl:  $invoice->hosted_invoice_url ?? null,
+                        invoicePdf:  $invoice->invoice_pdf ?? null,
+                    ), "Invoice receipt email failed for gym {$gym->id}");
 
                     $trialPhone = TrialRequest::where('email', $user->email)->latest()->value('phone');
                     if ($trialPhone && $period['ends_at']) {
@@ -928,20 +1192,16 @@ class StripeController extends Controller
             $amount    = number_format(($invoice->amount_due ?? 0) / 100, 2);
             $currency  = strtoupper($invoice->currency ?? 'MXN');
 
-            try {
-                Mail::to($user->email)->send(new PaymentFailedMail(
-                    gymName:        $gym->name,
-                    planLabel:      $planLabel,
-                    amount:         $amount,
-                    currency:       $currency,
-                    daysRemaining:  $daysRemaining,
-                    suspensionDate: $suspensionDate,
-                    attemptCount:   (int) ($invoice->attempt_count ?? 1),
-                    nextAttemptDate: $nextAttempt,
-                ));
-            } catch (\Throwable $e) {
-                Log::warning("Payment failed email error for gym {$gym->id}: " . $e->getMessage());
-            }
+            DeferredMail::send($user->email, new PaymentFailedMail(
+                gymName:        $gym->name,
+                planLabel:      $planLabel,
+                amount:         $amount,
+                currency:       $currency,
+                daysRemaining:  $daysRemaining,
+                suspensionDate: $suspensionDate,
+                attemptCount:   (int) ($invoice->attempt_count ?? 1),
+                nextAttemptDate: $nextAttempt,
+            ), "Payment failed email error for gym {$gym->id}");
 
             $trialPhone = TrialRequest::where('email', $user->email)->latest()->value('phone');
             if ($trialPhone) {
@@ -1112,11 +1372,7 @@ class StripeController extends Controller
                 Log::error("Failed to provision tenant DB for gym {$gym->id}: " . $e->getMessage());
             }
 
-            try {
-                Mail::to($result->email)->send(new UserWelcome($result, $result->access_code_plain));
-            } catch (\Throwable $e) {
-                Log::warning("Welcome email failed for user {$result->id}: " . $e->getMessage());
-            }
+            DeferredMail::send($result->email, new UserWelcome($result, $result->access_code_plain), "Welcome email failed for user {$result->id}");
 
             $trialPhone = TrialRequest::where('email', $result->email)->latest()->value('phone');
             if ($trialPhone) {

@@ -175,6 +175,237 @@ class CreateGymDatabase extends Command
     }
 
     /**
+     * Same as provision(), but for a gym that already has real data sitting
+     * in the shared 'public' schema (a free-trial gym being converted to
+     * paid mid-life) instead of nothing (a brand-new paid signup, the only
+     * case provision() originally had to handle). Creates the schema exactly
+     * like provision() does, then copies every row that belongs to this gym
+     * out of 'public' and into the new schema, and finally removes those
+     * rows from 'public' via the same wipeSharedGymData() a permanent
+     * delete already uses — so nothing is left duplicated in both places.
+     *
+     * Postgres-only. A gym on MySQL never lived in a shared database to
+     * begin with (see class doc comment) — provisionMysqlDatabase() already
+     * handles "first dedicated database" as its only case, correctly.
+     */
+    public static function migrateAndProvision(Gym $gym, ?Command $console = null): void
+    {
+        $log = fn(string $msg) => $console ? $console->line($msg) : \Log::info("[GymMigrate] $msg");
+
+        if (config('database.default') === 'mysql') {
+            $log('→ MySQL: sin schema compartido que migrar, aprovisionando vacío.');
+            self::provisionMysqlDatabase($gym, $console, false);
+            return;
+        }
+
+        self::provisionPgsqlSchema($gym, $console, false);
+
+        $schema = $gym->db_name; // set by provisionPgsqlSchema() above
+        $shared = DB::connection('pgsql');
+
+        // provisionPgsqlSchema() just pointed the 'tenant' connection's
+        // search_path at [schema, 'public'] and purged it — with
+        // PDO::ATTR_PERSISTENT set on 'pgsql' (config/database.php), PHP can
+        // hand 'tenant' back the SAME physical socket 'pgsql' already had
+        // open (persistent PDO pools by connection string, not by Laravel's
+        // connection name), meaning that SET search_path leaks onto 'pgsql'
+        // too. Every query below that reads/writes 'public' unqualified —
+        // migrateSettings() and, critically, the existing wipeSharedGymData()
+        // this reuses unmodified — would silently resolve against the gym's
+        // own schema instead without this, since it comes first in that
+        // search_path.
+        $shared->statement('SET search_path TO public');
+
+        // Tables with their own gym_id column in 'public', copied in an order
+        // that never inserts a child row before the parent it references —
+        // reverse of wipeSharedGymData()'s delete order (which goes
+        // child-first), minus support_tickets (stays in 'public' — the
+        // operator's support panel needs every gym's tickets in one place,
+        // paid or not). member_labels is NOT in this list despite having a
+        // wipeSharedGymData() comment implying otherwise at a glance — like
+        // class_schedules/class_sessions, it has no gym_id of its own in the
+        // real live schema (confirmed against information_schema, the .sql
+        // export on disk was stale for this one table) and is scoped only
+        // through member_id → members.gym_id.
+        $directTables = [
+            'trainers', 'members', 'labels', 'membership_types',
+            'discount_categories', 'products', 'whatsapp_logs',
+        ];
+        $afterClasses = [
+            'memberships', 'visits', 'payments', 'product_sales', 'ingresos',
+        ];
+        $childTables = [
+            // [table, fk column, parent table]
+            ['class_schedules', 'class_id', 'classes'],
+            ['class_sessions',  'class_id', 'classes'],
+            ['member_labels',   'member_id', 'members'],
+        ];
+
+        $shared->transaction(function () use ($shared, $schema, $gym, $log, $directTables, $afterClasses, $childTables) {
+            foreach ($directTables as $table) {
+                self::copyTableRows($shared, $schema, $table, 'gym_id', $gym->id, $log);
+            }
+
+            $log('→ Migrando configuración (settings)...');
+            self::migrateSettings($shared, $schema, $gym->id, $log);
+
+            self::copyTableRows($shared, $schema, 'classes', 'gym_id', $gym->id, $log);
+
+            foreach ($childTables as [$table, $fkColumn, $parentTable]) {
+                self::copyChildTableRows($shared, $schema, $table, $fkColumn, $parentTable, $gym->id, $log);
+            }
+
+            foreach ($afterClasses as $table) {
+                self::copyTableRows($shared, $schema, $table, 'gym_id', $gym->id, $log);
+            }
+
+            foreach (array_merge($directTables, ['classes'], $afterClasses) as $table) {
+                self::resetSequence($shared, $schema, $table, $log);
+            }
+            foreach (array_column($childTables, 0) as $table) {
+                self::resetSequence($shared, $schema, $table, $log);
+            }
+
+            $log('→ Limpiando datos ya migrados del schema compartido...');
+            self::wipeSharedGymData($gym->id);
+        });
+
+        $log("→ Migración de datos completa para {$gym->name} → \"{$schema}\".");
+    }
+
+    /**
+     * Copies every row from public.<table> where <table>.<scopeColumn> =
+     * $gymId into "<schema>".<table>, using only the columns both tables
+     * actually have in common (minus $scopeColumn itself, which the tenant
+     * table doesn't carry — its whole schema IS the scope). Discovering
+     * columns at runtime instead of hardcoding a list per table means this
+     * keeps working if either table's columns ever change.
+     */
+    private static function copyTableRows($shared, string $schema, string $table, string $scopeColumn, int $gymId, callable $log): void
+    {
+        $cols = self::commonColumns($shared, $schema, $table, $scopeColumn);
+        if (empty($cols)) {
+            $log("  ⚠ {$table}: sin columnas en común, se omite.");
+            return;
+        }
+
+        $colList = implode(', ', array_map(fn($c) => "\"{$c}\"", $cols));
+        $moved = $shared->insert(
+            "INSERT INTO \"{$schema}\".\"{$table}\" ({$colList}) " .
+            "SELECT {$colList} FROM public.\"{$table}\" WHERE \"{$scopeColumn}\" = ?",
+            [$gymId]
+        );
+        $log("  · {$table}: copiado.");
+    }
+
+    /**
+     * Same as copyTableRows(), but for a table (class_schedules,
+     * class_sessions) that has no gym_id of its own — it's reached through
+     * $fkColumn (class_id) pointing at a row in $parentTable (classes) that
+     * does.
+     */
+    private static function copyChildTableRows($shared, string $schema, string $table, string $fkColumn, string $parentTable, int $gymId, callable $log): void
+    {
+        $cols = self::commonColumns($shared, $schema, $table, null);
+        if (empty($cols)) {
+            $log("  ⚠ {$table}: sin columnas en común, se omite.");
+            return;
+        }
+
+        $colList = implode(', ', array_map(fn($c) => "\"{$c}\"", $cols));
+        $shared->insert(
+            "INSERT INTO \"{$schema}\".\"{$table}\" ({$colList}) " .
+            "SELECT {$colList} FROM public.\"{$table}\" WHERE \"{$fkColumn}\" IN " .
+            "(SELECT id FROM public.\"{$parentTable}\" WHERE gym_id = ?)",
+            [$gymId]
+        );
+        $log("  · {$table}: copiado (vía {$parentTable}).");
+    }
+
+    /**
+     * settings is unique per table: the tenant copy was already seeded with
+     * sensible defaults by seedTenantSettings() inside provisionPgsqlSchema()
+     * above, and 'public' may not have a row for every key (only whatever
+     * the gym actually changed during its trial). upsert-by-key onto the
+     * seeded defaults keeps every key covered while making sure anything the
+     * gym genuinely configured wins over the default.
+     */
+    private static function migrateSettings($shared, string $schema, int $gymId, callable $log): void
+    {
+        $rows = $shared->table('public.settings')->where('gym_id', $gymId)->get(['key', 'value', 'type', 'group', 'label']);
+        foreach ($rows as $row) {
+            $shared->table("{$schema}.settings")->updateOrInsert(
+                ['key' => $row->key],
+                [
+                    'value' => $row->value,
+                    'type'  => $row->type,
+                    'group' => $row->group,
+                    'label' => $row->label,
+                ]
+            );
+        }
+    }
+
+    /**
+     * Column names present in both public.<table> and "<schema>".<table>,
+     * minus $excludeColumn (the scope column — gym_id — that only the source
+     * table has and that the copy shouldn't carry over).
+     */
+    private static function commonColumns($shared, string $schema, string $table, ?string $excludeColumn): array
+    {
+        $sourceCols = $shared->select(
+            'SELECT column_name FROM information_schema.columns WHERE table_schema = ? AND table_name = ?',
+            ['public', $table]
+        );
+        $targetCols = $shared->select(
+            'SELECT column_name FROM information_schema.columns WHERE table_schema = ? AND table_name = ?',
+            [$schema, $table]
+        );
+
+        $source = array_column($sourceCols, 'column_name');
+        $target = array_column($targetCols, 'column_name');
+        $common = array_values(array_intersect($source, $target));
+
+        if ($excludeColumn) {
+            $common = array_values(array_diff($common, [$excludeColumn]));
+        }
+
+        return $common;
+    }
+
+    /**
+     * Rows just copied in keep their original ids (safe — those ids were
+     * only ever unique within this one gym's data to begin with, and moving
+     * to an isolated schema doesn't change that). But the schema's own
+     * BIGSERIAL sequence for the table has no idea those ids are now taken,
+     * so the next INSERT without an explicit id would collide. Advancing the
+     * sequence past the highest copied id avoids that.
+     *
+     * Guarded for tables with no serial 'id' at all (member_labels has a
+     * composite primary key, member_id+label_id, no sequence to reset) —
+     * pg_get_serial_sequence() doesn't just return NULL for a column that
+     * isn't there, it raises an error, so the lookup itself is wrapped in
+     * its own BEGIN/EXCEPTION to swallow that and no-op instead.
+     */
+    private static function resetSequence($shared, string $schema, string $table, callable $log): void
+    {
+        $shared->statement(
+            "DO \$\$
+            DECLARE seq text;
+            BEGIN
+                BEGIN
+                    seq := pg_get_serial_sequence('\"{$schema}\".\"{$table}\"', 'id');
+                EXCEPTION WHEN OTHERS THEN
+                    seq := NULL;
+                END;
+                IF seq IS NOT NULL THEN
+                    PERFORM setval(seq, COALESCE((SELECT MAX(id) FROM \"{$schema}\".\"{$table}\"), 1));
+                END IF;
+            END \$\$;"
+        );
+    }
+
+    /**
      * Permanently wipes ALL operational data belonging to a gym — the
      * dedicated schema/database for a paid gym, or every gym_id-scoped row
      * in the shared schema for a free gym. Mirror image of provision(): this

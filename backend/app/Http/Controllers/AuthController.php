@@ -105,6 +105,26 @@ class AuthController extends Controller
 
         // Block already-suspended gyms
         if ($gym && $gym->isBillingBlocked()) {
+            // A trial gym (plan_type='free') sitting on billing_status='payment_due'
+            // isn't a lapsed payer reactivating — it's SuperAdminController::
+            // convertTrialToPaid() having just fixed `plan`/`plan_features` to
+            // whatever the operator chose and expired the trial on purpose, to
+            // gate login behind a single "pay this exact plan" screen instead
+            // of the self-service weekly/monthly picker trial_expired/payment_due
+            // show below. Same billing_status value, different plan_type — no
+            // new column, no CHECK constraint migration needed to add a state.
+            if ($gym->plan_type === 'free' && $gym->billing_status === 'payment_due') {
+                return response()->json([
+                    'account_blocked' => true,
+                    'block_type'      => 'upgrade_pending',
+                    'message'         => 'Tu gimnasio ahora forma parte de un plan de pago. Completa el pago para activar tu cuenta.',
+                    'plan'            => $gym->plan,
+                    'plan_features'   => $gym->plan_features,
+                    'amount'          => $this->planAmount($gym->plan, $gym->plan_features),
+                    'email'           => $user->email,
+                ], 403);
+            }
+
             $blockType = $gym->billing_status === 'trial_expired' ? 'trial_expired' : 'payment_due';
             return response()->json([
                 'account_blocked'   => true,
@@ -343,5 +363,24 @@ class AuthController extends Controller
             'member_since'          => $user->created_at->toIso8601String(),
             'onboarding_completed'  => (bool) $user->onboarding_completed,
         ];
+    }
+
+    /**
+     * MXN total for a plan — same pricing config/math as
+     * StripeController::lineItemFor()'s 'custom' branch, duplicated here in
+     * plain-number form (no Stripe price id involved) because this only
+     * needs to show a total on the "upgrade_pending" blocked-login screen,
+     * not build a Checkout line item.
+     */
+    private function planAmount(?string $plan, ?array $features): int
+    {
+        if ($plan === 'basic') return (int) config('plans.basic.price');
+        if ($plan === 'full')  return (int) config('plans.full.price');
+
+        $amount = (int) config('plans.basic.price');
+        foreach (array_keys(array_filter($features ?? [])) as $key) {
+            $amount += (int) (config("plans.addons.{$key}.price") ?? 0);
+        }
+        return $amount;
     }
 }

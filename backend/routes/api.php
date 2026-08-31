@@ -60,6 +60,8 @@ Route::post('/stripe/webhook',              [StripeController::class, 'webhook']
 Route::get('/stripe/verify-session',        [StripeController::class, 'verifySession'])       ->middleware('throttle:20,1');
 Route::get('/stripe/verify-plan-change',    [StripeController::class, 'verifyPlanChange'])    ->middleware('throttle:20,1');
 Route::get('/stripe/verify-extra-purchase', [StripeController::class, 'verifyExtraPurchase']) ->middleware('throttle:20,1');
+Route::post('/stripe/pay-trial-upgrade',    [StripeController::class, 'payTrialUpgrade'])     ->middleware('throttle:10,1');
+Route::get('/stripe/verify-trial-upgrade',  [StripeController::class, 'verifyTrialUpgrade'])  ->middleware('throttle:20,1');
 
 // ── Stripe — authenticated ────────────────────────────────────────────────────
 Route::post('/stripe/change-plan',          [StripeController::class, 'changePlan'])          ->middleware('auth:sanctum');
@@ -67,6 +69,7 @@ Route::post('/stripe/plan-change-checkout', [StripeController::class, 'createPla
 Route::post('/stripe/cancel-subscription',  [StripeController::class, 'cancelSubscription'])  ->middleware('auth:sanctum');
 Route::put('/gym/extras',                   [StripeController::class, 'updateGymExtras'])     ->middleware('auth:sanctum');
 Route::post('/gym/extras/checkout',         [StripeController::class, 'purchaseGymExtra'])    ->middleware('auth:sanctum');
+Route::post('/gym/upgrade-to-paid',         [StripeController::class, 'upgradeTrialToPaid'])  ->middleware('auth:sanctum');
 
 // ── Protected routes (authenticated gym users) ────────────────────────────────
 Route::middleware('auth:sanctum')->group(function () {
@@ -204,6 +207,8 @@ Route::middleware(['auth:sanctum', 'operator', 'throttle:operator'])->prefix('op
     Route::put('/gyms/{gym}/activate',                     [SuperAdminController::class, 'activateGym']);
     Route::put('/gyms/{gym}/billing-status',               [SuperAdminController::class, 'setBillingStatus']);
     Route::put('/gyms/{gym}/extras',                       [SuperAdminController::class, 'updateExtras']);
+    Route::put('/gyms/{gym}/convert-to-paid',               [SuperAdminController::class, 'convertTrialToPaid']);
+    Route::put('/gyms/{gym}/revert-convert-to-paid',         [SuperAdminController::class, 'revertConvertToPaid']);
     Route::delete('/gyms/{gym}',                           [SuperAdminController::class, 'deleteGym']); // gated by SUPERADMIN_DELETE_SECRET
 
     // Per-user management

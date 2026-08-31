@@ -75,6 +75,12 @@ CREATE TABLE gyms (
   subscription_starts_at  TIMESTAMP,
   subscription_ends_at    TIMESTAMP,
   last_payment_at         TIMESTAMP,
+  -- Snapshot of subscription_ends_at taken right before
+  -- SuperAdminController::convertTrialToPaid(charge=true) expires the trial
+  -- on the spot — lets revertConvertToPaid() put a gym back exactly where
+  -- it was if the operator (or the gym) backs out before actually paying.
+  -- NULL outside of that pending-payment window.
+  pre_upgrade_trial_ends_at TIMESTAMP,
   created_at              TIMESTAMP,
   updated_at              TIMESTAMP
 );
@@ -162,6 +168,7 @@ CREATE TABLE members (
   UNIQUE (gym_id, email)
 );
 CREATE INDEX members_gym_id_index ON members(gym_id);
+CREATE INDEX members_gym_id_status_index ON members(gym_id, status);
 
 -- ── classes ───────────────────────────────────────────────────
 CREATE TABLE classes (
@@ -235,6 +242,9 @@ CREATE TABLE memberships (
   updated_at      TIMESTAMP
 );
 CREATE INDEX memberships_gym_id_index ON memberships(gym_id);
+CREATE INDEX memberships_member_id_index ON memberships(member_id);
+CREATE INDEX memberships_gym_id_status_index ON memberships(gym_id, status);
+CREATE INDEX memberships_end_date_index ON memberships(end_date);
 
 -- ── visits ────────────────────────────────────────────────────
 CREATE TABLE visits (
@@ -254,6 +264,10 @@ CREATE TABLE visits (
   created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX visits_gym_id_index ON visits(gym_id);
+CREATE INDEX visits_member_id_index ON visits(member_id);
+CREATE INDEX visits_gym_id_visit_date_index ON visits(gym_id, visit_date);
+CREATE INDEX visits_class_id_index ON visits(class_id);
+CREATE INDEX visits_trainer_id_index ON visits(trainer_id);
 
 -- ── payments ──────────────────────────────────────────────────
 -- Sin datos de muestra (el seeder de demo no genera esta tabla).
@@ -275,6 +289,7 @@ CREATE TABLE payments (
   updated_at      TIMESTAMP
 );
 CREATE INDEX payments_gym_id_index ON payments(gym_id);
+CREATE INDEX payments_member_id_index ON payments(member_id);
 
 -- ── labels ────────────────────────────────────────────────────
 CREATE TABLE labels (

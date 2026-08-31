@@ -595,6 +595,12 @@ function ManageTab({ selectedGym, onBack }) {
   const [pendingAction, setPending] = useState(null) // { key, label, fn, needsReason }
   const [reason, setReason]       = useState('')
 
+  // Convertir de prueba a pago
+  const [convertPlan, setConvertPlan]         = useState('basic')
+  const [convertFeatures, setConvertFeatures] = useState([])
+  const [convertCharge, setConvertCharge]     = useState(true)
+  const [convertBusy, setConvertBusy]         = useState(false)
+
   // Danger zone — delete gym
   const [deleteOpen, setDeleteOpen]     = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState('')
@@ -621,6 +627,33 @@ function ManageTab({ selectedGym, onBack }) {
     catch (e) { toast.error(e.message) }
     setBusy(null)
   }
+
+  const submitConvert = async () => {
+    if (convertPlan === 'custom' && convertFeatures.length === 0) {
+      toast.error('Selecciona al menos una función para el plan Custom.')
+      return
+    }
+    setConvertBusy(true)
+    try {
+      const r = await api('PUT', `/gyms/${selectedGym.id}/convert-to-paid`, {
+        plan: convertPlan,
+        features: convertPlan === 'custom' ? convertFeatures : undefined,
+        charge: convertCharge,
+      })
+      toast.success(r.message)
+      load()
+    } catch (e) {
+      toast.error(e.message)
+    }
+    setConvertBusy(false)
+  }
+
+  const toggleConvertFeature = (key) => {
+    setConvertFeatures(f => f.includes(key) ? f.filter(x => x !== key) : [...f, key])
+  }
+
+  const submitRevertConvert = () => action('revert-convert', () =>
+    api('PUT', `/gyms/${selectedGym.id}/revert-convert-to-paid`))
 
   const requestAction = (key, label, fn, needsReason = false) => {
     if (needsReason) {
@@ -765,6 +798,116 @@ function ManageTab({ selectedGym, onBack }) {
 
       {/* ── Facturación Stripe ── */}
       <BillingCard sub={sub} />
+
+      {/* ── Convertir de prueba a pago ── */}
+      {gym.plan_type === 'free' && (
+        <div className={`${card} p-5`}>
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+            <Zap className="w-3.5 h-3.5" /> Convertir a cuenta de pago
+          </p>
+
+          {gym.billing_status === 'payment_due' ? (
+            <>
+              <p className="text-xs text-gray-400 mb-4">
+                Este gym está esperando el pago para activarse — se le envió un link de Stripe y su acceso está bloqueado hasta que paguen.
+              </p>
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 mb-3">
+                <p className="text-xs font-bold text-amber-800 mb-1">
+                  Plan pendiente: {gym.plan === 'basic' ? 'Basic' : gym.plan === 'full' ? 'Full' : 'Custom'}
+                </p>
+                <p className="text-[11px] text-amber-700 leading-relaxed">
+                  Si el gym ya no quiere pagar, o esto se activó por error, puedes revertirlo — recupera el acceso normal y le queda el tiempo de prueba que tenía antes de esto.
+                </p>
+              </div>
+              <button disabled={!!busy} onClick={submitRevertConvert}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm text-white transition-all hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-60 bg-gray-700 hover:bg-gray-800">
+                {busy === 'revert-convert' ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
+                {busy === 'revert-convert' ? 'Revirtiendo...' : 'Revertir — volver a prueba gratuita'}
+              </button>
+            </>
+          ) : (
+          <>
+          <p className="text-xs text-gray-400 mb-4">
+            Crea el schema dedicado de este gym y muda sus datos de la prueba (socios, visitas, ventas) ahí. Elige el plan y si se le cobra o se otorga sin costo.
+          </p>
+
+          <div className="space-y-3">
+            <div>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Plan</p>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { id: 'basic',  label: 'Basic' },
+                  { id: 'full',   label: 'Full' },
+                  { id: 'custom', label: 'Custom' },
+                ].map(p => (
+                  <button key={p.id} type="button" onClick={() => setConvertPlan(p.id)}
+                    className={`py-2 rounded-xl border text-xs font-bold transition-all ${
+                      convertPlan === p.id
+                        ? 'border-indigo-400 bg-indigo-50 text-indigo-700'
+                        : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300'
+                    }`}>
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {convertPlan === 'custom' && (
+              <div>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Funciones incluidas</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {[
+                    { key: 'whatsapp', label: 'WhatsApp',      Icon: MessageSquare },
+                    { key: 'products', label: 'Productos',     Icon: Package },
+                    { key: 'classes',  label: 'Clases',        Icon: Calendar },
+                    { key: 'import',   label: 'Importar',      Icon: Upload },
+                    { key: 'export',   label: 'Exportar',      Icon: Download },
+                  ].map(({ key, label, Icon }) => {
+                    const on = convertFeatures.includes(key)
+                    return (
+                      <button key={key} type="button" onClick={() => toggleConvertFeature(key)}
+                        className={`flex items-center gap-1.5 px-2.5 py-2 rounded-xl border text-xs font-semibold transition-all ${
+                          on ? 'border-indigo-400 bg-indigo-50 text-indigo-700' : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300'
+                        }`}>
+                        <Icon className="w-3.5 h-3.5" /> {label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">¿Se cobra?</p>
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" onClick={() => setConvertCharge(true)}
+                  className={`flex flex-col items-start gap-0.5 px-3.5 py-2.5 rounded-xl border text-left transition-all ${
+                    convertCharge ? 'border-indigo-400 bg-indigo-50' : 'border-gray-200 bg-white hover:border-gray-300'
+                  }`}>
+                  <span className={`text-xs font-bold ${convertCharge ? 'text-indigo-700' : 'text-gray-700'}`}>Sí, cobrar</span>
+                  <span className="text-[10px] text-gray-400 leading-snug">Se bloquea el acceso y se envía un link de pago por correo.</span>
+                </button>
+                <button type="button" onClick={() => setConvertCharge(false)}
+                  className={`flex flex-col items-start gap-0.5 px-3.5 py-2.5 rounded-xl border text-left transition-all ${
+                    !convertCharge ? 'border-emerald-400 bg-emerald-50' : 'border-gray-200 bg-white hover:border-gray-300'
+                  }`}>
+                  <span className={`text-xs font-bold ${!convertCharge ? 'text-emerald-700' : 'text-gray-700'}`}>No, sin costo</span>
+                  <span className="text-[10px] text-gray-400 leading-snug">Se activa de inmediato, sin pasar por Stripe.</span>
+                </button>
+              </div>
+            </div>
+
+            <button disabled={convertBusy} onClick={submitConvert}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm text-white transition-all hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-60"
+              style={{ background: 'linear-gradient(135deg,#4F46E5,#7C3AED)' }}>
+              {convertBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+              {convertBusy ? 'Procesando...' : convertCharge ? 'Convertir y enviar link de pago' : 'Convertir sin costo'}
+            </button>
+          </div>
+          </>
+          )}
+        </div>
+      )}
 
       {/* ── Control de suspensión de pago ── */}
       {gym.plan_type === 'paid' && (

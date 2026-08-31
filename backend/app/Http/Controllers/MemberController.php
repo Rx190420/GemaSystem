@@ -11,6 +11,7 @@ use App\Models\Visit;
 use App\Services\MemberCodeService;
 use App\Services\NotificationService;
 use App\Services\WhatsAppService;
+use App\Support\DeferredMail;
 use App\Support\SqlPortability;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -128,11 +129,11 @@ class MemberController extends Controller
 
         $sendQrEmail = $request->boolean('send_qr_email', true);
         if ($member->email && $sendQrEmail) {
-            try {
-                Mail::to($member->email)->send(new MemberWelcome($member));
-            } catch (\Throwable $e) {
-                \Log::warning("Welcome email failed for member {$member->id}: " . $e->getMessage());
-            }
+            // Deferred — this is a fire-and-forget welcome email, not
+            // something the response below depends on. Sending it inline
+            // used to make every "crear miembro" request wait on Resend's
+            // network round-trip before the frontend even saw the new member.
+            DeferredMail::send($member->email, new MemberWelcome($member), "Welcome email failed for member {$member->id}");
         }
 
         $gymId = auth()->user()->gym_id;

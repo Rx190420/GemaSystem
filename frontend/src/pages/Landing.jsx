@@ -13,6 +13,7 @@ import {
   Bot, MonitorSmartphone, Store, Terminal, Mail, CheckCircle2, KeyRound, LogIn,
   MessageCircle,
   MailCheck,
+  Package, Upload, Download,
 } from 'lucide-react'
 
 import { useAuthStore } from '../store/authStore'
@@ -94,6 +95,15 @@ function AuthModal({ onClose }) {
   const [showPin, setShowPin]       = useState(false)
   const [blockInfo, setBlockInfo]   = useState(null)
   const [reactivating, setReactivating] = useState(false)
+  // "¿No es el plan que quieres?" picker on the upgrade_pending blocked
+  // screen — lets the gym swap away from whatever plan the operator
+  // originally picked before paying. null while showing the operator's
+  // choice as-is; set the moment they open the picker, defaulting to that
+  // same plan so switching feels like an edit, not starting over.
+  const [changingPlan, setChangingPlan]     = useState(false)
+  const [upgradePlan, setUpgradePlan]       = useState(null)
+  const [upgradeFeatures, setUpgradeFeatures] = useState([])
+  const { plans: upgradePlans } = usePlans()
   // ── Forgot password state ──
   const [fpEmail,    setFpEmail]    = useState('')
   const [fpCode,     setFpCode]     = useState('')
@@ -157,7 +167,7 @@ function AuthModal({ onClose }) {
         // Password was already verified by the login attempt above — remember it so
         // reactivation doesn't have to ask for it again.
         setSavedCreds({ password: data.password })
-        setBlockInfo({ type: d.block_type, reason: d.reason, subscriptionEnds: d.subscription_ends, plan: d.plan, email: d.email })
+        setBlockInfo({ type: d.block_type, reason: d.reason, subscriptionEnds: d.subscription_ends, plan: d.plan, planFeatures: d.plan_features, amount: d.amount, email: d.email })
         setStep(3)
         return
       }
@@ -182,6 +192,34 @@ function AuthModal({ onClose }) {
       toast.error(err.response?.data?.message ?? 'No se pudo iniciar la reactivación. Intenta de nuevo.')
       setReactivating(false)
     }
+  }
+
+  // Trial→paid conversion pending payment (SuperAdminController::
+  // convertTrialToPaid, charge=true). Pays gym.plan/plan_features as the
+  // operator set them by default — unless the gym opened the "cambiar plan"
+  // picker below, in which case it sends the plan they switched to instead;
+  // the backend updates the gym to match before charging for it.
+  const payUpgradeNow = async () => {
+    if (!blockInfo?.email || !savedCreds?.password) return
+    setReactivating(true)
+    try {
+      const res = await api.post('/stripe/pay-trial-upgrade', {
+        email:    blockInfo.email,
+        password: savedCreds.password,
+        ...(changingPlan && upgradePlan ? {
+          plan:     upgradePlan,
+          features: upgradePlan === 'custom' ? upgradeFeatures : undefined,
+        } : {}),
+      })
+      window.location.href = res.data.url
+    } catch (err) {
+      toast.error(err.response?.data?.message ?? 'No se pudo iniciar el pago. Intenta de nuevo.')
+      setReactivating(false)
+    }
+  }
+
+  const toggleUpgradeFeature = (key) => {
+    setUpgradeFeatures(f => f.includes(key) ? f.filter(x => x !== key) : [...f, key])
   }
 
   const onSubmitCode = async (data) => {
@@ -238,7 +276,8 @@ function AuthModal({ onClose }) {
             <div className="mb-5">
               <h2 className="text-xl font-extrabold text-gray-900 tracking-tight">
                 {step === 3
-                  ? blockInfo?.type === 'payment_due'   ? 'Pago requerido'
+                  ? blockInfo?.type === 'upgrade_pending' ? 'Activa tu cuenta de pago'
+                  : blockInfo?.type === 'payment_due'   ? 'Pago requerido'
                   : blockInfo?.type === 'trial_expired' ? 'Prueba gratuita finalizada'
                   : blockInfo?.type === 'suspended'     ? 'Cuenta suspendida'
                   :                                       'Acceso restringido'
@@ -251,7 +290,9 @@ function AuthModal({ onClose }) {
               </h2>
               <p className="text-sm text-gray-400 mt-0.5">
                 {step === 3
-                  ? blockInfo?.type === 'payment_due'
+                  ? blockInfo?.type === 'upgrade_pending'
+                    ? 'Tu gimnasio pasó a un plan de pago.'
+                  : blockInfo?.type === 'payment_due'
                     ? 'Tu suscripción no pudo renovarse. Actualiza tu método de pago.'
                   : blockInfo?.type === 'trial_expired'
                     ? 'Tu período de 10 días gratuitos ha terminado.'
@@ -415,6 +456,104 @@ function AuthModal({ onClose }) {
             {step === 3 && blockInfo && (
               <div className="space-y-4">
 
+                {/* ── Conversión de prueba a pago (elegida por el operador) ── */}
+                {blockInfo.type === 'upgrade_pending' && (
+                  <>
+                    <div className="flex justify-center">
+                      <div className="w-16 h-16 rounded-2xl bg-indigo-50 border border-indigo-200 flex items-center justify-center">
+                        <CreditCard className="w-8 h-8 text-indigo-500" />
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-4 space-y-1.5">
+                      <p className="text-sm font-bold text-indigo-900">Tu gimnasio ya es parte de un plan de pago</p>
+                      <p className="text-xs text-indigo-700 leading-relaxed">
+                        Completa el pago para activar tu cuenta y recuperar el acceso.
+                      </p>
+                    </div>
+                    {!changingPlan ? (
+                      <>
+                        <div className="flex items-center justify-between px-4 py-3.5 rounded-xl border border-gray-200 bg-gray-50">
+                          <div>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Plan asignado</p>
+                            <p className="text-sm font-bold text-gray-800">
+                              {blockInfo.plan === 'basic' ? 'Basic' : blockInfo.plan === 'full' ? 'Full' : 'Custom'}
+                            </p>
+                          </div>
+                          <span className="text-lg font-extrabold text-indigo-600">${blockInfo.amount?.toLocaleString('es-MX')}/mes</span>
+                        </div>
+                        <button type="button"
+                          onClick={() => {
+                            setUpgradePlan(blockInfo.plan)
+                            setUpgradeFeatures(Object.keys(blockInfo.planFeatures || {}).filter(k => blockInfo.planFeatures[k]))
+                            setChangingPlan(true)
+                          }}
+                          className="w-full text-center text-xs font-semibold text-indigo-500 hover:text-indigo-700 transition-colors">
+                          ¿No es el plan que quieres? Cambiar plan
+                        </button>
+                      </>
+                    ) : (
+                      <div className="space-y-2.5 rounded-xl border border-gray-200 bg-gray-50 p-3.5">
+                        <div className="grid grid-cols-3 gap-1.5">
+                          {['basic', 'full', 'custom'].map(p => (
+                            <button key={p} type="button" onClick={() => setUpgradePlan(p)}
+                              className={`py-2 rounded-lg border text-xs font-bold transition-all ${
+                                upgradePlan === p ? 'border-indigo-400 bg-indigo-50 text-indigo-700' : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300'
+                              }`}>
+                              {p === 'basic' ? 'Basic' : p === 'full' ? 'Full' : 'Custom'}
+                            </button>
+                          ))}
+                        </div>
+                        {upgradePlan === 'custom' && (
+                          <div className="grid grid-cols-2 gap-1.5">
+                            {[
+                              { key: 'whatsapp', label: 'WhatsApp',  Icon: MessageSquare },
+                              { key: 'products', label: 'Productos', Icon: Package },
+                              { key: 'classes',  label: 'Clases',    Icon: Calendar },
+                              { key: 'import',   label: 'Importar',  Icon: Upload },
+                              { key: 'export',   label: 'Exportar',  Icon: Download },
+                            ].map(({ key, label, Icon }) => {
+                              const on = upgradeFeatures.includes(key)
+                              return (
+                                <button key={key} type="button" onClick={() => toggleUpgradeFeature(key)}
+                                  className={`flex items-center gap-1.5 px-2.5 py-2 rounded-lg border text-xs font-semibold transition-all ${
+                                    on ? 'border-indigo-400 bg-indigo-50 text-indigo-700' : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300'
+                                  }`}>
+                                  <Icon className="w-3.5 h-3.5" /> {label}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between px-1 pt-1">
+                          <button type="button" onClick={() => setChangingPlan(false)}
+                            className="text-xs font-semibold text-gray-400 hover:text-gray-600 transition-colors">
+                            Cancelar
+                          </button>
+                          <span className="text-sm font-extrabold text-indigo-600">
+                            {upgradePlans && upgradePlan && (
+                              upgradePlan === 'basic' ? `$${upgradePlans.basic.price.toLocaleString('es-MX')}/mes`
+                              : upgradePlan === 'full' ? `$${upgradePlans.full.price.toLocaleString('es-MX')}/mes`
+                              : `$${customTotal(upgradePlans, upgradeFeatures).toLocaleString('es-MX')}/mes`
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    <button
+                      type="button" disabled={reactivating || (changingPlan && upgradePlan === 'custom' && upgradeFeatures.length === 0)}
+                      onClick={payUpgradeNow}
+                      className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm text-white transition-all hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-60"
+                      style={{ background: 'linear-gradient(135deg,#4F46E5,#7C3AED)', boxShadow: '0 8px 24px rgba(99,102,241,0.35)' }}>
+                      {reactivating ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
+                      {reactivating ? 'Redirigiendo a Stripe...' : 'Pagar ahora'}
+                    </button>
+                    <a href="mailto:soporte@gemasystem.app"
+                      className="flex items-center gap-2 text-xs text-gray-400 hover:text-indigo-600 transition-colors justify-center">
+                      <Send className="w-3 h-3" /> soporte@gemasystem.app
+                    </a>
+                  </>
+                )}
+
                 {/* ── Trial expirado ── */}
                 {blockInfo.type === 'trial_expired' && (
                   <>
@@ -510,7 +649,7 @@ function AuthModal({ onClose }) {
                 )}
 
                 {/* ── Suspended / Restricted ── */}
-                {blockInfo.type !== 'payment_due' && (
+                {blockInfo.type !== 'payment_due' && blockInfo.type !== 'trial_expired' && blockInfo.type !== 'upgrade_pending' && (
                   <>
                     <div className="flex justify-center">
                       <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${

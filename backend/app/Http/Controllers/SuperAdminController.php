@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Services\NotificationService;
 use App\Services\RecaptchaService;
 use App\Services\WhatsAppService;
+use App\Support\DeferredMail;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -112,16 +113,12 @@ class SuperAdminController extends Controller
 
         // Send welcome email with credentials (unless operator explicitly opted out)
         if ($request->input('send_email', true)) {
-            try {
-                Mail::to($trial->email)->send(new TrialApproved(
-                    $trial->gym_name,
-                    $trial->contact_name,
-                    $request->username,
-                    $plainPassword,
-                ));
-            } catch (\Throwable $e) {
-                \Log::warning("TrialApproved email failed for trial #{$trial->id}: " . $e->getMessage());
-            }
+            DeferredMail::send($trial->email, new TrialApproved(
+                $trial->gym_name,
+                $trial->contact_name,
+                $request->username,
+                $plainPassword,
+            ), "TrialApproved email failed for trial #{$trial->id}");
 
             if ($trial->phone) {
                 WhatsAppService::trialApproved($trial->phone, $trial->gym_name, $trial->contact_name, $request->username);
@@ -154,15 +151,11 @@ class SuperAdminController extends Controller
         ]);
 
         if ($request->input('send_email', true)) {
-            try {
-                Mail::to($trial->email)->send(new TrialRejected(
-                    $trial->gym_name,
-                    $trial->contact_name,
-                    $request->input('notes'),
-                ));
-            } catch (\Throwable $e) {
-                \Log::warning("TrialRejected email failed for trial #{$trial->id}: " . $e->getMessage());
-            }
+            DeferredMail::send($trial->email, new TrialRejected(
+                $trial->gym_name,
+                $trial->contact_name,
+                $request->input('notes'),
+            ), "TrialRejected email failed for trial #{$trial->id}");
 
             if ($trial->phone) {
                 WhatsAppService::trialRejected($trial->phone, $trial->gym_name, $trial->contact_name, $request->input('notes'));
@@ -335,6 +328,149 @@ class SuperAdminController extends Controller
 
         return response()->json([
             'message' => $enabled ? "Extra \"{$label}\" activado." : "Extra \"{$label}\" desactivado.",
+            'gym'     => $gym->fresh(),
+        ]);
+    }
+
+    /**
+     * Converts a free-trial gym (plan_type='free', shared 'public' schema)
+     * into a paid one with its own dedicated schema — the operator picks the
+     * plan and whether to charge for it.
+     *
+     * charge=false: activates immediately, no Stripe involved at all — a
+     * comp'd upgrade (goodwill, a deal made outside the system, etc.).
+     *
+     * charge=true: the gym never entered a card (trial signups never go
+     * through Stripe), so there's nothing to charge directly. Instead this
+     * expires the trial on the spot (billing_status='payment_due', same
+     * value isBillingBlocked()/AuthController::login() already understand —
+     * see the comment there for why plan_type='free' is what disambiguates
+     * this from a lapsed paid subscription reusing the same status) and
+     * emails a ready-to-pay Stripe Checkout link for the exact plan chosen.
+     * The gym only actually gets its schema provisioned and its trial data
+     * migrated once that payment clears — see
+     * StripeController::fulfillTrialUpgrade().
+     */
+    public function convertTrialToPaid(Request $request, Gym $gym)
+    {
+        if ($gym->plan_type !== 'free') {
+            return response()->json(['message' => 'Este gym ya es una cuenta de pago.'], 422);
+        }
+
+        $request->validate([
+            'plan'       => 'required|in:basic,full,custom',
+            'features'   => 'required_if:plan,custom|array',
+            'features.*' => 'in:' . implode(',', Gym::GATED_FEATURES),
+            'charge'     => 'required|boolean',
+        ]);
+
+        $planFeatures = $request->plan === 'custom'
+            ? array_fill_keys(array_values($request->input('features', [])), true)
+            : ($request->plan === 'full' ? array_fill_keys(Gym::GATED_FEATURES, true) : null);
+
+        $admin = $gym->users()->where('role', 'admin')->first();
+        if (!$admin) {
+            return response()->json(['message' => 'Este gym no tiene un usuario administrador para notificar.'], 422);
+        }
+
+        if (!$request->boolean('charge')) {
+            DB::transaction(function () use ($gym, $request, $planFeatures) {
+                $gym->update([
+                    'plan'                   => $request->plan,
+                    'plan_features'          => $planFeatures,
+                    'plan_type'              => 'paid',
+                    'status'                 => 'active',
+                    'billing_status'         => 'active',
+                    'subscription_starts_at' => now(),
+                    'subscription_ends_at'   => now()->addMonth(),
+                ]);
+            });
+
+            // CREATE SCHEMA commits on its own the instant it runs (same reason
+            // fulfill() waits until after its transaction commits) — only safe
+            // to run once the gym row above is durably saved.
+            CreateGymDatabase::migrateAndProvision($gym);
+
+            DeferredMail::send($admin->email, new \App\Mail\GymUpgraded($gym->fresh()), "GymUpgraded email failed for gym {$gym->id}");
+
+            NotificationService::create(
+                (int) $gym->id,
+                'plan_changed',
+                'Cuenta activada',
+                'Tu cuenta ahora es de pago — ¡bienvenido! Este cambio no tuvo costo.',
+                ['plan' => $request->plan]
+            );
+
+            return response()->json([
+                'message' => "Gym convertido a pago (plan {$request->plan}), sin cobro.",
+                'gym'     => $gym->fresh(),
+            ]);
+        }
+
+        // charge=true — fix the target plan/features and expire the trial so
+        // login shows the "pay to activate" screen, then email a Checkout
+        // link for that exact plan. Nothing is provisioned/migrated yet.
+        // The real subscription_ends_at gets saved first — revertConvertToPaid()
+        // below is how the operator undoes this before the gym actually pays.
+        $gym->update([
+            'plan'                      => $request->plan,
+            'plan_features'             => $planFeatures,
+            'status'                    => 'suspended',
+            'billing_status'            => 'payment_due',
+            'pre_upgrade_trial_ends_at' => $gym->subscription_ends_at,
+            'subscription_ends_at'      => now(),
+        ]);
+
+        try {
+            $session = app(StripeController::class)->createTrialUpgradeSession($gym->fresh(), $admin->email);
+        } catch (\Throwable $e) {
+            Log::error("convertTrialToPaid: fallo al crear sesión de Stripe para gym {$gym->id}: " . $e->getMessage());
+            return response()->json(['message' => 'No se pudo generar el link de pago: ' . $e->getMessage()], 500);
+        }
+
+        DeferredMail::send($admin->email, new \App\Mail\GymUpgradePending($gym->fresh(), $session->url), "GymUpgradePending email failed for gym {$gym->id}");
+
+        return response()->json([
+            'message'     => "Se envió el link de pago a {$admin->email}. El acceso del gym queda bloqueado hasta que paguen.",
+            'payment_url' => $session->url,
+            'gym'         => $gym->fresh(),
+        ]);
+    }
+
+    /**
+     * Undoes convertTrialToPaid(charge=true) before the gym actually pays —
+     * restores normal trial access (status/billing_status, and the trial's
+     * real expiration date saved right before it got expired-on-purpose to
+     * gate login). Only valid in that exact pending-payment window: once
+     * plan_type flips to 'paid' (the gym paid, or an operator later comp'd
+     * it), this isn't reachable anymore — there's nothing left to "revert",
+     * the gym is genuinely paid, with its own schema and migrated data.
+     */
+    public function revertConvertToPaid(Request $request, Gym $gym)
+    {
+        if ($gym->plan_type !== 'free' || $gym->billing_status !== 'payment_due') {
+            return response()->json(['message' => 'Este gym no tiene una conversión a pago pendiente que revertir.'], 422);
+        }
+
+        $gym->update([
+            'plan'                      => 'weekly', // standard trial default — see TrialRequest::approveTrial()
+            'plan_features'             => null,
+            'status'                    => 'trialing',
+            'billing_status'            => 'active',
+            'subscription_ends_at'      => $gym->pre_upgrade_trial_ends_at ?? now()->addDays(10),
+            'pre_upgrade_trial_ends_at' => null,
+        ]);
+
+        NotificationService::create(
+            (int) $gym->id,
+            'plan_changed',
+            'Conversión a pago cancelada',
+            'Se canceló la conversión a plan de pago pendiente. Tu cuenta sigue en período de prueba gratuita.',
+            []
+        );
+
+        return response()->json([
+            'message' => 'Se revirtió la conversión a pago — el gym vuelve a su período de prueba normal.',
             'gym'     => $gym->fresh(),
         ]);
     }

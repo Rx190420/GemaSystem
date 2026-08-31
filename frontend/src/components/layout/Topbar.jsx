@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { LogOut, ChevronDown, Menu, Moon, Sun, UserCircle, Bell } from 'lucide-react'
+import { LogOut, ChevronDown, Menu, Moon, Sun, UserCircle, Bell, Crown } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
 import { useSettingsStore } from '../../store/settingsStore'
 import { useNotificationStore } from '../../store/notificationStore'
@@ -104,6 +104,26 @@ export default function Topbar({ onMobileToggle }) {
             />
             BETA
           </span>
+
+          {/* Free-trial legend + upgrade shortcut — every gym still on
+              plan_type='free' sees this everywhere in the app, not just on
+              the blocked-login screen once the trial actually runs out. One
+              flat, quiet pill — thin border, muted label, small indigo
+              accent only on the action text. No fill, no shadow, no bold
+              gradient block: sits at the same visual weight as the BETA
+              badge next to it instead of competing with real billing
+              warnings elsewhere in the UI. */}
+          {user?.plan_type === 'free' && (
+            <button
+              onClick={() => navigate(`/g/${sessionHash}/perfil`)}
+              className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-gray-200 hover:border-indigo-200 hover:bg-indigo-50/40 transition-colors"
+              title="Adquiere un plan mensual para activar tu cuenta"
+            >
+              <Crown className="w-3 h-3 text-gray-400 flex-shrink-0" />
+              <span className="text-[10px] font-medium text-gray-500">Prueba gratuita</span>
+              <span className="text-[10px] font-semibold text-indigo-500">· Adquirir plan</span>
+            </button>
+          )}
         </div>
 
         {/* Right */}

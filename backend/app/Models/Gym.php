@@ -11,13 +11,15 @@ class Gym extends Model
         'stripe_subscription_id', 'stripe_customer_id',
         'status', 'billing_status',
         'subscription_starts_at', 'subscription_ends_at', 'last_payment_at',
+        'pre_upgrade_trial_ends_at',
     ];
 
     protected $casts = [
-        'plan_features'           => 'array',
-        'subscription_starts_at'  => 'datetime',
-        'subscription_ends_at'    => 'datetime',
-        'last_payment_at'         => 'datetime',
+        'plan_features'             => 'array',
+        'subscription_starts_at'    => 'datetime',
+        'subscription_ends_at'      => 'datetime',
+        'last_payment_at'           => 'datetime',
+        'pre_upgrade_trial_ends_at' => 'datetime',
     ];
 
     /** Billing plans that predate per-feature gating — always full access. */
