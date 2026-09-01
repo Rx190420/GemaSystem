@@ -232,6 +232,11 @@ return [
 
     ],
 
-    'operator_pin' => env('OPERATOR_PIN', ''),
+    // Base32 TOTP secret for the operator console's second login factor —
+    // replaces the old static OPERATOR_PIN. Generate one with `php artisan
+    // operator:totp-secret` and set it once in Railway's env vars; the code
+    // typed at login is then whatever a real authenticator app (Google
+    // Authenticator, Authy, etc.) shows for that secret, never a fixed value.
+    'operator_totp_secret' => env('OPERATOR_TOTP_SECRET', ''),
 
 ];

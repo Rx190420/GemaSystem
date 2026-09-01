@@ -92,7 +92,6 @@ function AuthModal({ onClose }) {
   const [savedCreds, setSavedCreds] = useState(null)
   const [showPass, setShowPass]     = useState(false)
   const [showCode, setShowCode]     = useState(false)
-  const [showPin, setShowPin]       = useState(false)
   const [blockInfo, setBlockInfo]   = useState(null)
   const [reactivating, setReactivating] = useState(false)
   // "¿No es el plan que quieres?" picker on the upgrade_pending blocked
@@ -151,7 +150,9 @@ function AuthModal({ onClose }) {
 
   const lf = useForm({ resolver: yupResolver(loginSchema) })
   const cf = useForm({ resolver: yupResolver(yup.object({ access_code: yup.string().required('Ingresa tu código de acceso') })) })
-  const pf = useForm({ resolver: yupResolver(yup.object({ pin: yup.string().required('Ingresa el PIN de consola') })) })
+  const pf = useForm({ resolver: yupResolver(yup.object({
+    pin: yup.string().required('Ingresa el código').matches(/^\d{6}$/, 'Debe ser un código de 6 dígitos'),
+  })) })
 
   const onLogin = async (data) => {
     try {
@@ -297,7 +298,7 @@ function AuthModal({ onClose }) {
                   : blockInfo?.type === 'trial_expired'
                     ? 'Tu período de 10 días gratuitos ha terminado.'
                     : 'Tu cuenta no puede iniciar sesión en este momento'
-                  : step === 4 ? 'Ingresa el PIN del sistema para acceder a la consola'
+                  : step === 4 ? 'Ingresa el código de tu app de autenticación'
                   : step === 2 ? 'Tu cuenta tiene un código de seguridad habilitado'
                   : step === 5 ? 'Te enviaremos un código de 6 dígitos a tu correo'
                   : step === 6 ? `Código enviado a ${fpEmail}`
@@ -414,23 +415,19 @@ function AuthModal({ onClose }) {
                     <Terminal className="w-7 h-7 text-emerald-400" />
                   </div>
                   <div className="text-center">
-                    <p className="text-sm font-semibold text-gray-700">PIN del sistema</p>
-                    <p className="text-xs text-gray-400 mt-0.5">Este PIN es exclusivo para cuentas de operador</p>
+                    <p className="text-sm font-semibold text-gray-700">Código de autenticación</p>
+                    <p className="text-xs text-gray-400 mt-0.5">Genera este código con tu app de autenticación (Google Authenticator, Authy, etc.)</p>
                   </div>
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
-                    PIN de consola
+                    Código de 6 dígitos
                   </label>
                   <div className="relative">
                     <Terminal className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                    <input {...pf.register('pin')} type={showPin ? 'text' : 'password'}
-                      placeholder="••••••••" autoComplete="off" autoFocus
-                      className={`${pf.formState.errors.pin ? modalInpErr : modalInp} pl-10 pr-11 font-mono tracking-[0.3em] text-center`} />
-                    <button type="button" onClick={() => setShowPin(s => !s)}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors p-0.5">
-                      {showPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
+                    <input {...pf.register('pin')} type="text" inputMode="numeric" maxLength={6}
+                      placeholder="000000" autoComplete="one-time-code" autoFocus
+                      className={`${pf.formState.errors.pin ? modalInpErr : modalInp} pl-10 pr-4 font-mono tracking-[0.3em] text-center`} />
                   </div>
                   {pf.formState.errors.pin && (
                     <p className="mt-1.5 text-xs text-red-500 flex items-center gap-1">
@@ -445,7 +442,7 @@ function AuthModal({ onClose }) {
                     ? <><Loader2 className="w-4 h-4 animate-spin" /> Verificando...</>
                     : <><Terminal className="w-4 h-4" /> Acceder a consola</>}
                 </button>
-                <button type="button" onClick={() => { setStep(1); pf.reset(); setShowPin(false) }}
+                <button type="button" onClick={() => { setStep(1); pf.reset() }}
                   className="w-full py-2 text-xs text-gray-400 hover:text-gray-600 transition-colors flex items-center justify-center gap-1">
                   <ArrowRight className="w-3 h-3 rotate-180" /> Volver
                 </button>

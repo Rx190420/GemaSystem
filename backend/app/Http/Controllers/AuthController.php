@@ -7,6 +7,7 @@ use App\Models\Gym;
 use App\Models\Setting;
 use App\Models\User;
 use App\Scopes\GymScope;
+use App\Support\Totp;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -224,11 +225,13 @@ class AuthController extends Controller
             'pin'      => 'required|string',
         ]);
 
-        // Constant-time comparison to prevent timing attacks
-        $expectedPin = config('app.operator_pin', '');
-        if (!hash_equals($expectedPin, $request->pin) || empty($expectedPin)) {
+        // TOTP code from a real authenticator app (Google Authenticator, Authy,
+        // etc.) instead of a static PIN — see App\Support\Totp and the
+        // `operator:totp-secret` artisan command that generates the secret.
+        $secret = config('app.operator_totp_secret', '');
+        if (!Totp::verify($secret, (string) $request->pin)) {
             throw ValidationException::withMessages([
-                'pin' => ['Acceso denegado.'],
+                'pin' => ['Código inválido.'],
             ]);
         }
 
