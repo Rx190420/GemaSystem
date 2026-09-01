@@ -84,6 +84,12 @@ CREATE TABLE gyms (
   created_at              TIMESTAMP,
   updated_at              TIMESTAMP
 );
+-- stripe_subscription_id: buscado en CADA webhook de Stripe (invoice.payment_*,
+-- customer.subscription.*) vía Gym::where('stripe_subscription_id', ...) — sin
+-- índice, full scan de gyms en cada evento. status: filtrado a diario por los
+-- 4 comandos programados (gyms:suspend-expired + las 3 de notifications:*).
+CREATE INDEX gyms_stripe_subscription_id_index ON gyms(stripe_subscription_id);
+CREATE INDEX gyms_status_index ON gyms(status);
 
 -- ── users ─────────────────────────────────────────────────────
 CREATE TABLE users (
@@ -204,6 +210,7 @@ CREATE TABLE class_schedules (
   room          VARCHAR(255),
   created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+CREATE INDEX class_schedules_class_id_index ON class_schedules(class_id);
 
 -- ── class_sessions ────────────────────────────────────────────
 -- Sesiones numeradas de un paquete (p.ej. entrenamiento personal
@@ -310,6 +317,7 @@ CREATE TABLE member_labels (
   updated_at  TIMESTAMP,
   PRIMARY KEY (member_id, label_id)
 );
+CREATE INDEX member_labels_label_id_index ON member_labels(label_id);
 
 -- ── membership_types ──────────────────────────────────────────
 -- NOTA: en producción esta tabla solo existe en las DB dedicadas

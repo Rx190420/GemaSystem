@@ -41,7 +41,9 @@ CREATE TABLE IF NOT EXISTS `gyms` (
   `last_payment_at`         TIMESTAMP            NULL DEFAULT NULL,
   `created_at`              TIMESTAMP            NULL DEFAULT NULL,
   `updated_at`              TIMESTAMP            NULL DEFAULT NULL,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  KEY `gyms_stripe_subscription_id_index` (`stripe_subscription_id`),
+  KEY `gyms_status_index` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------

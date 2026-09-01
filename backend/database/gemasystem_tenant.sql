@@ -49,7 +49,8 @@ CREATE TABLE IF NOT EXISTS `members` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `members_member_code_unique` (`member_code`),
   UNIQUE KEY `members_email_unique` (`email`),
-  UNIQUE KEY `members_qr_token_unique` (`qr_token`)
+  UNIQUE KEY `members_qr_token_unique` (`qr_token`),
+  KEY `members_status_index` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -124,6 +125,7 @@ CREATE TABLE IF NOT EXISTS `memberships` (
   `updated_at`     TIMESTAMP       NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `memberships_member_id_foreign` (`member_id`),
+  KEY `memberships_end_date_index` (`end_date`),
   CONSTRAINT `memberships_member_id_foreign`
     FOREIGN KEY (`member_id`) REFERENCES `members` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -146,6 +148,7 @@ CREATE TABLE IF NOT EXISTS `visits` (
   KEY `visits_member_id_foreign`  (`member_id`),
   KEY `visits_class_id_foreign`   (`class_id`),
   KEY `visits_trainer_id_foreign` (`trainer_id`),
+  KEY `visits_visit_date_index`   (`visit_date`),
   CONSTRAINT `visits_member_id_foreign`
     FOREIGN KEY (`member_id`)  REFERENCES `members`  (`id`) ON DELETE CASCADE,
   CONSTRAINT `visits_class_id_foreign`

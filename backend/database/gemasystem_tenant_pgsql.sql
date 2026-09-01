@@ -45,6 +45,12 @@ CREATE TABLE trainers (
 CREATE INDEX trainers_user_id_index ON trainers(user_id);
 
 -- ── members ───────────────────────────────────────────────────
+-- NOTA (2026-09): faltaban TODOS los índices de este archivo salvo
+-- trainers_user_id_index — la pasada de índices de una sesión anterior
+-- solo cubrió gemasystem_supabase.sql (el schema compartido de gyms
+-- gratuitos/trial), nunca esta plantilla — la que de verdad usa cada
+-- gym de PAGO. Sin gym_id aquí (el aislamiento es el schema completo),
+-- así que los índices son sobre member_id/class_id/status/fechas.
 CREATE TABLE members (
   id                        BIGSERIAL PRIMARY KEY,
   member_code               VARCHAR(20),
@@ -72,6 +78,7 @@ CREATE TABLE members (
   updated_at                TIMESTAMP,
   UNIQUE (email)
 );
+CREATE INDEX members_status_index ON members(status);
 
 -- ── classes ───────────────────────────────────────────────────
 CREATE TABLE classes (
@@ -92,6 +99,8 @@ CREATE TABLE classes (
   created_at      TIMESTAMP,
   updated_at      TIMESTAMP
 );
+CREATE INDEX classes_trainer_id_index ON classes(trainer_id);
+CREATE INDEX classes_member_id_index ON classes(member_id);
 
 -- ── class_schedules ───────────────────────────────────────────
 CREATE TABLE class_schedules (
@@ -104,8 +113,11 @@ CREATE TABLE class_schedules (
   room          VARCHAR(255),
   created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+CREATE INDEX class_schedules_class_id_index ON class_schedules(class_id);
 
 -- ── class_sessions ────────────────────────────────────────────
+-- class_id no necesita índice propio: la UNIQUE(class_id, session_number) de
+-- abajo ya cubre lookups por class_id solo (leftmost prefix del compuesto).
 CREATE TABLE class_sessions (
   id               BIGSERIAL PRIMARY KEY,
   class_id         BIGINT NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
@@ -137,6 +149,9 @@ CREATE TABLE memberships (
   created_at      TIMESTAMP,
   updated_at      TIMESTAMP
 );
+CREATE INDEX memberships_member_id_index ON memberships(member_id);
+CREATE INDEX memberships_status_index ON memberships(status);
+CREATE INDEX memberships_end_date_index ON memberships(end_date);
 
 -- ── visits ────────────────────────────────────────────────────
 CREATE TABLE visits (
@@ -154,6 +169,10 @@ CREATE TABLE visits (
                     CHECK (payment_method IN ('cash','card','transfer')),
   created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+CREATE INDEX visits_member_id_index ON visits(member_id);
+CREATE INDEX visits_visit_date_index ON visits(visit_date);
+CREATE INDEX visits_class_id_index ON visits(class_id);
+CREATE INDEX visits_trainer_id_index ON visits(trainer_id);
 
 -- ── payments ──────────────────────────────────────────────────
 CREATE TABLE payments (
@@ -172,6 +191,8 @@ CREATE TABLE payments (
   created_at      TIMESTAMP,
   updated_at      TIMESTAMP
 );
+CREATE INDEX payments_member_id_index ON payments(member_id);
+CREATE INDEX payments_membership_id_index ON payments(membership_id);
 
 -- ── labels ────────────────────────────────────────────────────
 CREATE TABLE labels (
@@ -184,6 +205,8 @@ CREATE TABLE labels (
 );
 
 -- ── member_labels ─────────────────────────────────────────────
+-- member_id ya lo cubre la PK compuesta (leftmost prefix); label_id no —
+-- "qué miembros tienen esta etiqueta" hacía table scan sin este índice.
 CREATE TABLE member_labels (
   member_id   BIGINT NOT NULL REFERENCES members(id) ON DELETE CASCADE,
   label_id    BIGINT NOT NULL REFERENCES labels(id) ON DELETE CASCADE,
@@ -191,6 +214,7 @@ CREATE TABLE member_labels (
   updated_at  TIMESTAMP,
   PRIMARY KEY (member_id, label_id)
 );
+CREATE INDEX member_labels_label_id_index ON member_labels(label_id);
 
 -- ── membership_types ──────────────────────────────────────────
 CREATE TABLE membership_types (
