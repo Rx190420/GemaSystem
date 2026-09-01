@@ -15,6 +15,8 @@ class SettingController extends Controller
         'price_membership_weekly', 'price_membership_biweekly',
         'price_membership_monthly', 'price_membership_quarterly', 'price_membership_biannual', 'price_membership_annual',
         'send_welcome_email', 'expiry_alert_days',
+        'send_expiry_reminder_email', 'send_expiry_reminder_whatsapp',
+        'send_birthday_email', 'send_birthday_whatsapp', 'low_stock_alerts',
         'currency', 'timezone', 'trial_days',
         'require_access_code',
     ];

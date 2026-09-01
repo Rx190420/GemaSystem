@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Bell, X, CheckCheck, Trash2, RefreshCw,
-  UserPlus, CreditCard, Trophy, Clock, AlertTriangle, Sparkles,
+  UserPlus, CreditCard, Trophy, Clock, AlertTriangle, Sparkles, Gift, Package,
 } from 'lucide-react'
 import { useNotificationStore } from '../store/notificationStore'
 import { useAuthStore } from '../store/authStore'
@@ -16,6 +16,8 @@ const TYPE_CFG = {
   membership_expiring: { Icon: Clock,           color: '#f59e0b', bg: 'rgba(245,158,11,0.13)' },
   membership_expired:  { Icon: AlertTriangle,   color: '#ef4444', bg: 'rgba(239,68,68,0.13)' },
   plan_changed:        { Icon: Sparkles,        color: '#6366f1', bg: 'rgba(99,102,241,0.13)' },
+  member_birthday:     { Icon: Gift,            color: '#ec4899', bg: 'rgba(236,72,153,0.13)' },
+  low_stock:           { Icon: Package,         color: '#f97316', bg: 'rgba(249,115,22,0.13)' },
 }
 const DEFAULT_CFG = { Icon: Bell, color: '#6366f1', bg: 'rgba(99,102,241,0.13)' }
 
@@ -41,11 +43,14 @@ function navTarget(notif, hash) {
     case 'visit_milestone':
     case 'membership_expiring':
     case 'membership_expired':
+    case 'member_birthday':
       return d.member_id ? `/g/${hash}/socio/${d.member_id}` : null
     case 'payment_received':
       return `/g/${hash}/finanzas`
     case 'plan_changed':
       return `/g/${hash}/perfil`
+    case 'low_stock':
+      return `/g/${hash}/productos`
     default:
       return null
   }

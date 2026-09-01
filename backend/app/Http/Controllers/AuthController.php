@@ -38,12 +38,17 @@ class AuthController extends Controller
             return response()->json(['requires_pin' => true]);
         }
 
+        // Loaded up front (used to be re-fetched further down, and never
+        // reached the two generic 'suspended'/'restricted' blocks at all)
+        // so every account_blocked response below — not just the
+        // billing-derived ones — can identify which gym this actually is.
+        $gym = $user->gym;
+
         // Block suspended / restricted accounts
         $status = $user->account_status ?? 'active';
         if ($status === 'suspended') {
             // If the gym was auto-suspended due to billing, surface the billing block type
             // so the frontend shows the payment/reactivation screen instead of "admin suspended".
-            $gym = $user->gym;
             if ($gym && in_array($gym->billing_status, ['trial_expired', 'payment_due'])) {
                 $blockType = $gym->billing_status;
                 return response()->json([
@@ -54,6 +59,7 @@ class AuthController extends Controller
                         : 'El acceso está suspendido por falta de pago.',
                     'subscription_ends' => $gym->subscription_ends_at?->toDateString(),
                     'plan'              => $gym->plan,
+                    'gym_name'          => $gym->name,
                     'email'             => $user->email,
                 ], 403);
             }
@@ -63,6 +69,7 @@ class AuthController extends Controller
                 'block_type'      => 'suspended',
                 'message'         => 'Tu cuenta ha sido suspendida.',
                 'reason'          => $user->restriction_reason ?? null,
+                'gym_name'        => $gym?->name,
             ], 403);
         }
         if ($status === 'restricted') {
@@ -71,11 +78,11 @@ class AuthController extends Controller
                 'block_type'      => 'restricted',
                 'message'         => 'Tu cuenta tiene acceso restringido.',
                 'reason'          => $user->restriction_reason ?? null,
+                'gym_name'        => $gym?->name,
             ], 403);
         }
 
         // ── Lazy expiry: auto-suspend on login based on subscription_ends_at ──────
-        $gym = $user->gym;
 
         if ($gym && $gym->status !== 'suspended') {
             // Free trial expired
@@ -86,6 +93,7 @@ class AuthController extends Controller
                     'block_type'        => 'trial_expired',
                     'message'           => 'Tu período de prueba gratuito ha terminado.',
                     'subscription_ends' => $gym->subscription_ends_at?->toDateString(),
+                    'gym_name'          => $gym->name,
                     'email'             => $user->email,
                 ], 403);
             }
@@ -99,6 +107,7 @@ class AuthController extends Controller
                     'message'           => 'El acceso está suspendido por falta de pago.',
                     'subscription_ends' => $gym->subscription_ends_at?->toDateString(),
                     'plan'              => $gym->plan,
+                    'gym_name'          => $gym->name,
                     'email'             => $user->email,
                 ], 403);
             }
@@ -122,6 +131,7 @@ class AuthController extends Controller
                     'plan'            => $gym->plan,
                     'plan_features'   => $gym->plan_features,
                     'amount'          => $this->planAmount($gym->plan, $gym->plan_features),
+                    'gym_name'        => $gym->name,
                     'email'           => $user->email,
                 ], 403);
             }
@@ -135,6 +145,7 @@ class AuthController extends Controller
                     : 'El acceso está suspendido por falta de pago.',
                 'subscription_ends' => $gym->subscription_ends_at?->toDateString(),
                 'plan'              => $gym->plan,
+                'gym_name'          => $gym->name,
                 'email'             => $user->email,
             ], 403);
         }

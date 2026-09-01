@@ -21,6 +21,12 @@ class Kernel extends ConsoleKernel
         // Notificaciones de membresías próximas a vencer o ya vencidas
         $schedule->command('notifications:membership-expiry')->dailyAt('08:00');
 
+        // Felicitaciones de cumpleaños (correo solo si el gym lo habilitó)
+        $schedule->command('notifications:birthdays')->dailyAt('09:00');
+
+        // Alertas de stock bajo (solo gyms con el feature de productos y la alerta habilitada)
+        $schedule->command('notifications:low-stock')->dailyAt('08:30');
+
         // Elimina tokens Sanctum expirados (expiración configurada en 8h)
         $schedule->command('sanctum:prune-expired --hours=8')->dailyAt('03:00');
     }

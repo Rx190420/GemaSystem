@@ -258,6 +258,7 @@ class SuperAdminController extends Controller
             'users'        => $users,
             'subscription' => $this->subscriptionInfo($gym),
             'stats'        => $stats,
+            'contact'      => $this->gymContact($gym),
         ]);
     }
 
@@ -287,10 +288,38 @@ class SuperAdminController extends Controller
                 return response()->json(['message' => 'Marcado como pago fallido. El acceso se bloqueará al vencer el período actual.']);
 
             case 'restore':
+                // Undoes BOTH ways a gym ends up blocked, not just the
+                // billing_status/status flip 'restore' used to do alone:
+                //
+                // 1. subscription_ends_at frozen in the past — set by
+                //    suspend_now above, or by SuspendExpiredTrials once a
+                //    trial/subscription naturally lapses. Gym::
+                //    isBillingBlocked() (and AuthController::login()'s own
+                //    lazy-expiry check) both gate access off this date, not
+                //    just billing_status — leaving it in the past meant the
+                //    very next login attempt re-suspended the gym on the
+                //    spot, so "restore" looked like it worked (200 + success
+                //    toast) but access never actually came back. Pushed
+                //    forward 30 days as a grace window; a real Stripe
+                //    webhook overwrites this with the true period end the
+                //    next time the gym actually pays.
+                // 2. users.account_status — SuspendExpiredTrials::doSuspend()
+                //    suspends every user in the gym (and revokes their
+                //    tokens) when it auto-suspends on expiry; suspend_now
+                //    above only revokes tokens, doesn't touch account_status.
+                //    Either way, AuthController::login() checks the USER's
+                //    own account_status before it ever looks at gym billing,
+                //    so a suspended user stayed locked out even after the
+                //    gym itself was fully restored.
                 $gym->update([
-                    'billing_status' => 'active',
-                    'status'         => 'active',
+                    'billing_status'       => 'active',
+                    'status'               => 'active',
+                    'subscription_ends_at' => now()->addDays(30),
                 ]);
+                User::where('gym_id', $gym->id)
+                    ->where('extended_access', 0)
+                    ->where('account_status', 'suspended')
+                    ->update(['account_status' => 'active']);
                 return response()->json(['message' => 'Facturación restaurada. El gym puede volver a acceder.']);
         }
     }
@@ -475,35 +504,73 @@ class SuperAdminController extends Controller
         ]);
     }
 
+    /**
+     * The driver-branch CreateGymDatabase::provision() uses — a paid gym's
+     * dedicated storage is a MySQL database OR a Postgres schema depending on
+     * which DB backs this deployment, never both. Shared by every place here
+     * that needs to read a DIFFERENT gym's data than the authenticated
+     * operator's own connection (stats, contact info, ...). This used to be
+     * duplicated inline and always built the tenant connection off the
+     * 'mysql' config unconditionally, so on a Postgres/Supabase deployment
+     * (this project's actual driver) connecting to a paid gym's tenant
+     * schema silently failed every time.
+     */
+    private function gymConnection(Gym $gym): \Illuminate\Database\ConnectionInterface
+    {
+        if (!$gym->isPaid()) {
+            return DB::connection();
+        }
+
+        if (config('database.default') === 'mysql') {
+            config(['database.connections.tenant' => array_merge(
+                config('database.connections.mysql'),
+                ['database' => $gym->db_name]
+            )]);
+        } else {
+            config(['database.connections.tenant' => array_merge(
+                config('database.connections.pgsql'),
+                ['schema' => [$gym->db_name, 'public']]
+            )]);
+        }
+        DB::purge('tenant');
+        return DB::connection('tenant');
+    }
+
+    /**
+     * The gym's own business contact details — phone/email/address filled in
+     * by the gym itself under Settings → General, same `settings` key-value
+     * table SettingController reads/writes. Not to be confused with the
+     * trial_requests contact_name/phone captured at signup time: that data
+     * only exists for trial-originated gyms and is never copied onto the
+     * Gym/User record on approval (see approveTrial()), so it can't be
+     * relied on here for every gym — this settings-table read works for any
+     * gym regardless of how it was created, and always reflects what the
+     * gym has on file right now.
+     */
+    private function gymContact(Gym $gym): array
+    {
+        try {
+            $conn = $this->gymConnection($gym);
+            $rows = $conn->table('settings')
+                ->when(!$gym->isPaid(), fn ($q) => $q->where('gym_id', $gym->id))
+                ->whereIn('key', ['gym_phone', 'gym_email', 'gym_address'])
+                ->pluck('value', 'key');
+
+            return [
+                'phone'   => $rows['gym_phone']   ?? null,
+                'email'   => $rows['gym_email']   ?? null,
+                'address' => $rows['gym_address'] ?? null,
+            ];
+        } catch (\Throwable $e) {
+            \Log::warning("gymContact failed for gym {$gym->id}: " . $e->getMessage());
+            return ['phone' => null, 'email' => null, 'address' => null];
+        }
+    }
+
     private function getGymStats(Gym $gym): array
     {
         try {
-            if ($gym->isPaid()) {
-                // Same driver-branch CreateGymDatabase::provision() uses — a paid
-                // gym's dedicated storage is a MySQL database OR a Postgres schema
-                // depending on which DB backs this deployment, never both. This
-                // previously always built the tenant connection off the 'mysql'
-                // config unconditionally, so on a Postgres/Supabase deployment
-                // (this project's actual driver) connecting to the tenant schema
-                // silently failed every time — caught below, logged, and the gym
-                // detail screen just rendered with empty stats, no error visible.
-                if (config('database.default') === 'mysql') {
-                    config(['database.connections.tenant' => array_merge(
-                        config('database.connections.mysql'),
-                        ['database' => $gym->db_name]
-                    )]);
-                } else {
-                    config(['database.connections.tenant' => array_merge(
-                        config('database.connections.pgsql'),
-                        ['schema' => [$gym->db_name, 'public']]
-                    )]);
-                }
-                DB::purge('tenant');
-                $conn = DB::connection('tenant');
-            } else {
-                $conn = DB::connection();
-            }
-
+            $conn  = $this->gymConnection($gym);
             $where = $gym->isPaid() ? [] : ['gym_id' => $gym->id];
 
             // Conditional aggregation instead of a separate COUNT() per flavor —

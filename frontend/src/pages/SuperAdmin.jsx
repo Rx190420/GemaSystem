@@ -10,7 +10,7 @@ import {
   CreditCard, TrendingUp, Activity, UserCheck, Calendar,
   BadgeCheck, Ban, RotateCcw, Info,
   Globe, Code2, Sparkles, Phone, Wallet, Mail, User,
-  Package, Upload, Download, Gift,
+  Package, Upload, Download, Gift, MapPin,
 } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import axiosInstance from '../api/axios'
@@ -696,7 +696,7 @@ function ManageTab({ selectedGym, onBack }) {
   if (loading) return <div className="flex justify-center py-16"><SkeletonLogoMark size={48} /></div>
   if (!detail) return null
 
-  const { gym, users, stats, subscription: sub } = detail
+  const { gym, users, stats, subscription: sub, contact } = detail
 
   const dt  = (iso) => iso ? new Date(iso).toLocaleString('es-MX', { day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit' }) : '—'
   const num = (n)   => n?.toLocaleString('es-MX') ?? '—'
@@ -794,6 +794,26 @@ function ManageTab({ selectedGym, onBack }) {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* ── Contacto del gym ── */}
+      {/* Business phone/email/address the gym filled in under Configuración
+          → General (settings table) — not the trial_requests contact_name
+          from signup, which never gets copied onto the gym and only exists
+          for trial-originated gyms. This works for any gym. */}
+      <div className={`${card} p-5`}>
+        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-1.5">
+          <Phone className="w-3.5 h-3.5" /> Contacto
+        </p>
+        {contact?.phone || contact?.email || contact?.address ? (
+          <div className="space-y-3">
+            <InfoRow icon={Phone}  label="Teléfono"  value={contact?.phone} />
+            <InfoRow icon={Mail}   label="Email"     value={contact?.email} />
+            <InfoRow icon={MapPin} label="Dirección" value={contact?.address} />
+          </div>
+        ) : (
+          <p className="text-xs text-gray-400">Este gym no ha registrado información de contacto en Configuración → General.</p>
+        )}
       </div>
 
       {/* ── Facturación Stripe ── */}

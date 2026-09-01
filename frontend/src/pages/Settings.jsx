@@ -7,7 +7,7 @@ import { useForm } from 'react-hook-form'
 import {
   Settings2, Palette, DollarSign, Bell, Server, Save, Loader2, CheckCircle2,
   ShieldCheck, Eye, EyeOff, KeyRound, RefreshCw, Lock, Plus, Trash2, Percent, Tag, Check, X,
-  Upload, Clock, CreditCard, Globe, Gift, ChevronRight, BadgeCheck,
+  Upload, Clock, CreditCard, Globe, Gift, ChevronRight, BadgeCheck, Package, Mail, MessageCircle,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import api from '../api/axios'
@@ -456,37 +456,98 @@ function PricesTab({ settings, onSave, saving }) {
 }
 
 // ── Notifications Tab ─────────────────────────────────────────
+// A ToggleRow's on/off state is just another registered form field — same
+// pattern as the plain <input>s elsewhere in this tab, only laid out with
+// the label/description on the left and the switch on the right.
+function ToggleRow({ register, name, label, description }) {
+  return (
+    <div className="flex items-center justify-between p-4 rounded-xl border border-gray-200 bg-white">
+      <div className="pr-4">
+        <p className="text-sm font-medium text-gray-900">{label}</p>
+        <p className="text-xs text-gray-500 mt-0.5">{description}</p>
+      </div>
+      <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
+        <input type="checkbox" {...register(name)} className="sr-only peer" />
+        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer
+          peer-checked:after:translate-x-full peer-checked:after:border-white
+          after:content-[''] after:absolute after:top-[2px] after:left-[2px]
+          after:bg-white after:border-gray-300 after:border after:rounded-full
+          after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--color-primary-600)]" />
+      </label>
+    </div>
+  )
+}
+
+// A pill checkbox — same registered-field pattern as ToggleRow's switch,
+// just rendered as a small selectable chip so several can sit side by side
+// (one per channel) instead of one switch per row.
+function ChannelChip({ register, name, icon: Icon, label }) {
+  return (
+    <label className="cursor-pointer select-none">
+      <input type="checkbox" {...register(name)} className="sr-only peer" />
+      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-200 bg-gray-50
+        text-xs font-semibold text-gray-500 transition-colors
+        peer-checked:bg-[var(--color-primary-600)] peer-checked:text-white peer-checked:border-transparent">
+        <Icon className="w-3.5 h-3.5" />
+        {label}
+      </span>
+    </label>
+  )
+}
+
+// Like ToggleRow, but instead of a single on/off switch it lets the gym pick
+// WHERE a member-facing notification goes: correo, WhatsApp, or both. The
+// WhatsApp chip is omitted entirely for gyms that don't have that feature —
+// same hasWhatsapp check used for the WhatsApp nav link / quick actions.
+function ChannelRow({ register, label, description, emailName, whatsappName, hasWhatsapp }) {
+  return (
+    <div className="p-4 rounded-xl border border-gray-200 bg-white">
+      <p className="text-sm font-medium text-gray-900">{label}</p>
+      <p className="text-xs text-gray-500 mt-0.5 mb-3">{description}</p>
+      <div className="flex flex-wrap gap-2">
+        <ChannelChip register={register} name={emailName} icon={Mail} label="Correo" />
+        {hasWhatsapp && <ChannelChip register={register} name={whatsappName} icon={MessageCircle} label="WhatsApp" />}
+      </div>
+    </div>
+  )
+}
+
 function NotificationsTab({ settings, onSave, saving }) {
+  const { user } = useAuthStore()
+  const hasProducts  = user?.plan_features?.products !== false
+  const hasWhatsapp  = user?.plan_features?.whatsapp !== false
+
+  const bool = (key) => settings[key] === '1' || settings[key] === true
+
   const { register, handleSubmit, watch } = useForm({
     values: {
-      send_welcome_email: settings.send_welcome_email === '1' || settings.send_welcome_email === true,
-      expiry_alert_days: settings.expiry_alert_days || '7',
+      send_welcome_email:            bool('send_welcome_email'),
+      expiry_alert_days:             settings.expiry_alert_days || '7',
+      send_expiry_reminder_email:    bool('send_expiry_reminder_email'),
+      send_expiry_reminder_whatsapp: bool('send_expiry_reminder_whatsapp'),
+      send_birthday_email:           bool('send_birthday_email'),
+      send_birthday_whatsapp:        bool('send_birthday_whatsapp'),
+      low_stock_alerts:              bool('low_stock_alerts'),
     },
   })
   const emailEnabled = watch('send_welcome_email')
 
   return (
     <form onSubmit={handleSubmit(d => onSave({
-      send_welcome_email: d.send_welcome_email ? '1' : '0',
-      expiry_alert_days:  String(d.expiry_alert_days || '7'),
+      send_welcome_email:            d.send_welcome_email ? '1' : '0',
+      expiry_alert_days:             String(d.expiry_alert_days || '7'),
+      send_expiry_reminder_email:    d.send_expiry_reminder_email ? '1' : '0',
+      send_expiry_reminder_whatsapp: hasWhatsapp && d.send_expiry_reminder_whatsapp ? '1' : '0',
+      send_birthday_email:           d.send_birthday_email ? '1' : '0',
+      send_birthday_whatsapp:        hasWhatsapp && d.send_birthday_whatsapp ? '1' : '0',
+      low_stock_alerts:              d.low_stock_alerts ? '1' : '0',
     }))} className="space-y-5">
       <SectionHeader icon={Bell} title="Notificaciones" description="Configura alertas automáticas del sistema." />
 
       <SubCard icon={Bell} title="Alertas automáticas" description="Correos y avisos que el sistema envía sin intervención manual.">
-        <div className="flex items-center justify-between p-4 rounded-xl border border-gray-200 bg-white">
-          <div>
-            <p className="text-sm font-medium text-gray-900">Email de bienvenida</p>
-            <p className="text-xs text-gray-500 mt-0.5">Enviar correo automático al registrar un nuevo miembro</p>
-          </div>
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input type="checkbox" {...register('send_welcome_email')} className="sr-only peer" />
-            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer
-              peer-checked:after:translate-x-full peer-checked:after:border-white
-              after:content-[''] after:absolute after:top-[2px] after:left-[2px]
-              after:bg-white after:border-gray-300 after:border after:rounded-full
-              after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--color-primary-600)]" />
-          </label>
-        </div>
+        <ToggleRow register={register} name="send_welcome_email"
+          label="Email de bienvenida"
+          description="Enviar correo automático al registrar un nuevo miembro" />
 
         <div className={`p-4 rounded-xl border border-gray-200 bg-white transition-opacity ${emailEnabled ? '' : 'opacity-50 pointer-events-none'}`}>
           <label className="label">Días de alerta antes del vencimiento</label>
@@ -500,7 +561,27 @@ function NotificationsTab({ settings, onSave, saving }) {
             <span className="text-sm text-gray-500">días antes</span>
           </div>
         </div>
+
+        <ChannelRow register={register} hasWhatsapp={hasWhatsapp}
+          emailName="send_expiry_reminder_email" whatsappName="send_expiry_reminder_whatsapp"
+          label="Recordatorio de vencimiento"
+          description="Además del aviso en el panel, avísale al socio cuando su membresía esté por vencer" />
       </SubCard>
+
+      <SubCard icon={Gift} title="Cumpleaños" description="Detecta automáticamente cuando un socio cumple años.">
+        <ChannelRow register={register} hasWhatsapp={hasWhatsapp}
+          emailName="send_birthday_email" whatsappName="send_birthday_whatsapp"
+          label="Felicitación de cumpleaños automática"
+          description="Felicita a cada socio el día de su cumpleaños, sin que nadie tenga que acordarse" />
+      </SubCard>
+
+      {hasProducts && (
+        <SubCard icon={Package} title="Inventario" description="Avisos sobre el stock de tus productos.">
+          <ToggleRow register={register} name="low_stock_alerts"
+            label="Alertas de stock bajo"
+            description="Recibe un aviso en el panel cuando un producto llegue a su umbral mínimo de existencias" />
+        </SubCard>
+      )}
 
       <div className="pt-1 flex justify-end">
         <SaveBtn saving={saving} />

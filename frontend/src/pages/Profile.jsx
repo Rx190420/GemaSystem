@@ -490,14 +490,21 @@ export default function Profile() {
                       const checked = customFeatures.includes(key)
                       return (
                         <label key={key}
-                          className={`flex items-center justify-between gap-2 px-2.5 py-2 rounded-lg border cursor-pointer text-xs transition-colors ${checked ? 'border-indigo-300 bg-indigo-50' : 'border-gray-200 bg-white hover:border-gray-300'}`}>
-                          <span className="flex items-center gap-2 text-gray-700">
-                            <input type="checkbox" checked={checked}
-                              onChange={() => setCustomFeatures(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key])}
-                              className="w-3.5 h-3.5 rounded accent-indigo-500 flex-shrink-0" />
-                            {addon.label}
+                          className={`flex flex-col gap-1 px-2.5 py-2 rounded-lg border cursor-pointer text-xs transition-colors ${checked ? 'border-indigo-300 bg-indigo-50' : 'border-gray-200 bg-white hover:border-gray-300'}`}>
+                          <span className="flex items-center justify-between gap-2">
+                            <span className="flex items-center gap-2 text-gray-700">
+                              <input type="checkbox" checked={checked}
+                                onChange={() => setCustomFeatures(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key])}
+                                className="w-3.5 h-3.5 rounded accent-indigo-500 flex-shrink-0" />
+                              {addon.label}
+                            </span>
+                            <span className="text-gray-400 flex-shrink-0">+${addon.price}</span>
                           </span>
-                          <span className="text-gray-400 flex-shrink-0">+${addon.price}</span>
+                          {addon.description && (
+                            <span className="text-[10px] text-gray-400 leading-snug pl-5 pt-1 border-t border-gray-100">
+                              {addon.description}
+                            </span>
+                          )}
                         </label>
                       )
                     })}

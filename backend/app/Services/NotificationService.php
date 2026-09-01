@@ -133,6 +133,43 @@ class NotificationService
         }
     }
 
+    /**
+     * A member's birthday is today — fired by the `notifications:birthdays`
+     * scheduled command, gated behind the gym's `send_birthday_email`
+     * setting (Settings → Notificaciones). Purely a staff-facing heads-up
+     * in the bell dropdown; the actual greeting email/WhatsApp (if enabled)
+     * is sent separately by the command itself, same split as
+     * membershipExpiring() below (in-app notice always created, the
+     * member-facing channel gated).
+     */
+    public static function memberBirthday(int $gymId, int $memberId, string $memberName): void
+    {
+        self::create(
+            $gymId,
+            'member_birthday',
+            'Cumpleaños hoy 🎂',
+            "Hoy es el cumpleaños de {$memberName}.",
+            ['member_id' => $memberId, 'member_name' => $memberName]
+        );
+    }
+
+    /**
+     * A product's stock dropped to/below its low_stock_threshold — fired by
+     * the `notifications:low-stock` scheduled command, gated behind the
+     * gym's `low_stock_alerts` setting. Staff-facing only (no member email
+     * makes sense here), same as paymentReceived()/memberRegistered().
+     */
+    public static function lowStock(int $gymId, int $productId, string $productName, int $stock, int $threshold): void
+    {
+        self::create(
+            $gymId,
+            'low_stock',
+            'Stock bajo',
+            "\"{$productName}\" tiene solo {$stock} unidades (umbral: {$threshold}).",
+            ['product_id' => $productId, 'product_name' => $productName, 'stock' => $stock, 'threshold' => $threshold]
+        );
+    }
+
     /** Human labels for Gym::GATED_FEATURES — shared by every place that needs to show one. */
     public const FEATURE_LABELS = [
         'whatsapp' => 'WhatsApp', 'products' => 'Productos', 'classes' => 'Clases',

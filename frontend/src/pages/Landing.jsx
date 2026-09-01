@@ -13,7 +13,7 @@ import {
   Bot, MonitorSmartphone, Store, Terminal, Mail, CheckCircle2, KeyRound, LogIn,
   MessageCircle,
   MailCheck,
-  Package, Upload, Download,
+  Package, Upload, Download, ChevronDown,
 } from 'lucide-react'
 
 import { useAuthStore } from '../store/authStore'
@@ -56,11 +56,19 @@ const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
 const FEATURES = [
-  { icon: Users,      color: '#6366F1', title: 'Gestión de Miembros',     desc: 'Registra y administra socios con códigos únicos, historial de pagos, fotos y alertas de vencimiento.' },
-  { icon: Scan,       color: '#10B981', title: 'Control de Visitas / QR',  desc: 'Registra asistencia por código QR o búsqueda instantánea. Estadísticas de visitas en tiempo real.' },
-  { icon: CreditCard, color: '#3B82F6', title: 'Membresías Inteligentes',  desc: 'Gestiona planes semanales, mensuales y anuales con renovaciones y notificaciones automáticas.' },
-  { icon: TrendingUp, color: '#8B5CF6', title: 'Análisis Financiero',      desc: 'Dashboard con gráficas de ingresos, mapa de actividad tipo GitHub, top pagadores y exportación.' },
-  { icon: Calendar,   color: '#F59E0B', title: 'Clases y Entrenadores',    desc: 'Programa clases grupales, asigna entrenadores y gestiona horarios desde un panel centralizado.' },
+  { icon: Users,      color: '#6366F1', tag: 'Socios',     title: 'Gestión de Miembros',     desc: 'Registra y administra socios con códigos únicos, historial de pagos, fotos y alertas de vencimiento.' },
+  { icon: Scan,       color: '#10B981', tag: 'Asistencia', title: 'Control de Visitas / QR',  desc: 'Registra asistencia por código QR o búsqueda instantánea. Estadísticas de visitas en tiempo real.' },
+  { icon: CreditCard, color: '#3B82F6', tag: 'Planes',     title: 'Membresías Inteligentes',  desc: 'Gestiona planes semanales, mensuales y anuales con renovaciones y notificaciones automáticas.' },
+  { icon: TrendingUp, color: '#8B5CF6', tag: 'Finanzas',   title: 'Análisis Financiero',      desc: 'Dashboard con gráficas de ingresos, mapa de actividad tipo GitHub, top pagadores y exportación.' },
+  { icon: Calendar,   color: '#F59E0B', tag: 'Clases',     title: 'Clases y Entrenadores',    desc: 'Programa clases grupales, asigna entrenadores y gestiona horarios desde un panel centralizado.' },
+]
+
+// Roadmap accordion items (see the "Próximamente" section) — module-level
+// so the collapsed header and the expanded rows both read from one list.
+const ROADMAP_ITEMS = [
+  { n: '01', version: 'v1.2.0', status: 'En desarrollo', Icon: Bot,               title: 'Chatbot de Soporte', desc: 'Asistente integrado en el panel que resuelve dudas de socios y de configuración en tiempo real.', accent: '#6366f1' },
+  { n: '02', version: 'v1.5.0', status: 'Planeado',      Icon: Store,              title: 'Portal del Socio',   desc: 'Tus miembros consultan su membresía, reservan clases y compran productos desde su propio portal.', accent: '#10b981' },
+  { n: '03', version: 'v2.0.0', status: 'Planeado',      Icon: MonitorSmartphone,  title: 'GemaSystem PWA',     desc: 'App instalable en cualquier dispositivo, como app nativa, con soporte básico sin conexión.', accent: '#8b5cf6' },
 ]
 
 // One screenshot per module, same order as FEATURES — drop the files (see
@@ -168,7 +176,7 @@ function AuthModal({ onClose }) {
         // Password was already verified by the login attempt above — remember it so
         // reactivation doesn't have to ask for it again.
         setSavedCreds({ password: data.password })
-        setBlockInfo({ type: d.block_type, reason: d.reason, subscriptionEnds: d.subscription_ends, plan: d.plan, planFeatures: d.plan_features, amount: d.amount, email: d.email })
+        setBlockInfo({ type: d.block_type, reason: d.reason, subscriptionEnds: d.subscription_ends, plan: d.plan, planFeatures: d.plan_features, amount: d.amount, gymName: d.gym_name, email: d.email })
         setStep(3)
         return
       }
@@ -453,6 +461,23 @@ function AuthModal({ onClose }) {
             {step === 3 && blockInfo && (
               <div className="space-y-4">
 
+                {/* Confirms which account this is BEFORE showing any plan
+                    choice — credentials were already verified by the login
+                    attempt that landed here, this just surfaces what got
+                    verified so it's obvious this is the right account. */}
+                {(blockInfo.gymName || blockInfo.email) && (
+                  <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-200 bg-gray-50">
+                    <div className="w-9 h-9 rounded-lg bg-white border border-gray-200 flex items-center justify-center flex-shrink-0">
+                      <Building2 className="w-4 h-4 text-gray-400" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Cuenta verificada</p>
+                      <p className="text-sm font-bold text-gray-800 truncate">{blockInfo.gymName || blockInfo.email}</p>
+                      {blockInfo.gymName && blockInfo.email && <p className="text-xs text-gray-400 truncate">{blockInfo.email}</p>}
+                    </div>
+                  </div>
+                )}
+
                 {/* ── Conversión de prueba a pago (elegida por el operador) ── */}
                 {blockInfo.type === 'upgrade_pending' && (
                   <>
@@ -611,33 +636,51 @@ function AuthModal({ onClose }) {
                       </p>
                     </div>
 
-                    {/* Botón principal de reactivación */}
-                    <button
-                      type="button" disabled={reactivating}
-                      onClick={() => reactivateNow(blockInfo.plan ?? 'monthly')}
-                      className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm text-white transition-all hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-60"
-                      style={{ background: 'linear-gradient(135deg,#4F46E5,#7C3AED)', boxShadow: '0 8px 24px rgba(99,102,241,0.35)' }}>
-                      {reactivating ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
-                      {reactivating ? 'Redirigiendo a Stripe...' : 'Reactivar mi cuenta'}
-                    </button>
-
-                    <div className="space-y-2">
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">O elige un plan diferente</p>
-                      {[
-                        { id: 'weekly',  label: 'Semanal',  price: '$399/sem',   desc: 'Sin contrato' },
-                        { id: 'monthly', label: 'Mensual', price: '$1,560/mes', desc: 'Más popular' },
-                      ].map(p => (
-                        <button key={p.id} type="button" disabled={reactivating}
-                          onClick={() => reactivateNow(p.id)}
-                          className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 transition-all group disabled:opacity-60">
-                          <div className="text-left">
-                            <p className="text-sm font-bold text-gray-800 group-hover:text-indigo-700">{p.label}</p>
-                            <p className="text-[10px] text-gray-400">{p.desc}</p>
-                          </div>
-                          <span className="text-sm font-extrabold text-indigo-600">{p.price}</span>
+                    {/* Elección explícita: seguir con el plan que ya tenía, o
+                        cambiar — la lista de planes alternativos se queda
+                        oculta hasta que la pida, en vez de mostrarse siempre
+                        junto al botón principal (mismo patrón que el toggle
+                        "changingPlan" de arriba, para upgrade_pending). */}
+                    {!changingPlan ? (
+                      <>
+                        <button
+                          type="button" disabled={reactivating}
+                          onClick={() => reactivateNow(blockInfo.plan ?? 'monthly')}
+                          className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm text-white transition-all hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-60"
+                          style={{ background: 'linear-gradient(135deg,#4F46E5,#7C3AED)', boxShadow: '0 8px 24px rgba(99,102,241,0.35)' }}>
+                          {reactivating ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
+                          {reactivating
+                            ? 'Redirigiendo a Stripe...'
+                            : `Seguir con mi plan ${blockInfo.plan === 'weekly' ? 'Semanal' : 'Mensual'}`}
                         </button>
-                      ))}
-                    </div>
+                        <button type="button" onClick={() => setChangingPlan(true)}
+                          className="w-full text-center text-xs font-semibold text-indigo-500 hover:text-indigo-700 transition-colors">
+                          ¿Prefieres cambiar de plan?
+                        </button>
+                      </>
+                    ) : (
+                      <div className="space-y-2">
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Elige un plan</p>
+                        {[
+                          { id: 'weekly',  label: 'Semanal',  price: '$399/sem',   desc: 'Sin contrato' },
+                          { id: 'monthly', label: 'Mensual', price: '$1,560/mes', desc: 'Más popular' },
+                        ].map(p => (
+                          <button key={p.id} type="button" disabled={reactivating}
+                            onClick={() => reactivateNow(p.id)}
+                            className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 transition-all group disabled:opacity-60">
+                            <div className="text-left">
+                              <p className="text-sm font-bold text-gray-800 group-hover:text-indigo-700">{p.label}</p>
+                              <p className="text-[10px] text-gray-400">{p.desc}</p>
+                            </div>
+                            <span className="text-sm font-extrabold text-indigo-600">{p.price}</span>
+                          </button>
+                        ))}
+                        <button type="button" onClick={() => setChangingPlan(false)}
+                          className="w-full text-center text-xs font-semibold text-gray-400 hover:text-gray-600 transition-colors pt-1">
+                          Cancelar — seguir con mi plan actual
+                        </button>
+                      </div>
+                    )}
                     <a href="mailto:soporte@gemasystem.app"
                       className="flex items-center gap-2 text-xs text-gray-400 hover:text-indigo-600 transition-colors justify-center">
                       <Send className="w-3 h-3" /> soporte@gemasystem.app
@@ -898,132 +941,53 @@ function FeatureShotImage({ src, alt }) {
   )
 }
 
-// ─── ModuleSpotlight (módulos section) ────────────────────────────────────────
-// One "app window" — real browser chrome, a tab per module — instead of a
-// card grid or a sidebar list. Switching tabs crossfades the screenshot;
-// small floating glass chips and a color-shifting ambient glow give it
-// depth. Auto-advances on a timer (paused on hover, skipped for
-// prefers-reduced-motion), with a dot-progress rail underneath doubling as
-// manual navigation.
+// ─── ModuleTimeline (módulos section) ──────────────────────────────────────────
+// Alternating rows down a vertical timeline rail — one module at a time,
+// read top to bottom like a narrative instead of scanned as a grid. Every
+// screenshot is full-size and undimmed (no overlay, no darkening) so the
+// real fields are legible; title/description live in their own column,
+// never stacked on top of the image.
 
-function slugify(s) {
-  return s.toLowerCase()
-    .normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
-}
-
-function ModuleSpotlight({ features, images }) {
-  const [active, setActive] = useState(0)
-  const [paused, setPaused] = useState(false)
-  const reduceMotion = typeof window !== 'undefined'
-    && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-
-  useEffect(() => {
-    if (paused || reduceMotion) return
-    const t = setInterval(() => setActive(i => (i + 1) % features.length), 4800)
-    return () => clearInterval(t)
-  }, [paused, reduceMotion, features.length])
-
-  const current = features[active]
-  const CurrentIcon = current.icon
-  const shot = images[active]
-
+function ModuleTimeline({ features, images }) {
   return (
-    <div
-      className="relative"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-    >
-      <style>{`
-        @keyframes moduleFade { from { opacity: 0; transform: scale(1.015) } to { opacity: 1; transform: scale(1) } }
-        .ms-tabs::-webkit-scrollbar { display: none }
-        .ms-tabs { scrollbar-width: none }
-      `}</style>
-
-      {/* Ambient glow — shifts to the active module's color */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none -z-10" aria-hidden="true">
-        <div className="w-[85%] h-[75%] rounded-full transition-colors duration-700"
-          style={{ background: current.color, opacity: 0.16, filter: 'blur(110px)' }} />
-      </div>
-
-      {/* App window */}
-      <div className="relative max-w-4xl mx-auto rounded-3xl overflow-hidden border shadow-2xl transition-colors duration-500"
-        style={{ borderColor: `${current.color}35` }}>
-
-        {/* Chrome bar — traffic lights, url, tabs */}
-        <div className="flex items-center gap-3 px-4 sm:px-5 py-3 border-b flex-wrap sm:flex-nowrap"
-          style={{ background: '#0b0e14', borderColor: 'rgba(255,255,255,0.06)' }}>
-          <div className="flex gap-1.5 flex-shrink-0">
-            <span className="w-2.5 h-2.5 rounded-full bg-red-400/70" />
-            <span className="w-2.5 h-2.5 rounded-full bg-yellow-400/70" />
-            <span className="w-2.5 h-2.5 rounded-full bg-green-400/70" />
-          </div>
-          <div className="hidden sm:flex items-center gap-1.5 bg-white/5 rounded-lg px-3 py-1.5 text-[11px] font-mono text-slate-500 min-w-0 order-3 sm:order-none w-full sm:w-auto sm:flex-1">
-            <Lock className="w-3 h-3 text-slate-600 flex-shrink-0" />
-            <span className="truncate">app.gemasystem.app/{slugify(current.title)}</span>
-          </div>
-          <div className="ms-tabs flex items-center gap-1 overflow-x-auto ml-auto flex-shrink-0">
-            {features.map((f, i) => {
-              const FIcon = f.icon
-              const isActive = i === active
-              return (
-                <button key={f.title} onClick={() => setActive(i)} title={f.title} aria-label={f.title}
-                  className="relative flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-300"
-                  style={{
-                    background: isActive ? f.color + '22' : 'transparent',
-                    border: `1px solid ${isActive ? f.color + '55' : 'transparent'}`,
-                  }}>
-                  <FIcon className="w-3.5 h-3.5" style={{ color: isActive ? f.color : '#64748b' }} />
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* Screenshot */}
-        <div className="relative min-h-[240px] sm:min-h-[320px] md:min-h-[420px]">
-          <div key={shot ?? active} className="w-full h-full min-h-[240px] sm:min-h-[320px] md:min-h-[420px]" style={{ animation: reduceMotion ? 'none' : 'moduleFade 0.45s ease both' }}>
-            {shot
-              ? <FeatureShotImage src={shot} alt={current.title} />
-              : (
-                <div className="w-full h-full min-h-[240px] sm:min-h-[320px] md:min-h-[420px] flex items-center justify-center">
-                  <CurrentIcon className="w-16 h-16" style={{ color: current.color, opacity: 0.3 }} />
-                </div>
-              )}
-          </div>
-
-          {/* Floating glass chip — active module */}
-          <div className="hidden sm:flex absolute left-5 top-6 items-center gap-2 pl-2 pr-3.5 py-2 rounded-xl border shadow-xl backdrop-blur-md transition-colors duration-500"
-            style={{ background: 'rgba(13,17,23,0.82)', borderColor: `${current.color}40`, transform: 'rotate(-3deg)' }}>
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: current.color + '25' }}>
-              <CurrentIcon className="w-3.5 h-3.5" style={{ color: current.color }} />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[11px] font-bold text-white leading-none truncate max-w-[160px]">{current.title}</p>
-              <p className="text-[9px] text-slate-500 mt-0.5">Módulo activo</p>
-            </div>
-          </div>
-
-          {/* Floating glass chip — live pulse */}
-          <div className="hidden sm:flex absolute right-5 bottom-6 items-center gap-1.5 px-3 py-1.5 rounded-full border shadow-xl backdrop-blur-md"
-            style={{ background: 'rgba(13,17,23,0.82)', borderColor: 'rgba(16,185,129,0.4)' }}>
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-[10px] font-bold text-emerald-300">En vivo</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Caption + dot progress */}
-      <div className="text-center mt-8 max-w-lg mx-auto px-4">
-        <h3 className="text-xl font-bold text-white">{current.title}</h3>
-        <p className="text-sm text-slate-400 mt-2 leading-relaxed">{current.desc}</p>
-        <div className="flex items-center justify-center gap-1.5 mt-6">
-          {features.map((f, i) => (
-            <button key={f.title} onClick={() => setActive(i)} aria-label={f.title}
-              className="h-1.5 rounded-full transition-all duration-300"
-              style={{ width: i === active ? 26 : 8, background: i === active ? f.color : 'rgba(255,255,255,0.15)' }} />
+    <div className="flex max-w-5xl mx-auto">
+      {/* Timeline rail — hidden on mobile where rows stack and a side rail
+          has nothing left to run alongside. */}
+      <div className="w-9 flex-shrink-0 relative hidden sm:flex flex-col items-center">
+        <div className="absolute top-5 bottom-5 w-px" style={{ background: 'rgba(255,255,255,0.1)' }} />
+        <div className="relative flex flex-col justify-between h-full w-full items-center py-5">
+          {features.map(f => (
+            <span key={f.title} className="w-3 h-3 rounded-full flex-shrink-0 border-2"
+              style={{ background: f.color, borderColor: '#0b0e14', boxShadow: `0 0 14px ${f.color}90` }} />
           ))}
         </div>
+      </div>
+
+      <div className="flex-1 flex flex-col gap-14 sm:pl-8">
+        {features.map((f, i) => {
+          const Icon = f.icon
+          const shot = images[i]
+          const reversed = i % 2 === 1
+          return (
+            <div key={f.title} className={`flex flex-col sm:flex-row items-center gap-6 sm:gap-10 ${reversed ? 'sm:flex-row-reverse' : ''}`}>
+              <div className="flex-1 w-full rounded-2xl overflow-hidden border flex-shrink-0"
+                style={{ borderColor: 'rgba(255,255,255,0.08)', boxShadow: '0 16px 34px -16px rgba(0,0,0,0.6)' }}>
+                <div className="h-[200px] sm:h-[240px]" style={{ background: '#0d1020' }}>
+                  {shot
+                    ? <FeatureShotImage src={shot} alt={`Vista del módulo de ${f.title}`} />
+                    : <div className="w-full h-full flex items-center justify-center"><Icon className="w-10 h-10" style={{ color: f.color, opacity: 0.3 }} /></div>}
+                </div>
+              </div>
+              <div className="flex-1 flex flex-col gap-2 text-center sm:text-left">
+                <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: f.color }}>
+                  {String(i + 1).padStart(2, '0')} · {f.tag}
+                </span>
+                <h3 className="text-xl sm:text-2xl font-bold text-white">{f.title}</h3>
+                <p className="text-sm text-slate-400 leading-relaxed">{f.desc}</p>
+              </div>
+            </div>
+          )
+        })}
       </div>
     </div>
   )
@@ -1118,13 +1082,20 @@ function PricingCards({ onSelectPlan }) {
             const checked = customFeatures.includes(key)
             return (
               <label key={key}
-                className={`flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl border cursor-pointer transition-colors ${checked ? 'border-indigo-400/50 bg-indigo-500/10' : 'border-white/10 hover:border-white/20'}`}>
-                <span className="flex items-center gap-2.5 text-sm text-white/85">
-                  <input type="checkbox" checked={checked} onChange={() => toggleFeature(key)}
-                    className="w-4 h-4 rounded accent-indigo-500 flex-shrink-0" />
-                  {addon.label}
+                className={`flex flex-col gap-1.5 px-3.5 py-2.5 rounded-xl border cursor-pointer transition-colors ${checked ? 'border-indigo-400/50 bg-indigo-500/10' : 'border-white/10 hover:border-white/20'}`}>
+                <span className="flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-2.5 text-sm text-white/85">
+                    <input type="checkbox" checked={checked} onChange={() => toggleFeature(key)}
+                      className="w-4 h-4 rounded accent-indigo-500 flex-shrink-0" />
+                    {addon.label}
+                  </span>
+                  <span className="text-xs text-slate-400 flex-shrink-0">+${addon.price}</span>
                 </span>
-                <span className="text-xs text-slate-400 flex-shrink-0">+${addon.price}</span>
+                {addon.description && (
+                  <span className="text-[11px] text-slate-500 leading-snug pl-6 pt-1.5 border-t border-white/10">
+                    {addon.description}
+                  </span>
+                )}
               </label>
             )
           })}
@@ -1149,6 +1120,7 @@ export default function Landing() {
     if (location.pathname === '/register') setRegisterOpen(true)
   }, [location.pathname])
   const [navOpen, setNavOpen]         = useState(false)
+  const [roadmapOpen, setRoadmapOpen] = useState(false)
   const navigate                  = useNavigate()
 
   // The hero's stroke-draw title should only start once App's full-screen
@@ -1310,7 +1282,7 @@ export default function Landing() {
           group looking off-center on first load. */}
       <section className="relative z-10 overflow-hidden min-h-screen min-h-[100svh] flex flex-col items-center justify-center text-center px-4 sm:px-6 py-16 pt-32">
         {heroReady ? (
-          <h1 className="flex items-center justify-center gap-0.5 sm:gap-1 max-w-full overflow-hidden">
+          <h1 className="flex items-center justify-center gap-0.5 sm:gap-1 max-w-full overflow-hidden pt-32">
             <StrokeLogoMark
               heightPx={heroHeight}
               delay={0}
@@ -1362,7 +1334,7 @@ export default function Landing() {
             </Reveal>
 
             <Reveal delay={0.1}>
-              <ModuleSpotlight features={FEATURES} images={MODULE_IMAGES} />
+              <ModuleTimeline features={FEATURES} images={MODULE_IMAGES} />
             </Reveal>
           </div>
         </section>
@@ -1546,34 +1518,56 @@ export default function Landing() {
               </div>
             </div>
 
-            {/* Roadmap — numbered tickets, 3-up */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {[
-                { n: '01', version: 'v1.2.0', status: 'En desarrollo', Icon: Bot,               title: 'Chatbot de Soporte', desc: 'Asistente integrado en el panel que resuelve dudas de socios y de configuración en tiempo real.', accent: '#6366f1' },
-                { n: '02', version: 'v1.5.0', status: 'Planeado',      Icon: Store,              title: 'Portal del Socio',   desc: 'Tus miembros consultan su membresía, reservan clases y compran productos desde su propio portal.', accent: '#10b981' },
-                { n: '03', version: 'v2.0.0', status: 'Planeado',      Icon: MonitorSmartphone,  title: 'GemaSystem PWA',     desc: 'App instalable en cualquier dispositivo, como app nativa, con soporte básico sin conexión.', accent: '#8b5cf6' },
-              ].map((item, i) => (
-                <Reveal key={item.version} delay={0.1 + i * 0.08}
-                  className="rounded-2xl border p-5 flex flex-col gap-3" style={{ background: '#0d1020', borderColor: 'rgba(255,255,255,0.1)' }}>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-mono font-bold text-slate-600">{item.n}</span>
-                    <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{ background: item.accent + '20', color: item.accent }}>
-                      {item.status}
-                    </span>
-                  </div>
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: item.accent + '18', border: `1px solid ${item.accent}30` }}>
-                    <item.Icon className="w-5 h-5" style={{ color: item.accent }} />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-white font-bold text-sm leading-tight">{item.title}</p>
-                      <span className="text-[10px] font-mono font-bold" style={{ color: item.accent }}>{item.version}</span>
+            {/* Roadmap — a single collapsed field that unfolds. Starts closed
+                showing just a summary; clicking expands the 3 items as an
+                accordion (grid-template-rows 0fr→1fr, so it animates without
+                measuring heights in JS). */}
+            <Reveal delay={0.1}
+              className="rounded-2xl border overflow-hidden" style={{ background: '#0d1020', borderColor: 'rgba(255,255,255,0.1)' }}>
+              <button type="button" onClick={() => setRoadmapOpen(o => !o)}
+                className="w-full flex items-center gap-4 p-5 text-left">
+                <div className="flex -space-x-2.5 flex-shrink-0">
+                  {ROADMAP_ITEMS.map(item => (
+                    <div key={item.version} className="w-9 h-9 rounded-full flex items-center justify-center border-2 flex-shrink-0"
+                      style={{ background: '#171b2c', borderColor: '#0d1020' }}>
+                      <item.Icon className="w-4 h-4" style={{ color: item.accent }} />
                     </div>
-                    <p className="text-slate-400 text-xs leading-relaxed mt-1.5">{item.desc}</p>
-                  </div>
-                </Reveal>
-              ))}
-            </div>
+                  ))}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white font-bold text-sm leading-tight">3 funciones en camino</p>
+                  <p className="text-slate-500 text-xs mt-1">Chatbot de Soporte, Portal del Socio y GemaSystem PWA</p>
+                </div>
+                <ChevronDown className={`w-4 h-4 text-slate-400 flex-shrink-0 transition-transform duration-300 ${roadmapOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              <div className="grid transition-[grid-template-rows] duration-400 ease-out" style={{ gridTemplateRows: roadmapOpen ? '1fr' : '0fr' }}>
+                <div className="overflow-hidden min-h-0">
+                  {ROADMAP_ITEMS.map(item => (
+                    <div key={item.version}
+                      className="flex items-center gap-4 p-5 border-t"
+                      style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+                      <span className="hidden sm:block text-[11px] font-mono font-bold text-slate-600 flex-shrink-0">{item.n}</span>
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                        style={{ background: item.accent + '18', border: `1px solid ${item.accent}30` }}>
+                        <item.Icon className="w-5 h-5" style={{ color: item.accent }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-white font-bold text-sm leading-tight">{item.title}</p>
+                          <span className="text-[10px] font-mono font-bold" style={{ color: item.accent }}>{item.version}</span>
+                        </div>
+                        <p className="text-slate-400 text-xs leading-relaxed mt-1.5">{item.desc}</p>
+                      </div>
+                      <span className="text-[9px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 whitespace-nowrap"
+                        style={{ background: item.accent + '20', color: item.accent }}>
+                        {item.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Reveal>
           </div>
         </section>
 
@@ -1842,7 +1836,7 @@ export default function Landing() {
             {/* Bottom bar */}
             <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
               <p className="text-xs text-slate-500 text-center sm:text-left">
-                © {new Date().getFullYear()} GemaSystem · Software de gestión para gimnasios · Todos los derechos reservados
+                © {new Date().getFullYear()} GemaSystem · Gestión de gimnasios · Todos los derechos reservados
               </p>
               <span className="text-xs text-slate-500 border border-white/15 rounded-full px-2.5 py-0.5 font-mono">v1.0.0-beta.1</span>
             </div>

@@ -1,10 +1,36 @@
 import LegalLayout, { LegalSection } from '../components/LegalLayout'
 
+const TOC = [
+  { id: 'aceptacion',    label: 'Aceptación de los términos' },
+  { id: 'servicio',      label: 'Descripción del servicio' },
+  { id: 'cuenta',        label: 'Registro de cuenta' },
+  { id: 'planes',        label: 'Planes, precios y facturación' },
+  { id: 'prueba',        label: 'Periodo de prueba gratuita' },
+  { id: 'uso',           label: 'Uso aceptable' },
+  { id: 'propiedad',     label: 'Propiedad intelectual' },
+  { id: 'datos',         label: 'Datos y contenido del usuario' },
+  { id: 'terceros',      label: 'Integraciones de terceros' },
+  { id: 'disponibilidad',label: 'Disponibilidad y cambios' },
+  { id: 'responsabilidad',label: 'Limitación de responsabilidad' },
+  { id: 'terminacion',   label: 'Terminación de cuenta' },
+  { id: 'modificaciones',label: 'Modificaciones a estos términos' },
+  { id: 'jurisdiccion',  label: 'Ley aplicable' },
+  { id: 'contacto',      label: 'Contacto' },
+]
+
+const SUMMARY = [
+  'Sin permanencia mínima: cancela cuando quieras, sin penalización, y conserva acceso hasta el final del periodo ya pagado.',
+  'Los datos de tu gimnasio y de tus socios siguen siendo tuyos — nosotros solo los operamos para prestarte el Servicio.',
+  'Las cuentas nuevas eligen entre los planes Basic, Full o Custom (con extras a la carta); las cuentas ya existentes en planes anteriores conservan sus condiciones.',
+  'Los pagos se procesan con Stripe y se renuevan automáticamente cada periodo salvo que canceles antes.',
+  'Si activas integraciones opcionales como WhatsApp, eres responsable de usarlas conforme a las políticas del proveedor correspondiente.',
+]
+
 export default function Terminos() {
   return (
-    <LegalLayout title="Términos y Condiciones de Uso" updated="29 de julio de 2026">
+    <LegalLayout title="Términos y Condiciones de Uso" updated="31 de agosto de 2026" summary={SUMMARY} toc={TOC}>
 
-      <LegalSection title="1. Aceptación de los términos">
+      <LegalSection id="aceptacion" index={1} title="Aceptación de los términos">
         <p>
           Estos Términos y Condiciones ("Términos") regulan el acceso y uso de GemaSystem ("el Servicio", "la Plataforma"),
           un sistema de gestión para gimnasios operado como software como servicio (SaaS). Al crear una cuenta,
@@ -18,51 +44,62 @@ export default function Terminos() {
         </p>
       </LegalSection>
 
-      <LegalSection title="2. Descripción del servicio">
+      <LegalSection id="servicio" index={2} title="Descripción del servicio">
         <p>
-          GemaSystem proporciona herramientas para la administración de gimnasios: control de socios, membresías,
-          registro de visitas, finanzas, clases, reportes y funciones relacionadas. El Servicio se ofrece
-          "tal cual" y "según disponibilidad", y puede evolucionar con el tiempo mediante la adición,
-          modificación o eliminación de funciones.
+          GemaSystem proporciona herramientas para la administración de gimnasios, entre ellas: control de
+          socios, membresías, registro de visitas mediante código QR, finanzas y reportes, clases y horarios,
+          venta e inventario de productos, notificaciones automáticas por correo y WhatsApp, e importación y
+          exportación de datos. Qué funciones tienes disponibles depende del plan que hayas contratado.
+        </p>
+        <p>
+          El Servicio se ofrece "tal cual" y "según disponibilidad", y puede evolucionar con el tiempo mediante
+          la adición, modificación o eliminación de funciones.
         </p>
       </LegalSection>
 
-      <LegalSection title="3. Registro de cuenta">
+      <LegalSection id="cuenta" index={3} title="Registro de cuenta">
         <p>
           Para usar GemaSystem debes crear una cuenta proporcionando información veraz, completa y actualizada
           (nombre del gimnasio, usuario, correo electrónico y contraseña). Eres responsable de mantener la
-          confidencialidad de tus credenciales y de todas las actividades realizadas bajo tu cuenta.
+          confidencialidad de tus credenciales y de todas las actividades realizadas bajo tu cuenta, incluidas
+          las de cualquier miembro de tu equipo a quien le des acceso.
           Notifícanos de inmediato a <a href="mailto:soporte@gemasystem.app" className="text-indigo-600 hover:text-indigo-700 font-medium">soporte@gemasystem.app</a> ante
           cualquier uso no autorizado.
         </p>
       </LegalSection>
 
-      <LegalSection title="4. Planes, precios y facturación">
+      <LegalSection id="planes" index={4} title="Planes, precios y facturación">
         <p>
-          Los precios de los planes (semanal, mensual y sus variantes) se muestran en pesos mexicanos (MXN),
-          no incluyen IVA salvo que se indique lo contrario, y están sujetos a cambio con aviso previo a
-          través del sitio o por correo electrónico. Los pagos se procesan mediante Stripe, un proveedor
-          externo de pagos; al pagar aceptas también los términos de Stripe aplicables al procesamiento de
-          tu transacción.
+          Ofrecemos planes mensuales <strong>Basic</strong>, <strong>Full</strong> y <strong>Custom</strong> (este
+          último con funciones adicionales que se agregan de forma individual, a tu elección). Los precios
+          vigentes se muestran en el sitio y al momento de contratar, en pesos mexicanos (MXN), no incluyen IVA
+          salvo que se indique lo contrario, y están sujetos a cambio con aviso previo a través del sitio o por
+          correo electrónico. Las cuentas creadas bajo planes anteriores (semanal, mensual o anual) conservan
+          las condiciones vigentes al momento de su contratación mientras no decidan cambiar de plan.
         </p>
         <p>
-          Las suscripciones se renuevan automáticamente al final de cada periodo (semanal o mensual) salvo
-          que se cancelen antes de la fecha de renovación. No hay contrato de permanencia mínima: puedes
-          cancelar en cualquier momento desde el portal de facturación de Stripe o escribiendo a
-          soporte@gemasystem.app, y conservarás acceso hasta el final del periodo ya pagado.
+          Los pagos se procesan mediante Stripe, un proveedor externo de pagos; al pagar aceptas también los
+          términos de Stripe aplicables al procesamiento de tu transacción. Las suscripciones se renuevan
+          automáticamente al final de cada periodo salvo que se cancelen antes de la fecha de renovación.
+        </p>
+        <p>
+          No hay contrato de permanencia mínima: puedes cancelar en cualquier momento desde el portal de
+          facturación de Stripe o escribiendo a soporte@gemasystem.app, y conservarás acceso hasta el final del
+          periodo ya pagado. Salvo que la ley aplicable exija lo contrario, no se realizan reembolsos por
+          periodos ya iniciados.
         </p>
       </LegalSection>
 
-      <LegalSection title="5. Periodo de prueba gratuita">
+      <LegalSection id="prueba" index={5} title="Periodo de prueba gratuita">
         <p>
           GemaSystem puede ofrecer un periodo de prueba gratuito (actualmente 10 días) sin necesidad de tarjeta
           de crédito. Al finalizar la prueba sin haber contratado un plan de pago, el acceso a las funciones
-          del Servicio puede suspenderse, conservando tus datos conforme a lo indicado en el
-          <a href="/privacidad" className="text-indigo-600 hover:text-indigo-700 font-medium"> Aviso de Privacidad</a>.
+          del Servicio puede suspenderse, conservando tus datos conforme a lo indicado en el{' '}
+          <a href="/privacidad" className="text-indigo-600 hover:text-indigo-700 font-medium">Aviso de Privacidad</a>.
         </p>
       </LegalSection>
 
-      <LegalSection title="6. Uso aceptable">
+      <LegalSection id="uso" index={6} title="Uso aceptable">
         <p>Al usar GemaSystem te comprometes a no:</p>
         <ul className="list-disc pl-5 space-y-1.5">
           <li>Utilizar el Servicio para fines ilícitos o no autorizados.</li>
@@ -70,10 +107,11 @@ export default function Terminos() {
           <li>Realizar ingeniería inversa, descompilar o intentar extraer el código fuente de la Plataforma.</li>
           <li>Sobrecargar, interferir o interrumpir la operación normal del Servicio (incluyendo ataques de denegación de servicio).</li>
           <li>Cargar contenido o datos de socios sin contar con el consentimiento o base legal correspondiente.</li>
+          <li>Usar la integración de WhatsApp para enviar mensajes masivos no solicitados, contenido engañoso, o de cualquier forma que viole las políticas de uso de WhatsApp/Meta.</li>
         </ul>
       </LegalSection>
 
-      <LegalSection title="7. Propiedad intelectual">
+      <LegalSection id="propiedad" index={7} title="Propiedad intelectual">
         <p>
           El software, diseño, marca, logotipos y demás elementos de GemaSystem son propiedad de sus titulares
           y están protegidos por leyes de propiedad intelectual. Estos Términos no te otorgan ninguna
@@ -82,16 +120,32 @@ export default function Terminos() {
         </p>
       </LegalSection>
 
-      <LegalSection title="8. Datos y contenido del usuario">
+      <LegalSection id="datos" index={8} title="Datos y contenido del usuario">
         <p>
           Conservas la titularidad de los datos que ingreses al Servicio (información de tu gimnasio, socios,
           pagos y demás registros). Nos otorgas una licencia limitada para almacenar, procesar y mostrar esa
           información únicamente con el fin de operar el Servicio para ti. Eres responsable de contar con las
-          bases legales necesarias para tratar los datos personales de tus socios que registres en la Plataforma.
+          bases legales necesarias para tratar los datos personales de tus socios que registres en la
+          Plataforma. Si tu plan incluye la función de exportación, puedes descargar tu información en
+          cualquier momento mientras tu cuenta esté activa.
         </p>
       </LegalSection>
 
-      <LegalSection title="9. Disponibilidad y modificaciones del servicio">
+      <LegalSection id="terceros" index={9} title="Integraciones de terceros">
+        <p>
+          El Servicio se apoya en proveedores externos para operar ciertas funciones: Stripe para pagos, Resend
+          para el envío de correos, y un proveedor de mensajería para la integración opcional de WhatsApp. El
+          uso de estas funciones está sujeto también a los términos y políticas del proveedor correspondiente.
+        </p>
+        <p>
+          En particular, la integración de WhatsApp funciona vinculando tu propio número de WhatsApp a la
+          Plataforma. Eres responsable de que ese número y su uso cumplan con las políticas de WhatsApp/Meta;
+          GemaSystem no controla ni garantiza la disponibilidad continua de esa integración, ya que depende de
+          un servicio de un tercero ajeno a nosotros.
+        </p>
+      </LegalSection>
+
+      <LegalSection id="disponibilidad" index={10} title="Disponibilidad y modificaciones del servicio">
         <p>
           Procuramos que el Servicio esté disponible de forma continua, pero no garantizamos disponibilidad
           ininterrumpida o libre de errores. Podemos suspender temporalmente el acceso por mantenimiento,
@@ -100,16 +154,21 @@ export default function Terminos() {
         </p>
       </LegalSection>
 
-      <LegalSection title="10. Limitación de responsabilidad">
+      <LegalSection id="responsabilidad" index={11} title="Limitación de responsabilidad">
         <p>
           En la máxima medida permitida por la ley aplicable, GemaSystem no será responsable por daños indirectos,
           incidentales, especiales o consecuentes derivados del uso o la imposibilidad de uso del Servicio,
           incluyendo pérdida de datos, ingresos o ganancias. El Servicio se proporciona "tal cual", sin
           garantías de ningún tipo, expresas o implícitas.
         </p>
+        <p>
+          En cualquier caso, nuestra responsabilidad total frente a ti por reclamos relacionados con el
+          Servicio se limita al monto que hayas pagado por el Servicio durante los tres meses previos al
+          evento que dio origen al reclamo.
+        </p>
       </LegalSection>
 
-      <LegalSection title="11. Terminación de cuenta">
+      <LegalSection id="terminacion" index={12} title="Terminación de cuenta">
         <p>
           Podemos suspender o cancelar tu acceso al Servicio si incumples estos Términos, si tu suscripción
           permanece impaga después de los avisos correspondientes, o por requerimiento legal. Puedes cancelar
@@ -118,7 +177,7 @@ export default function Terminos() {
         </p>
       </LegalSection>
 
-      <LegalSection title="12. Modificaciones a estos términos">
+      <LegalSection id="modificaciones" index={13} title="Modificaciones a estos términos">
         <p>
           Podemos actualizar estos Términos periódicamente. Publicaremos la versión vigente en esta misma
           página indicando la fecha de última actualización. El uso continuado del Servicio después de una
@@ -126,7 +185,7 @@ export default function Terminos() {
         </p>
       </LegalSection>
 
-      <LegalSection title="13. Ley aplicable y jurisdicción">
+      <LegalSection id="jurisdiccion" index={14} title="Ley aplicable y jurisdicción">
         <p>
           Estos Términos se rigen por las leyes de los Estados Unidos Mexicanos. Cualquier controversia
           relacionada con el Servicio se someterá a los tribunales competentes, renunciando a cualquier otro
@@ -134,7 +193,7 @@ export default function Terminos() {
         </p>
       </LegalSection>
 
-      <LegalSection title="14. Contacto">
+      <LegalSection id="contacto" index={15} title="Contacto">
         <p>
           Para preguntas sobre estos Términos, escríbenos a{' '}
           <a href="mailto:soporte@gemasystem.app" className="text-indigo-600 hover:text-indigo-700 font-medium">soporte@gemasystem.app</a>.

@@ -7,7 +7,7 @@ import { useNotificationStore } from '../../store/notificationStore'
 import NotificationPanel from '../NotificationPanel'
 import toast from 'react-hot-toast'
 
-export default function Topbar({ onMobileToggle }) {
+export default function Topbar({ onMobileToggle, collapsed = false }) {
   const { user, logout, sessionHash } = useAuthStore()
   const { darkMode, toggleDarkMode } = useSettingsStore()
   const { unreadCount, poll, fetch } = useNotificationStore()
@@ -72,10 +72,15 @@ export default function Topbar({ onMobileToggle }) {
           70% { transform:scale(1.25) }
           100%{ transform:scale(1) }
         }
+        @keyframes betaShine {
+          0%   { background-position: 160% 0; }
+          55%  { background-position: -60% 0; }
+          100% { background-position: -60% 0; }
+        }
       `}</style>
 
       <header
-        className="sticky top-0 z-30 flex items-center justify-between h-14 px-5 bg-white border-b border-gray-100"
+        className={`fixed top-0 right-0 left-0 z-30 flex items-center justify-between h-14 px-5 bg-white border-b border-gray-100 transition-all duration-300 ${collapsed ? 'lg:left-16' : 'lg:left-64'}`}
         style={{ backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}
       >
         {/* Left */}
@@ -88,21 +93,35 @@ export default function Topbar({ onMobileToggle }) {
           </button>
 
           <span
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full select-none"
+            className="relative inline-flex items-stretch select-none overflow-hidden rounded-full"
             style={{
-              fontSize: '10px',
-              fontWeight: 700,
-              letterSpacing: '0.06em',
-              background: 'color-mix(in srgb, var(--color-primary-500) 10%, transparent)',
-              color: 'var(--color-primary-600)',
-              border: '1px solid color-mix(in srgb, var(--color-primary-500) 25%, transparent)',
+              color: '#fff',
+              background: 'linear-gradient(135deg, var(--color-primary-400, var(--color-primary-500)), var(--color-primary-600))',
+              boxShadow: '0 2px 8px -1px color-mix(in srgb, var(--color-primary-500) 50%, transparent)',
             }}
           >
+            {/* One solid pill, split into two clean segments by a hairline —
+                the classic "shields.io"-style badge shape reads as a single
+                deliberate unit instead of the busier icon+ping+two-sizes
+                mix from before. */}
+            <span className="relative z-[1] flex items-center pl-2.5 pr-2 py-1 font-extrabold" style={{ fontSize: '11px', letterSpacing: '0.01em' }}>
+              GemaSystem
+            </span>
             <span
-              className="w-1.5 h-1.5 rounded-full animate-pulse"
-              style={{ background: 'var(--color-primary-500)' }}
+              className="relative z-[1] flex items-center pl-2 pr-2.5 py-1 font-mono"
+              style={{ fontSize: '9px', borderLeft: '1px solid rgba(255,255,255,0.3)', opacity: 0.9 }}
+            >
+              v1.0.0-beta.1
+            </span>
+            {/* Diagonal shine sweeping across the whole chip. */}
+            <span
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                background: 'linear-gradient(115deg, transparent 35%, rgba(255,255,255,0.5) 50%, transparent 65%)',
+                backgroundSize: '250% 100%',
+                animation: 'betaShine 3.2s ease-in-out infinite',
+              }}
             />
-            BETA
           </span>
 
           {/* Free-trial legend + upgrade shortcut — every gym still on

@@ -38,12 +38,16 @@ class StripeController extends Controller
     public function createCheckoutSession(Request $request)
     {
         $request->validate([
-            // Broad here — each branch below enforces the subset it actually
-            // supports (resubscription: legacy plans only; new registration:
-            // the 3 new tiers only).
+            // Broad here — both branches below now accept the full 5-plan set.
+            // Resubscription used to be locked to weekly/monthly only; a gym
+            // that lapsed on Basic/Full/Custom needs to reactivate onto THOSE,
+            // not be offered legacy plans it never had — see
+            // createResubscriptionSession()'s comment for the actual pricing.
             'plan_id'         => 'required|in:weekly,monthly,basic,full,custom',
             'email'           => 'required|email|max:150',
             'password'        => 'required|string|max:255',
+            'features'        => 'required_if:plan_id,custom|array',
+            'features.*'      => 'in:' . implode(',', Gym::GATED_FEATURES),
         ]);
 
         $planId   = $request->plan_id;
@@ -54,13 +58,6 @@ class StripeController extends Controller
         $existingUser = User::where('email', $email)->first();
 
         if ($existingUser) {
-            // Resubscription only ever offers the plan the account already knows
-            // (weekly/monthly) — switching an existing account onto Basic/Full/
-            // Custom is a separate "change plan" flow, not this one.
-            if (!in_array($planId, ['weekly', 'monthly'], true)) {
-                return response()->json(['message' => 'Plan inválido para reactivación.'], 422);
-            }
-
             // Verify the account's *existing* password — this isn't setting a new
             // one, so it must not be held to the new-password complexity rules.
             // No reCAPTCHA needed here: the modal that calls this already
@@ -73,15 +70,21 @@ class StripeController extends Controller
             }
 
             $gym = $existingUser->gym;
+            // 'basic' included here too — a lapsed Basic gym that already had
+            // extras carries them over on reactivation for free instead of
+            // losing them (see resolvePlanFeatures()'s 'basic' branch). Never
+            // priced into this checkout either way: extras aren't part of the
+            // recurring subscription line item, whatever plan_id this is.
+            $features = in_array($planId, ['basic', 'custom'], true)
+                ? array_values($request->input('features', []))
+                : null;
 
-            // Only allow resubscription if subscription is expired/cancelled/failed
-            if ($gym && !in_array($gym->billing_status, ['payment_failed', 'cancelled', 'none', 'payment_due', 'trial_expired'])) {
-                return response()->json([
-                    'message' => 'Tu suscripción ya está activa. Usa "Cambiar plan" desde el panel.',
-                ], 422);
-            }
-
-            return $this->createResubscriptionSession($existingUser, $gym, $planId);
+            // Allowed even if the gym already has a live subscription — buying
+            // again while still active STACKS the remaining time on top of the
+            // new period instead of being blocked (see fulfill()'s resubscription
+            // branch, which does the actual stacking + cancels the old Stripe
+            // subscription once the new one is paid, so nothing double-bills).
+            return $this->createResubscriptionSession($existingUser, $gym, $planId, $features);
         }
 
         // ── New registration ─────────────────────────────────────────────────
@@ -152,26 +155,89 @@ class StripeController extends Controller
         return response()->json(['url' => $session->url]);
     }
 
+    /**
+     * Read-only precheck for Register.jsx's "Verificar gym" step — same
+     * credentials check as createCheckoutSession()'s resubscription branch
+     * above, but without creating a Stripe session or a PendingCheckout row.
+     * Lets the reactivation form show which account it actually found (gym
+     * name, plan, current status) and gate the real "Reactivar con Stripe"
+     * button behind an explicit confirm, instead of only finding out the
+     * credentials were wrong after already being bounced to Stripe.
+     *
+     * Always succeeds once credentials + gym check out, even when the gym
+     * already has a live subscription — `is_active` tells the frontend to
+     * show "esto se sumará a tu suscripción actual" instead of blocking the
+     * purchase (see fulfill()'s resubscription branch for the actual stacking).
+     */
+    public function verifyReactivation(Request $request)
+    {
+        $request->validate([
+            'email'    => 'required|email|max:150',
+            'password' => 'required|string|max:255',
+        ]);
+
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user || !Hash::check($request->password, $user->password)) {
+            return response()->json(['message' => 'Las credenciales no son correctas.'], 422);
+        }
+
+        $gym = $user->gym;
+
+        if (!$gym) {
+            return response()->json(['message' => 'Esta cuenta no tiene un gimnasio asociado.'], 422);
+        }
+
+        $isActive = !in_array($gym->billing_status, ['payment_failed', 'cancelled', 'none', 'payment_due', 'trial_expired']);
+
+        return response()->json([
+            'gym_name'              => $gym->name,
+            'plan'                  => $gym->plan,
+            'plan_type'             => $gym->plan_type,
+            // Which extras (Gym::GATED_FEATURES) this account already has —
+            // not just for 'custom'. A 'basic' gym can hold individually
+            // granted/purchased extras too (SuperAdminController::updateExtras
+            // / self-service purchase), and reactivating shouldn't silently
+            // drop them. Meaningless for 'full' (already has everything) and
+            // legacy weekly/monthly/annual (hasFeature() ignores this column
+            // for those), but harmless to send back either way.
+            'plan_features'         => $gym->plan_features,
+            'billing_status'        => $gym->billing_status,
+            'subscription_ends_at'  => $gym->subscription_ends_at?->toDateString(),
+            'is_active'             => $isActive,
+        ]);
+    }
+
     // ── Resubscription for existing user ─────────────────────────────────────
 
-    private function createResubscriptionSession(User $user, ?Gym $gym, string $planId): \Illuminate\Http\JsonResponse
+    /**
+     * $planId is the FULL 5-plan set, not just legacy weekly/monthly — a gym
+     * that lapsed on Basic/Full/Custom reactivates onto one of those, not a
+     * legacy plan it never had. lineItemFor() already builds the right line
+     * item for all five (fixed Stripe Price for weekly/monthly/basic/full,
+     * inline price_data for custom's dynamic addon total) — same helper the
+     * new-registration branch above already uses, so both paths price a
+     * given plan_id identically.
+     */
+    private function createResubscriptionSession(User $user, ?Gym $gym, string $planId, ?array $features = null): \Illuminate\Http\JsonResponse
     {
         $this->boot();
         $frontendUrl = env('APP_FRONTEND_URL', 'http://localhost:5173');
 
         $pending = PendingCheckout::create([
-            'gym_name' => $gym?->name ?? $user->username,
-            'username' => $user->username,
-            'email'    => $user->email,
-            'password' => $user->password,
-            'plan_id'  => $planId,
-            'status'   => 'pending',
+            'gym_name'      => $gym?->name ?? $user->username,
+            'username'      => $user->username,
+            'email'         => $user->email,
+            'password'      => $user->password,
+            'plan_id'       => $planId,
+            'plan_features' => $features ? array_fill_keys($features, true) : null,
+            'status'        => 'pending',
         ]);
 
         $sessionParams = [
             'mode'                 => 'subscription',
             'payment_method_types' => ['card'],
-            'line_items'           => [['price' => config('services.stripe.' . $this->priceKey($planId)), 'quantity' => 1]],
+            'line_items'           => [$this->lineItemFor($planId, $features)],
             'success_url'          => $frontendUrl . '/checkout/success?session_id={CHECKOUT_SESSION_ID}',
             'cancel_url'           => $frontendUrl . '/',
             'metadata'             => [
@@ -1106,12 +1172,27 @@ class StripeController extends Controller
             $period        = $this->extractSubPeriod($sub);
             $prevStatus    = $gym->billing_status; // capture before update
 
+            // Never move subscription_ends_at backward. Stripe fires this
+            // invoice.payment_succeeded event for a brand-new subscription's
+            // very first invoice too, right around the same time as the
+            // checkout.session.completed that fulfill() handles — and
+            // fulfill()'s resubscription branch may have already stacked
+            // subscription_ends_at further out than this invoice's own raw
+            // period end (remaining time from the subscription it replaced).
+            // Taking the later of the two keeps that stack intact instead of
+            // this handler clobbering it back down. On every normal renewal
+            // afterward the real period end naturally overtakes the stacked
+            // date anyway, so this is a no-op once enough time has passed.
+            $newEndsAt = $gym->subscription_ends_at && $period['ends_at'] && $gym->subscription_ends_at->gt($period['ends_at'])
+                ? $gym->subscription_ends_at
+                : $period['ends_at'];
+
             $gym->update([
                 'billing_status'         => 'active',
                 'status'                 => 'active',
                 'plan'                   => $planName ?? $gym->plan,
                 'subscription_starts_at' => $period['starts_at'],
-                'subscription_ends_at'   => $period['ends_at'],
+                'subscription_ends_at'   => $newEndsAt,
                 'last_payment_at'        => now(),
             ]);
 
@@ -1295,6 +1376,20 @@ class StripeController extends Controller
                 $gym = Gym::find($existingUser->gym_id);
 
                 if ($gym) {
+                    $oldSubId = $gym->stripe_subscription_id;
+
+                    // Stacking: buying a new subscription while the current one
+                    // still has time left adds that remaining time on top of the
+                    // fresh period, instead of just resetting the clock to the
+                    // new period alone — "si tiene 1 mes activo, se suman los
+                    // días que le quedan más el mes del segundo pago".
+                    if ($endsAt && $gym->subscription_ends_at && $gym->subscription_ends_at->isFuture()) {
+                        $remainingSeconds = now()->diffInSeconds($gym->subscription_ends_at, false);
+                        if ($remainingSeconds > 0) {
+                            $endsAt = $endsAt->copy()->addSeconds($remainingSeconds);
+                        }
+                    }
+
                     $gym->update([
                         'plan'                    => $planName,
                         'plan_features'           => $this->resolvePlanFeatures($planName, $pending->plan_features),
@@ -1307,8 +1402,22 @@ class StripeController extends Controller
                         'last_payment_at'         => now(),
                     ]);
 
+                    // The stacked time above is ours to track — Stripe itself
+                    // only knows about the new period, so the OLD subscription
+                    // has to be cancelled explicitly or it keeps auto-renewing
+                    // and charging the card every period on top of the new one.
+                    if ($oldSubId && $oldSubId !== $stripeSubscriptionId) {
+                        try {
+                            $this->boot();
+                            StripeSubscription::cancel($oldSubId);
+                        } catch (\Throwable $e) {
+                            Log::warning("fulfill: no se pudo cancelar la suscripción anterior {$oldSubId} del gym {$gym->id}: " . $e->getMessage());
+                        }
+                    }
+
                     $pending->update(['status' => 'completed']);
-                    Log::info("Resubscription fulfilled for gym {$gym->id} ({$gym->name}), plan={$planName}");
+                    Log::info("Resubscription fulfilled for gym {$gym->id} ({$gym->name}), plan={$planName}"
+                        . ($oldSubId && $oldSubId !== $stripeSubscriptionId ? ", reemplaza suscripción anterior {$oldSubId}" : ''));
                     return $existingUser;
                 }
             }
@@ -1415,8 +1524,25 @@ class StripeController extends Controller
      */
     private function resolvePlanFeatures(string $planName, ?array $pendingFeatures): ?array
     {
-        if ($planName !== 'custom') {
-            return $planName === 'full' ? array_fill_keys(Gym::GATED_FEATURES, true) : null;
+        if ($planName === 'full') {
+            return array_fill_keys(Gym::GATED_FEATURES, true);
+        }
+
+        // Legacy weekly/monthly/annual: Gym::hasFeature() ignores plan_features
+        // entirely for these (always true), so there's nothing meaningful to store.
+        if ($planName !== 'custom' && $planName !== 'basic') {
+            return null;
+        }
+
+        // 'basic' only ever gets here with real $pendingFeatures from ONE
+        // place: fulfill()'s resubscription branch carrying over the extras a
+        // lapsed Basic gym already had (see createResubscriptionSession) —
+        // reactivating restores them for free instead of silently dropping
+        // them, since the gym already paid for them once. A brand-new Basic
+        // signup passes null here (Basic starts with zero extras; buying one
+        // fresh is Profile.jsx's separate one-time-purchase flow, not this).
+        if ($planName === 'basic' && !$pendingFeatures) {
+            return null;
         }
 
         // Callers pass two different shapes here: fulfillPlanChange() passes

@@ -6,6 +6,7 @@ import {
   Users, CreditCard, BarChart3, Calendar, DollarSign,
   Tag, Zap, Shield, Globe, ArrowRight, CheckCircle2, CheckCheck,
   AlertTriangle, Lock, Building2, Phone, Mail, MapPin, Smile, MessageCircle,
+  Bell, Gift, Package,
 } from 'lucide-react'
 import GemaSystemLogo from './GemaSystemLogo'
 import api from '../api/axios'
@@ -20,10 +21,10 @@ const STEPS = [
   { label: 'Tu Gimnasio' },
   { label: 'Precios'     },
   { label: 'Sistema'     },
+  { label: 'Avisos'      },
   { label: 'Descubre'    },
   { label: '¡Listo!'     },
 ]
-
 const FEATURES = [
   {
     icon: BarChart3, color: '#6366F1', bg: '#EEF2FF',
@@ -310,12 +311,13 @@ function WelcomeStep({ accessCode, showCode, setShowCode, onNext, user }) {
         {/* Next steps grid */}
         <div>
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Lo que haremos en los próximos pasos</p>
-          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
             {[
               { label: 'Gimnasio', Icon: Building2,   color: '#6366F1' },
               { label: 'Precios',  Icon: DollarSign,  color: '#10B981' },
               { label: 'Sistema',  Icon: Globe,       color: '#8B5CF6' },
-              { label: 'Tour',     Icon: BarChart3,   color: '#F59E0B' },
+              { label: 'Avisos',   Icon: Bell,        color: '#F59E0B' },
+              { label: 'Tour',     Icon: BarChart3,   color: '#25D366' },
               { label: '¡Listo!', Icon: CheckCircle2, color: '#EC4899' },
             ].map(({ label, Icon, color }) => (
               <div key={label}
@@ -515,7 +517,129 @@ function SystemStep({ settings, onSave, saving, onBack }) {
   )
 }
 
-// ─── Step 4: Discover ─────────────────────────────────────────────────────────
+// ─── Step 4: Notifications ────────────────────────────────────────────────────
+
+// A toggle row styled like the wizard's other cards (icon avatar + copy on a
+// tinted background) rather than Settings.jsx's ToggleRow — same switch
+// control underneath, just laid out to match this file's own visual language.
+function NotifToggleRow({ register, name, icon: Icon, color, bg, title, desc }) {
+  return (
+    <label className="flex items-center gap-3.5 p-4 rounded-xl border border-gray-100 bg-gray-50 cursor-pointer">
+      <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: bg }}>
+        <Icon className="w-5 h-5" style={{ color }} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-gray-900">{title}</p>
+        <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">{desc}</p>
+      </div>
+      <span className="relative inline-flex items-center flex-shrink-0">
+        <input type="checkbox" {...register(name)} className="sr-only peer" />
+        <span className="block w-11 h-6 bg-gray-200 rounded-full peer transition-colors
+          peer-checked:after:translate-x-full peer-checked:after:border-white
+          after:content-[''] after:absolute after:top-[2px] after:left-[2px]
+          after:bg-white after:border-gray-300 after:border after:rounded-full
+          after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--color-primary-600)]" />
+      </span>
+    </label>
+  )
+}
+
+// Small selectable pill, same registered-checkbox pattern as NotifToggleRow's
+// switch — used inside NotifChannelRow so a gym can pick correo, WhatsApp,
+// or both per notification instead of one on/off switch per row.
+function ChannelChip({ register, name, icon: Icon, label }) {
+  return (
+    <label className="cursor-pointer select-none">
+      <input type="checkbox" {...register(name)} className="sr-only peer" />
+      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-200 bg-white
+        text-xs font-semibold text-gray-500 transition-colors
+        peer-checked:bg-[var(--color-primary-600)] peer-checked:text-white peer-checked:border-transparent">
+        <Icon className="w-3.5 h-3.5" />
+        {label}
+      </span>
+    </label>
+  )
+}
+
+// Same card shell as NotifToggleRow, but instead of one switch it exposes a
+// row of channel chips (correo / WhatsApp) — the WhatsApp chip is left out
+// entirely for gyms without that feature, mirroring Settings.jsx's ChannelRow.
+function NotifChannelRow({ register, icon: Icon, color, bg, title, desc, emailName, whatsappName, hasWhatsapp }) {
+  return (
+    <div className="flex items-start gap-3.5 p-4 rounded-xl border border-gray-100 bg-gray-50">
+      <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: bg }}>
+        <Icon className="w-5 h-5" style={{ color }} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-gray-900">{title}</p>
+        <p className="text-xs text-gray-500 mt-0.5 mb-2.5 leading-relaxed">{desc}</p>
+        <div className="flex flex-wrap gap-2">
+          <ChannelChip register={register} name={emailName} icon={Mail} label="Correo" />
+          {hasWhatsapp && <ChannelChip register={register} name={whatsappName} icon={MessageCircle} label="WhatsApp" />}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Real, actionable settings — not a preview card. Submits straight to the
+// same `settings` keys as Settings.jsx's NotificationsTab, so activating
+// here is the exact same toggle a gym could flip later; the stock-alert row
+// only shows for gyms that actually have Productos (any acquisition method:
+// Full, Custom + extra, or a manually granted extra), and the WhatsApp chips
+// only show for gyms that have that feature — same checks that tab uses.
+function NotificationsStep({ settings, onSave, saving, onBack, hasProducts, hasWhatsapp }) {
+  const bool = (key) => settings[key] === '1' || settings[key] === true
+  const { register, handleSubmit } = useForm({
+    values: {
+      send_expiry_reminder_email:    bool('send_expiry_reminder_email'),
+      send_expiry_reminder_whatsapp: bool('send_expiry_reminder_whatsapp'),
+      send_birthday_email:           bool('send_birthday_email'),
+      send_birthday_whatsapp:        bool('send_birthday_whatsapp'),
+      low_stock_alerts:              bool('low_stock_alerts'),
+    },
+  })
+  return (
+    <div className="px-5 sm:px-8 py-7">
+      <StepHeader
+        icon={Bell} iconBg="#EEF2FF" iconColor="#6366F1"
+        title="Notificaciones automáticas"
+        desc="Actívalas ahora si quieres, o cámbialas cuando gustes desde Configuración → Notificaciones."
+      />
+      <form onSubmit={handleSubmit(d => onSave({
+        send_expiry_reminder_email:    d.send_expiry_reminder_email ? '1' : '0',
+        send_expiry_reminder_whatsapp: hasWhatsapp && d.send_expiry_reminder_whatsapp ? '1' : '0',
+        send_birthday_email:           d.send_birthday_email ? '1' : '0',
+        send_birthday_whatsapp:        hasWhatsapp && d.send_birthday_whatsapp ? '1' : '0',
+        low_stock_alerts:              d.low_stock_alerts ? '1' : '0',
+      }))} className="space-y-3">
+
+        <NotifChannelRow register={register} hasWhatsapp={hasWhatsapp}
+          icon={Bell} color="#6366F1" bg="#EEF2FF"
+          emailName="send_expiry_reminder_email" whatsappName="send_expiry_reminder_whatsapp"
+          title="Recordatorio de vencimiento"
+          desc="Avisa al socio cuando su membresía esté por vencer." />
+
+        <NotifChannelRow register={register} hasWhatsapp={hasWhatsapp}
+          icon={Gift} color="#EC4899" bg="#FDF2F8"
+          emailName="send_birthday_email" whatsappName="send_birthday_whatsapp"
+          title="Felicitación de cumpleaños"
+          desc="Felicita al socio el día que cumple años." />
+
+        {hasProducts && (
+          <NotifToggleRow register={register} name="low_stock_alerts"
+            icon={Package} color="#F59E0B" bg="#FFFBEB"
+            title="Alertas de stock bajo"
+            desc="Aviso en el panel cuando un producto llegue a su umbral mínimo de existencias." />
+        )}
+
+        <NavRow onBack={onBack} saving={saving} />
+      </form>
+    </div>
+  )
+}
+
+// ─── Step 5: Discover ─────────────────────────────────────────────────────────
 
 const STORY_MS = 4200 // ms each feature stays on screen before auto-advancing
 
@@ -667,7 +791,7 @@ function DiscoverStep({ onNext, onBack }) {
   )
 }
 
-// ─── Step 5: Done ─────────────────────────────────────────────────────────────
+// ─── Step 6: Done ─────────────────────────────────────────────────────────────
 
 const CONFETTI_COLORS = ['var(--color-primary-500)', 'var(--color-primary-600)', '#10B981', '#F59E0B', '#25D366', '#EC4899']
 
@@ -758,6 +882,7 @@ function DoneStep({ onComplete, saving, navigate, sessionHash }) {
             'Información del gimnasio',
             'Precios por defecto',
             'Moneda y zona horaria',
+            'Notificaciones automáticas',
             'Código de acceso personal',
           ].map((item, i) => (
             <div key={item} className="wiz-in flex items-center gap-3" style={{ animationDelay: `${i * 0.08}s` }}>
@@ -813,6 +938,12 @@ export default function OnboardingWizard() {
 
   const { user, completeOnboarding, sessionHash } = useAuthStore()
   const navigate = useNavigate()
+  // Same "any acquisition method" check as Settings.jsx's Inventario card —
+  // user.plan_features.products is a computed map from Gym::hasFeature(),
+  // true for Full, legacy weekly/monthly/annual gyms, and Custom gyms that
+  // bought (or were manually granted) the Productos extra.
+  const hasProducts = user?.plan_features?.products !== false
+  const hasWhatsapp = user?.plan_features?.whatsapp !== false
 
   useEffect(() => {
     api.get('/auth/access-code').then(r => setCode(r.data)).catch(() => {})
@@ -845,11 +976,12 @@ export default function OnboardingWizard() {
 
   const steps = [
     <WelcomeStep  key="welcome"  accessCode={accessCode} showCode={showCode} setShowCode={setShowCode} onNext={goNext} user={user} />,
-    <GymInfoStep  key="gym"      settings={settings} onSave={saveSettings} saving={saving} onBack={goBack} />,
-    <PricesStep   key="prices"   settings={settings} onSave={saveSettings} saving={saving} onBack={goBack} />,
-    <SystemStep   key="system"   settings={settings} onSave={saveSettings} saving={saving} onBack={goBack} />,
-    <DiscoverStep key="discover" onNext={goNext} onBack={goBack} />,
-    <DoneStep     key="done"     onComplete={handleComplete} saving={saving} navigate={navigate} sessionHash={sessionHash} />,
+    <GymInfoStep       key="gym"           settings={settings} onSave={saveSettings} saving={saving} onBack={goBack} />,
+    <PricesStep        key="prices"        settings={settings} onSave={saveSettings} saving={saving} onBack={goBack} />,
+    <SystemStep        key="system"        settings={settings} onSave={saveSettings} saving={saving} onBack={goBack} />,
+    <NotificationsStep key="notifications" settings={settings} onSave={saveSettings} saving={saving} onBack={goBack} hasProducts={hasProducts} hasWhatsapp={hasWhatsapp} />,
+    <DiscoverStep      key="discover"      onNext={goNext} onBack={goBack} />,
+    <DoneStep          key="done"          onComplete={handleComplete} saving={saving} navigate={navigate} sessionHash={sessionHash} />,
   ]
 
   return (

@@ -5,11 +5,12 @@ import { yupResolver } from '@hookform/resolvers/yup'
 import * as yup from 'yup'
 import ReCAPTCHA from 'react-google-recaptcha'
 import {
-  Dumbbell, Check, Eye, EyeOff, Loader2, Shield,
+  Check, Eye, EyeOff, Loader2, Shield,
   CreditCard, ArrowRight, X, Lock, BadgeCheck, Zap,
   Building2, User, Mail, KeyRound, RefreshCcw, IdCard,
 } from 'lucide-react'
 import api from '../api/axios'
+import GemaSystemLogo from '../components/GemaSystemLogo'
 import useLockBodyScroll from '../hooks/useLockBodyScroll'
 import usePlans, { customTotal, BASIC_INCLUDES, fullIncludes } from '../hooks/usePlans'
 
@@ -220,6 +221,114 @@ function PlanTabs({ plans, current, onChange, customFeatures }) {
   )
 }
 
+// The plan-tabs + price/features block shown for "Nueva cuenta", extracted
+// so "Reactivar gym" can render the exact same thing for an account whose
+// existing plan is Basic/Full/Custom — that account never had a weekly/
+// monthly plan, so it has no business being offered one just because it's
+// reactivating (see LEGACY_PLANS below for the plan it's actually offered
+// instead when the account turns out to be on one of THOSE).
+function NewPlanDetail({ plans, planId, customFeatures, onSelectPlan, onToggleFeature, label }) {
+  return (
+    <>
+      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Selecciona tu plan</p>
+      <PlanTabs plans={plans} current={planId} onChange={onSelectPlan} customFeatures={customFeatures} />
+
+      <div className="mt-4 mb-4">
+        {planId === 'full' && (
+          <span className="inline-flex items-center gap-1.5 mb-2.5 px-2.5 py-1 rounded-full text-[10px] font-bold"
+            style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.3)', color: '#6366F1' }}>
+            <Zap className="w-2.5 h-2.5" /> Más popular
+          </span>
+        )}
+        <p className="text-gray-400 text-[11px] mb-0.5">{label}</p>
+        <h2 className="text-lg font-extrabold text-gray-900 mb-2 tracking-tight">
+          Plan {planId === 'basic' ? plans.basic.label : planId === 'full' ? plans.full.label : 'Custom'}
+        </h2>
+        <div className="flex items-baseline gap-1 mb-3">
+          <span className="text-2xl font-black text-indigo-600 tracking-tight">
+            ${(planId === 'basic' ? plans.basic.price : planId === 'full' ? plans.full.price : customTotal(plans, customFeatures)).toLocaleString('es-MX')}
+          </span>
+          <span className="text-gray-400 text-xs">/mes MXN</span>
+        </div>
+
+        {planId === 'custom' ? (
+          <div className="space-y-1.5">
+            {Object.entries(plans.addons).map(([key, addon]) => {
+              const checked = customFeatures.includes(key)
+              return (
+                <label key={key}
+                  className={`flex flex-col gap-1 px-2.5 py-2 rounded-lg border cursor-pointer transition-colors ${checked ? 'border-indigo-300 bg-indigo-50/60' : 'border-gray-100 hover:border-gray-200'}`}>
+                  <span className="flex items-center justify-between gap-2">
+                    <span className="flex items-center gap-2 text-[11px] text-gray-700">
+                      <input type="checkbox" checked={checked} onChange={() => onToggleFeature(key)}
+                        className="w-3.5 h-3.5 rounded accent-indigo-500 flex-shrink-0" />
+                      {addon.label}
+                    </span>
+                    <span className="text-[10px] text-gray-400 flex-shrink-0">+${addon.price}</span>
+                  </span>
+                  {addon.description && (
+                    <span className="text-[10px] text-gray-400 leading-snug pl-5 pt-1 border-t border-gray-100">
+                      {addon.description}
+                    </span>
+                  )}
+                </label>
+              )
+            })}
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            {(planId === 'basic' ? BASIC_INCLUDES : fullIncludes(plans)).map((f, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 bg-indigo-50">
+                  <Check className="w-2.5 h-2.5 text-indigo-500" />
+                </div>
+                <span className="text-gray-600 text-[11px]">{f}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
+  )
+}
+
+// Legacy weekly/monthly — only offered when "Verificar gym" confirms the
+// account is ACTUALLY on one of these (see isLegacyReactivation below). Not
+// part of usePlans()/config/plans.php on purpose: that file only carries the
+// new Basic/Full/Custom tiers, legacy plans keep their own fixed Stripe
+// prices exactly as before. Single source for both ReactivatePlanTabs below
+// and the price line next to it, instead of the number showing up twice.
+const LEGACY_PLANS = [
+  { id: 'weekly',  label: 'Semanal', price: 399,  period: '/sem' },
+  { id: 'monthly', label: 'Mensual', price: 1560, period: '/mes' },
+]
+
+// Same visual language as PlanTabs above, sized for 2 columns instead of 3 —
+// used on the "Reactivar gym" side of the left panel.
+function ReactivatePlanTabs({ current, onChange }) {
+  return (
+    <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-gray-100">
+      {LEGACY_PLANS.map(p => {
+        const active = current === p.id
+        return (
+          <button key={p.id} type="button" onClick={() => onChange(p.id)}
+            className="relative flex flex-col items-center pt-3.5 pb-2.5 px-2 rounded-lg transition-all duration-200 hover:bg-white/70"
+            style={active ? { background: '#fff', boxShadow: '0 2px 12px rgba(217,119,6,0.12)' } : {}}>
+            {active && <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[3px] rounded-full bg-amber-500" />}
+            <p className={`text-[9px] font-bold uppercase tracking-widest mb-1 transition-colors ${active ? 'text-amber-600' : 'text-gray-400'}`}>
+              {p.label}
+            </p>
+            <p className={`text-lg font-black leading-none transition-colors ${active ? 'text-amber-600' : 'text-gray-300'}`}>
+              ${p.price.toLocaleString('es-MX')}
+            </p>
+            <p className={`text-[9px] mt-0.5 transition-colors ${active ? 'text-gray-400' : 'text-gray-300'}`}>{p.period}</p>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 // ─── Register modal ────────────────────────────────────────────────────────────
 
 export default function RegisterModal({ onClose }) {
@@ -243,6 +352,23 @@ export default function RegisterModal({ onClose }) {
   const [loadingR, setLoadingR]   = useState(false)
   const [apiErrorN, setApiErrorN] = useState(null)
   const [apiErrorR, setApiErrorR] = useState(null)
+
+  // "Verificar gym" gate on the reactivation form — checks the credentials
+  // and shows which account/plan they belong to BEFORE the terms checkbox,
+  // reCAPTCHA and "Reactivar con Stripe" button even appear. verifiedGym
+  // holds the account it found; verifiedFor remembers exactly which
+  // email+password combo that verification was for, so editing either
+  // field afterward invalidates it instead of leaving a stale "verified"
+  // state pointing at credentials that no longer match what's in the form.
+  const [verifiedGym, setVerifiedGym] = useState(null)
+  const [verifiedFor, setVerifiedFor] = useState(null)
+  const [verifying, setVerifying]     = useState(false)
+  const [verifyError, setVerifyError] = useState(null)
+
+  // Which legacy plan (weekly/monthly) this reactivation buys — selected via
+  // ReactivatePlanTabs in the left panel, defaulted to whatever "Verificar
+  // gym" found the account already on (inside verifyGym() below).
+  const [reactivatePlan, setReactivatePlan] = useState('monthly')
 
   const newForm   = useForm({ resolver: yupResolver(schemaNew) })
   const reactForm = useForm({ resolver: yupResolver(schemaReactivate) })
@@ -271,6 +397,28 @@ export default function RegisterModal({ onClose }) {
     reactForm.watch(['email', 'password', 'acceptTerms'])
   const reactFormReady = !!(reactEmail?.trim() && reactPassword?.trim() && reactAcceptTerms)
 
+  // True only while the currently-typed email+password still match what
+  // "Verificar gym" last confirmed — editing either field after verifying
+  // drops back to false instead of leaving a stale result on screen for
+  // credentials that no longer match it.
+  const gymIsVerified = !!(verifiedGym && verifiedFor?.email === reactEmail && verifiedFor?.password === reactPassword)
+
+  // Which plan picker to show: an account only ever had weekly/monthly OR
+  // Basic/Full/Custom, never both, so this is only "true" once verification
+  // confirms it's the legacy kind — before that (or for a confirmed
+  // Basic/Full/Custom account) it shares the exact same PlanTabs/
+  // NewPlanDetail "Nueva cuenta" already uses, driven by planId/customFeatures.
+  const isLegacyReactivation = !!(verifiedGym && ['weekly', 'monthly'].includes(verifiedGym.plan))
+
+  // Did the verified account already have at least one extra? (Whether it
+  // was 'custom' outright, or 'basic' + extras — verifyGym() reclassifies
+  // that second case to 'custom' too, so by the time this reads, "has
+  // extras" and "planId === 'custom'" line up.) Extras have no expiration of
+  // their own in the schema — they're just gyms.plan_features, riding on the
+  // same subscription_ends_at as everything else — so this only gates a
+  // clarifying note, never a separate date to track or get out of sync.
+  const hadExtrasBefore = !!(verifiedGym?.plan_features && Object.values(verifiedGym.plan_features).some(Boolean))
+
   const close = onClose
 
   const selectPlan = (id) => {
@@ -298,11 +446,61 @@ export default function RegisterModal({ onClose }) {
     setMode(m)
     setApiErrorN(null)
     setApiErrorR(null)
+    setVerifiedGym(null)
+    setVerifiedFor(null)
+    setVerifyError(null)
     setSearchParams({
       plan: planId,
       ...(planId === 'custom' && customFeatures.length ? { features: customFeatures.join(',') } : {}),
       ...(m === 'reactivate' ? { reactivate: '1' } : {}),
     }, { replace: true })
+  }
+
+  // "Verificar gym" — checks the credentials and shows which account/plan
+  // was found, WITHOUT creating a Stripe session (see StripeController::
+  // verifyReactivation). Only once this succeeds do the terms checkbox,
+  // reCAPTCHA and "Reactivar con Stripe" button even appear. Always succeeds
+  // for valid credentials, even if the gym already has a live subscription —
+  // verifiedGym.is_active just switches the copy/button to "esto se sumará
+  // a tu suscripción actual" instead of blocking the purchase (see fulfill()'s
+  // resubscription branch on the backend for the actual stacking).
+  const verifyGym = async () => {
+    const email    = reactForm.getValues('email')
+    const password = reactForm.getValues('password')
+    if (!email?.trim() || !password?.trim()) return
+    setVerifying(true)
+    setVerifyError(null)
+    try {
+      const res = await api.post('/stripe/verify-reactivation', { email, password })
+      setVerifiedGym(res.data)
+      setVerifiedFor({ email, password })
+
+      const foundExtras = res.data.plan_features
+        ? Object.keys(res.data.plan_features).filter(k => res.data.plan_features[k])
+        : []
+
+      // Default the picker to whatever this gym is actually on — "seguir con
+      // mi plan" should mean the plan it found, not a guess. A 'basic' gym
+      // that already has extras on top IS a Custom plan by definition
+      // (Custom is just Basic + chosen extras) — treat it as one here rather
+      // than a separate "Basic with bonus extras" concept, so it reuses the
+      // exact same Custom addon picker as everything else. Only one of the
+      // two branches below ever applies to a given account (see isLegacyReactivation).
+      if (['weekly', 'monthly'].includes(res.data.plan)) {
+        setReactivatePlan(res.data.plan)
+      } else if (res.data.plan === 'basic' && foundExtras.length > 0) {
+        setPlanId('custom')
+        setCustomFeatures(foundExtras)
+      } else if (['basic', 'full', 'custom'].includes(res.data.plan)) {
+        setPlanId(res.data.plan)
+        setCustomFeatures(foundExtras)
+      }
+    } catch (err) {
+      setVerifiedGym(null)
+      setVerifiedFor(null)
+      setVerifyError(err.response?.data?.message ?? 'No se pudo verificar. Intenta de nuevo.')
+    }
+    setVerifying(false)
   }
 
   // "This email already has an account" nudge under the email field links here —
@@ -342,11 +540,12 @@ export default function RegisterModal({ onClose }) {
         password: data.password,
         password_confirmation: data.password,
         recaptcha_token: data.recaptcha_token,
-        // Reactivation only ever resumes a legacy weekly/monthly subscription
-        // (backend rejects basic/full/custom here) — the backend keeps
-        // whatever billing_status/plan_type the account already had either
-        // way, so 'monthly' is just a safe default price tier to bill at.
-        plan_id: 'monthly',
+        // Whichever picker applied to this account — see isLegacyReactivation.
+        // Never 'basic' with features: a Basic account that already has
+        // extras gets reclassified to 'custom' in verifyGym() instead, since
+        // that's what Basic + extras actually is.
+        plan_id: isLegacyReactivation ? reactivatePlan : planId,
+        ...(!isLegacyReactivation && planId === 'custom' ? { features: customFeatures } : {}),
       })
       window.location.href = res.data.url
     } catch (err) {
@@ -400,7 +599,7 @@ export default function RegisterModal({ onClose }) {
                 {/* Logo */}
                 <div className="flex items-center gap-2.5 mb-5">
                   <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-md shadow-indigo-500/25">
-                    <Dumbbell className="w-4 h-4 text-white" />
+                    <GemaSystemLogo className="w-4 h-4" />
                   </div>
                   <span className="font-extrabold text-gray-900 text-base tracking-tight">GemaSystem</span>
                 </div>
@@ -409,70 +608,74 @@ export default function RegisterModal({ onClose }) {
                   plansLoading || !plans ? (
                     <div className="h-64 rounded-xl bg-gray-100 animate-pulse mb-4" />
                   ) : (
-                    <>
-                      {/* Plan tabs */}
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Selecciona tu plan</p>
-                      <PlanTabs plans={plans} current={planId} onChange={selectPlan} customFeatures={customFeatures} />
-
-                      {/* Plan detail */}
-                      <div className="mt-4 mb-4">
-                        {planId === 'full' && (
-                          <span className="inline-flex items-center gap-1.5 mb-2.5 px-2.5 py-1 rounded-full text-[10px] font-bold"
-                            style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.3)', color: '#6366F1' }}>
-                            <Zap className="w-2.5 h-2.5" /> Más popular
-                          </span>
-                        )}
-                        <p className="text-gray-400 text-[11px] mb-0.5">Suscripción al</p>
-                        <h2 className="text-lg font-extrabold text-gray-900 mb-2 tracking-tight">
-                          Plan {planId === 'basic' ? plans.basic.label : planId === 'full' ? plans.full.label : 'Custom'}
-                        </h2>
-                        <div className="flex items-baseline gap-1 mb-3">
-                          <span className="text-2xl font-black text-indigo-600 tracking-tight">
-                            ${(planId === 'basic' ? plans.basic.price : planId === 'full' ? plans.full.price : customTotal(plans, customFeatures)).toLocaleString('es-MX')}
-                          </span>
-                          <span className="text-gray-400 text-xs">/mes MXN</span>
-                        </div>
-
-                        {planId === 'custom' ? (
-                          <div className="space-y-1.5">
-                            {Object.entries(plans.addons).map(([key, addon]) => {
-                              const checked = customFeatures.includes(key)
-                              return (
-                                <label key={key}
-                                  className={`flex items-center justify-between gap-2 px-2.5 py-2 rounded-lg border cursor-pointer transition-colors ${checked ? 'border-indigo-300 bg-indigo-50/60' : 'border-gray-100 hover:border-gray-200'}`}>
-                                  <span className="flex items-center gap-2 text-[11px] text-gray-700">
-                                    <input type="checkbox" checked={checked} onChange={() => toggleCustomFeature(key)}
-                                      className="w-3.5 h-3.5 rounded accent-indigo-500 flex-shrink-0" />
-                                    {addon.label}
-                                  </span>
-                                  <span className="text-[10px] text-gray-400 flex-shrink-0">+${addon.price}</span>
-                                </label>
-                              )
-                            })}
-                          </div>
-                        ) : (
-                          <div className="space-y-1.5">
-                            {(planId === 'basic' ? BASIC_INCLUDES : fullIncludes(plans)).map((f, i) => (
-                              <div key={i} className="flex items-center gap-2">
-                                <div className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 bg-indigo-50">
-                                  <Check className="w-2.5 h-2.5 text-indigo-500" />
-                                </div>
-                                <span className="text-gray-600 text-[11px]">{f}</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </>
+                    <NewPlanDetail plans={plans} planId={planId} customFeatures={customFeatures}
+                      onSelectPlan={selectPlan} onToggleFeature={toggleCustomFeature} label="Suscripción al" />
                   )
                 ) : (
                   <div className="mb-4">
                     <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-xl bg-amber-50 border border-amber-200">
                       <RefreshCcw className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
-                      <p className="text-[10px] text-amber-700 font-medium leading-snug">Reactivamos tu cuenta con tu plan actual.</p>
+                      <p className="text-[10px] text-amber-700 font-medium leading-snug">
+                        {verifiedGym?.is_active
+                          ? 'Tu suscripción sigue vigente — lo que compres se suma a tu periodo actual.'
+                          : 'Reactivamos tu cuenta con el plan que elijas.'}
+                      </p>
                     </div>
                     <p className="text-gray-400 text-[11px] mb-0.5">Reactivación de</p>
-                    <h2 className="text-lg font-extrabold text-gray-900 tracking-tight">Suscripción existente</h2>
+                    <h2 className="text-lg font-extrabold text-gray-900 mb-4 tracking-tight">
+                      {verifiedGym?.gym_name || 'Suscripción existente'}
+                    </h2>
+
+                    {isLegacyReactivation ? (
+                      // Este gym específico sí venía de un plan legacy — se le
+                      // ofrecen esos, no los de arriba (ver LEGACY_PLANS).
+                      <>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Elige tu plan</p>
+                        <ReactivatePlanTabs current={reactivatePlan} onChange={setReactivatePlan} />
+
+                        <div className="mt-4">
+                          <p className="text-gray-400 text-[11px] mb-0.5">
+                            {verifiedGym?.is_active ? 'Se suma a tu suscripción actual' : 'Suscripción al'}
+                          </p>
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-2xl font-black text-amber-600 tracking-tight">
+                              ${LEGACY_PLANS.find(p => p.id === reactivatePlan)?.price.toLocaleString('es-MX')}
+                            </span>
+                            <span className="text-gray-400 text-xs">{LEGACY_PLANS.find(p => p.id === reactivatePlan)?.period} MXN</span>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      // Default (before verifying, or once verified as Basic/
+                      // Full/Custom) — the plans this gym actually has.
+                      plansLoading || !plans ? (
+                        <div className="h-56 rounded-xl bg-gray-100 animate-pulse" />
+                      ) : (
+                        <NewPlanDetail plans={plans} planId={planId} customFeatures={customFeatures}
+                          onSelectPlan={selectPlan} onToggleFeature={toggleCustomFeature}
+                          label={verifiedGym?.is_active ? 'Se suma a tu suscripción actual' : 'Reactivando el'} />
+                      )
+                    )}
+
+                    {verifiedGym?.is_active && verifiedGym?.subscription_ends_at && (
+                      <p className="text-[10px] text-indigo-500 leading-snug -mt-2 mb-1">
+                        Más los días que te quedan hasta el {verifiedGym.subscription_ends_at}.
+                      </p>
+                    )}
+
+                    {/* Los extras (marcados arriba) no tienen su propia fecha
+                        de vencimiento — duran lo mismo que el plan. Aclara
+                        eso explícitamente en vez de dejarlo implícito, y que
+                        "volver a comprar" (reactivar) extiende esa fecha en
+                        vez de reiniciarla — mismo mecanismo que ya extiende
+                        subscription_ends_at arriba, no algo aparte a romper. */}
+                    {!isLegacyReactivation && planId === 'custom' && hadExtrasBefore && (
+                      <p className="text-[10px] text-gray-400 leading-snug -mt-1 mb-1">
+                        Los extras que ya tenías no vencen por separado — duran lo mismo que tu plan
+                        {verifiedGym?.subscription_ends_at && <>, hasta el <strong className="text-gray-500">{verifiedGym.subscription_ends_at}</strong></>}.
+                        {' '}Al reactivar, esa fecha se extiende y los extras siguen con ella.
+                      </p>
+                    )}
                   </div>
                 )}
 
@@ -677,9 +880,74 @@ export default function RegisterModal({ onClose }) {
                         </button>
                       </Field>
 
-                      <TermsCheckbox register={r.register('acceptTerms')} error={r.formState.errors.acceptTerms?.message} accentColor="#D97706" />
+                      {/* Confirms which account was found and gates
+                          everything below (terms, reCAPTCHA, "Reactivar con
+                          Stripe") behind an explicit click — instead of only
+                          finding out the credentials were wrong after
+                          already being sent to Stripe. */}
+                      {!gymIsVerified ? (
+                        <div className="space-y-2">
+                          <button type="button" disabled={verifying || !reactEmail?.trim() || !reactPassword?.trim()}
+                            onClick={verifyGym}
+                            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-xs border-2
+                              border-amber-200 text-amber-700 hover:bg-amber-50 hover:border-amber-300 transition-all disabled:opacity-50">
+                            {verifying ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BadgeCheck className="w-3.5 h-3.5" />}
+                            {verifying ? 'Verificando...' : 'Verificar gym'}
+                          </button>
 
-                      {reactFormReady && (
+                          {verifyError && (
+                            <div className="flex items-start gap-2 px-3.5 py-2.5 rounded-xl text-xs text-red-600 bg-red-50 border border-red-200">
+                              <X className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" /><span>{verifyError}</span>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="reg-fade-up space-y-2.5">
+                          <div className="flex items-start gap-3 px-4 py-3.5 rounded-xl border border-emerald-200 bg-emerald-50">
+                            <div className="w-8 h-8 rounded-lg bg-white border border-emerald-200 flex items-center justify-center flex-shrink-0 mt-0.5">
+                              <Building2 className="w-4 h-4 text-emerald-600" />
+                            </div>
+                            <div className="min-w-0 flex-1 space-y-1">
+                              <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wide flex items-center gap-1">
+                                <Check className="w-3 h-3" /> Gym verificado
+                              </p>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="text-sm font-bold text-gray-800 truncate">{verifiedGym?.gym_name}</p>
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold text-emerald-700 bg-white border border-emerald-200 flex-shrink-0">
+                                  Plan {verifiedGym?.plan === 'weekly' ? 'Semanal'
+                                    : verifiedGym?.plan === 'monthly' ? 'Mensual'
+                                    : verifiedGym?.plan === 'basic' ? (plans?.basic.label ?? 'Basic')
+                                    : verifiedGym?.plan === 'full' ? (plans?.full.label ?? 'Full')
+                                    : verifiedGym?.plan === 'custom' ? 'Custom'
+                                    : verifiedGym?.plan}
+                                </span>
+                              </div>
+                              {verifiedGym?.subscription_ends_at && (
+                                <p className="text-[11px] text-gray-500">
+                                  {verifiedGym.is_active ? 'Vigente hasta' : 'Venció'} el {verifiedGym.subscription_ends_at}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Ya tiene una suscripción activa — no bloquea la
+                              compra, solo aclara qué pasa con el tiempo que
+                              todavía le queda: se suma, no se pierde. El plan
+                              a comprar se elige en el panel izquierdo. */}
+                          {verifiedGym?.is_active && (
+                            <div className="flex items-start gap-2 px-3.5 py-2.5 rounded-xl text-xs bg-indigo-50 border border-indigo-200 text-indigo-700 leading-relaxed">
+                              <BadgeCheck className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-indigo-500" />
+                              <span>Esta cuenta ya tiene una suscripción vigente{verifiedGym.subscription_ends_at && <> hasta el <strong>{verifiedGym.subscription_ends_at}</strong></>}. Si compras ahora, esos días se suman al nuevo periodo — no se pierden.</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {gymIsVerified && (
+                      <TermsCheckbox register={r.register('acceptTerms')} error={r.formState.errors.acceptTerms?.message} accentColor="#D97706" />
+                      )}
+
+                      {gymIsVerified && reactFormReady && (
                         <div className="reg-fade-up">
                           <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Verificación de seguridad</label>
                           <div className="flex justify-center rounded-xl border border-gray-200 bg-gray-50/70 p-2.5">
@@ -707,21 +975,23 @@ export default function RegisterModal({ onClose }) {
                         </div>
                       )}
 
-                      <div className="pt-1 space-y-2.5">
-                        <button type="submit" disabled={loadingR}
-                          className="w-full py-3 rounded-xl font-bold text-white text-sm flex items-center justify-center gap-2.5
-                            transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-amber-500/30
-                            active:translate-y-0 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none"
-                          style={{ background: 'linear-gradient(135deg,#D97706,#F59E0B)', boxShadow: '0 6px 20px rgba(217,119,6,0.25)' }}>
-                          {loadingR
-                            ? <><Loader2 className="w-4 h-4 animate-spin" /> Verificando...</>
-                            : <><CreditCard className="w-4 h-4" /> Reactivar con Stripe <ArrowRight className="w-4 h-4" /></>}
-                        </button>
-                        <p className="text-center text-[10px] text-gray-400 flex items-center justify-center gap-1.5">
-                          <Shield className="w-3 h-3 text-emerald-500 flex-shrink-0" />
-                          Pago cifrado · Tus datos se conservan · Cancela cuando quieras
-                        </p>
-                      </div>
+                      {gymIsVerified && (
+                        <div className="pt-1 space-y-2.5">
+                          <button type="submit" disabled={loadingR}
+                            className="w-full py-3 rounded-xl font-bold text-white text-sm flex items-center justify-center gap-2.5
+                              transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-amber-500/30
+                              active:translate-y-0 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none"
+                            style={{ background: 'linear-gradient(135deg,#D97706,#F59E0B)', boxShadow: '0 6px 20px rgba(217,119,6,0.25)' }}>
+                            {loadingR
+                              ? <><Loader2 className="w-4 h-4 animate-spin" /> Verificando...</>
+                              : <><CreditCard className="w-4 h-4" /> {verifiedGym?.is_active ? 'Comprar' : 'Reactivar'} con Stripe <ArrowRight className="w-4 h-4" /></>}
+                          </button>
+                          <p className="text-center text-[10px] text-gray-400 flex items-center justify-center gap-1.5">
+                            <Shield className="w-3 h-3 text-emerald-500 flex-shrink-0" />
+                            Pago cifrado · Tus datos se conservan · Cancela cuando quieras
+                          </p>
+                        </div>
+                      )}
                     </form>
                   </>
                 )}

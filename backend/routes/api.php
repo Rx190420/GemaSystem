@@ -56,6 +56,7 @@ Route::get('/plans', [PlanController::class, 'index'])->middleware('throttle:60,
 
 // ── Stripe — public endpoints (webhook verifies its own signature) ────────────
 Route::post('/stripe/create-session',       [StripeController::class, 'createCheckoutSession'])->middleware('throttle:10,1');
+Route::post('/stripe/verify-reactivation',  [StripeController::class, 'verifyReactivation'])  ->middleware('throttle:10,1');
 Route::post('/stripe/webhook',              [StripeController::class, 'webhook']);             // signature-verified; no throttle needed
 Route::get('/stripe/verify-session',        [StripeController::class, 'verifySession'])       ->middleware('throttle:20,1');
 Route::get('/stripe/verify-plan-change',    [StripeController::class, 'verifyPlanChange'])    ->middleware('throttle:20,1');

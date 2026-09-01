@@ -29,11 +29,11 @@ return [
     // top. Priced so buying all 5 addons ($1,314 total) costs more than
     // Full ($1,099) — Full is meant to look like the better deal.
     'addons' => [
-        'whatsapp' => ['label' => 'WhatsApp',          'price' => 249],
-        'products' => ['label' => 'Productos',         'price' => 129],
-        'classes'  => ['label' => 'Clases',             'price' => 129],
-        'import'   => ['label' => 'Importar datos',     'price' => 79],
-        'export'   => ['label' => 'Exportar reportes',  'price' => 79],
+        'whatsapp' => ['label' => 'WhatsApp',          'price' => 249, 'description' => 'Recordatorios y avisos automáticos por WhatsApp.'],
+        'products' => ['label' => 'Productos',         'price' => 129, 'description' => 'Vende productos y controla tu inventario.'],
+        'classes'  => ['label' => 'Clases',             'price' => 129, 'description' => 'Agenda y administra clases grupales y privadas.'],
+        'import'   => ['label' => 'Importar datos',     'price' => 79, 'description' => 'Sube tus datos existentes de un jalón.'],
+        'export'   => ['label' => 'Exportar reportes',  'price' => 79, 'description' => 'Descarga tus reportes en Excel o PDF.'],
     ],
 
 ];
