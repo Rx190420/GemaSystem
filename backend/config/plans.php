@@ -15,7 +15,10 @@ return [
 
     'basic' => [
         'label'    => 'Basic',
-        'price'    => 649, // MXN/mes
+        // Calculado para que, después de la comisión de Stripe México
+        // (3.6% + $3 MXN por cargo), el neto que se recibe sea ~$500:
+        // 522 - (522*0.036 + 3) = 522 - 21.79 = $500.21 neto.
+        'price'    => 522, // MXN/mes
         'features' => [],
     ],
 
